@@ -1,0 +1,260 @@
+/* --- RESET & DASAR --- */
+:root {
+    --primary-color: #2ecc71;    /* Hijau Sporty */
+    --secondary-color: #2c3e50;  /* Biru Gelap Profesional */
+    --accent-color: #3498db;     /* Biru Muda */
+    --bg-light: #f4f7f6;
+    --text-dark: #333;
+    --white: #ffffff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+.container {
+    width: 85%;
+    margin: auto;
+    overflow: hidden;
+}
+
+/* --- HEADER & NAVIGASI --- */
+header {
+    background: var(--secondary-color);
+    color: var(--white);
+    padding: 20px 0;
+    border-bottom: var(--primary-color) 4px solid;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+header .logo {
+    float: left;
+    font-size: 24px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+header .logo span {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+header nav {
+    float: right;
+    margin-top: 5px;
+}
+
+header nav ul {
+    list-style: none;
+}
+
+header nav ul li {
+    display: inline;
+    margin-left: 20px;
+}
+
+header nav a {
+    color: var(--white);
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+header nav a:hover {
+    color: var(--primary-color);
+}
+
+header nav a.btn-login {
+    background: var(--primary-color);
+    padding: 8px 15px;
+    border-radius: 5px;
+}
+
+header nav a.btn-login:hover {
+    background: #27ae60;
+    color: white;
+}
+
+/* --- HERO SECTION --- */
+.hero {
+    background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
+                url('https://images.unsplash.com/photo-1518605336396-d31032230006?q=80&w=2070');
+    background-size: cover;
+    background-position: center;
+    height: 450px;
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.hero h2 {
+    font-size: 40px;
+    margin-bottom: 10px;
+}
+
+.btn-cta {
+    display: inline-block;
+    background: var(--primary-color);
+    color: var(--white);
+    padding: 12px 30px;
+    text-decoration: none;
+    border-radius: 30px;
+    margin-top: 20px;
+    font-weight: bold;
+    transition: transform 0.2s;
+}
+
+.btn-cta:hover {
+    transform: scale(1.05);
+}
+
+/* --- GRID LAPANGAN (CARD) --- */
+.content {
+    padding: 50px 0;
+}
+
+.title {
+    text-align: center;
+    margin-bottom: 40px;
+    font-size: 28px;
+    color: var(--secondary-color);
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.card {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: 0.3s;
+    border: 1px solid #eee;
+}
+
+.card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 12px 20px rgba(0,0,0,0.15);
+}
+
+.card-detail {
+    padding: 25px;
+}
+
+.card-detail h4 {
+    margin-bottom: 10px;
+    color: var(--secondary-color);
+    font-size: 20px;
+}
+
+.card-detail p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.btn-book {
+    display: block;
+    text-align: center;
+    background: var(--secondary-color);
+    color: var(--white);
+    padding: 10px;
+    text-decoration: none;
+    border-radius: 8px;
+    margin-top: 15px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.btn-book:hover {
+    background: var(--accent-color);
+}
+
+/* --- FORM LOGIN & REGISTER (MODAL STYLE) --- */
+.auth-container {
+    max-width: 400px;
+    margin: 100px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.2);
+}
+
+.auth-container h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--secondary-color);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.btn-auth {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+/* --- FOOTER --- */
+footer {
+    background: #222;
+    color: #fff;
+    text-align: center;
+    padding: 30px 0;
+    margin-top: 50px;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+    header .logo, header nav {
+        float: none;
+        text-align: center;
+        display: block;
+    }
+    header nav {
+        margin-top: 20px;
+    }
+    header nav ul li {
+        display: block;
+        margin: 10px 0;
+    }
+    .hero h2 {
+        font-size: 28px;
+    }
+}
