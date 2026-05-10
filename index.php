@@ -27,3 +27,5 @@ include 'includes/header.php';
         <?php } ?>
     </div>
 </section>
+
+<?php include 'includes/footer.php'; ?>
