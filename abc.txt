@@ -1,0 +1,21 @@
+arena_sport/
+│
+├── assets/                 # File statis untuk tampilan
+│   ├── css/
+│   │   └── style.css       # Gabungan semua desain web
+│   └── img/                # Tempat menyimpan foto lapangan
+│
+├── config/                 # Pengaturan inti
+│   └── connection.php      # File koneksi ke database "arena sport"
+│
+├── includes/               # Komponen yang dipakai berulang (Template)
+│   ├── header.php          # Navigasi atas
+│   └── footer.php          # Bagian bawah web
+│
+├── public/                 # Halaman interaksi pengguna
+│   ├── login.php           # Form masuk user
+│   ├── register.php        # Form daftar user (Input ke tabel user)
+│   ├── booking.php         # Detail lapangan & jadwal (Input ke tabel booking)
+│   └── logout.php          # Menghapus sesi login
+│
+└── index.php               # Halaman utama (Menampilkan data tabel lapangan)
