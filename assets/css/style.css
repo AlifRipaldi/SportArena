@@ -258,3 +258,98 @@ footer {
         font-size: 28px;
     }
 }
+
+/* --- TAMPILAN AUTH (LOGIN & REGISTER) BARU --- */
+.auth-page {
+    height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Gambar latar belakang bertema olahraga */
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                url('https://images.unsplash.com/photo-1544105358-464715ac5855?q=80&w=2070') no-repeat center center/cover;
+}
+
+.auth-box {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    padding: 40px;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    text-align: center;
+}
+
+.auth-box h2 {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.auth-box h2 span {
+    color: var(--primary-color);
+}
+
+.auth-box p {
+    margin-bottom: 30px;
+    font-weight: 300;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.auth-group {
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.auth-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.auth-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255, 255, 255, 0.9);
+    outline: none;
+    color: #333;
+}
+
+.btn-auth-submit {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--primary-color);
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 10px;
+    font-size: 1rem;
+}
+
+.btn-auth-submit:hover {
+    background: #27ae60;
+    transform: scale(1.02);
+}
+
+.auth-footer {
+    margin-top: 25px;
+    font-size: 0.85rem;
+}
+
+.auth-footer a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: bold;
+}
