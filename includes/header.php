@@ -8,13 +8,20 @@
 </head>
 <body>
     <header>
-        <div class="container">
-            <h1 class="logo">Arena<span>Sport</span></h1>
+        <div class="container nav-container">
+            <a href="index.php" class="logo">Arena<span>Sport</span></a>
             <nav>
                 <ul>
                     <li><a href="index.php">Beranda</a></li>
-                    <li><a href="public/login.php" class="btn-login">Login</a></li>
+                    <li><a href="#lapangan">Lapangan</a></li>
+                    <li><a href="#cara-kerja">Cara Kerja</a></li>
+                    <li><a href="#tentang-kami">Tentang Kami</a></li>
+                    <li><a href="#kontak">Kontak</a></li>
                 </ul>
             </nav>
+            <div class="nav-actions">
+                <div class="location-select">Kota Parepare</div>
+                <a href="public/login.php" class="btn-login">Login / Daftar</a>
+            </div>
         </div>
     </header>

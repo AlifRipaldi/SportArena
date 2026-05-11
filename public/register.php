@@ -27,43 +27,99 @@ if (isset($_POST['register'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css">
+    <link rel="stylesheet" href="../assets/css/style.css?v=4">
 </head>
 <body>
-    <div class="auth-page">
-        <div class="auth-box">
-            <h2>Join <span>Sport</span></h2>
-            <p>Buat akun untuk mulai berolahraga</p>
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-brand">
+                <div class="logo-icon">AS</div>
+                <div>
+                    <h1>Arena Sport</h1>
+                    <p>Buat akun untuk mulai berolahraga.</p>
+                </div>
+            </div>
 
             <?php if ($error): ?>
-                <div style="color: #ff7675; margin-bottom: 15px; font-size: 0.9rem;"><?php echo $error; ?></div>
+                <div class="error-message"><?php echo $error; ?></div>
             <?php endif; ?>
 
-            <form action="" method="POST">
-                <div class="auth-group">
-                    <label>Nama Lengkap</label>
-                    <input type="text" name="nama" placeholder="Masukkan nama lengkap" required>
+            <form id="registerForm" action="" method="POST" class="login-form">
+                <div class="field-group">
+                    <label for="nama">Nama Lengkap</label>
+                    <div class="field-input">
+                        <span class="field-icon">👤</span>
+                        <input id="nama" type="text" name="nama" placeholder="Masukkan nama lengkap Anda" required>
+                    </div>
                 </div>
-                <div class="auth-group">
-                    <label>Email</label>
-                    <input type="email" name="email" placeholder="Masukkan email" required>
+
+                <div class="field-group">
+                    <label for="email">Email</label>
+                    <div class="field-input">
+                        <span class="field-icon">✉</span>
+                        <input id="email" type="email" name="email" placeholder="Masukkan email Anda" required>
+                    </div>
                 </div>
-                <div class="auth-group">
-                    <label>Nomor Telepon</label>
-                    <input type="tel" name="telepon" placeholder="Contoh: 08123456789" required>
+
+                <div class="field-group">
+                    <label for="telepon">Nomor Telepon</label>
+                    <div class="field-input">
+                        <span class="field-icon">📱</span>
+                        <input id="telepon" type="tel" name="telepon" placeholder="08123456789" required maxlength="12" pattern="08[0-9]{9,10}" title="Nomor telepon harus dimulai dengan 08 dan 10-12 digit">
+                    </div>
                 </div>
-                <div class="auth-group">
-                    <label>Password</label>
-                    <input type="password" name="password" placeholder="Buat password" required>
+
+                <div class="field-group">
+                    <label for="password">Kata Sandi</label>
+                    <div class="field-input">
+                        <span class="field-icon">🔒</span>
+                        <input id="password" type="password" name="password" placeholder="Buat kata sandi" required minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan karakter khusus">
+                        <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">👁</button>
+                    </div>
+                    <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
                 </div>
-                <button type="submit" name="register" class="btn-auth-submit">DAFTAR SEKARANG</button>
+
+                <button type="submit" name="register" class="btn-primary">Daftar</button>
             </form>
 
-            <div class="auth-footer">
-                Sudah punya akun? <a href="login.php">Masuk di sini</a><br><br>
-                <a href="../index.php" style="color: rgba(255,255,255,0.6); font-weight: normal;">&larr; Kembali ke Beranda</a>
+            <div class="divider"><span>atau</span></div>
+
+            <div class="register-note">
+                Sudah punya akun? <a href="login.php">Masuk</a>
+            </div>
+
+            <div class="back-home">
+                <a href="../index.php">← Kembali ke beranda</a>
             </div>
         </div>
     </div>
+
+    <script>
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.querySelector('.password-toggle');
+        const registerForm = document.getElementById('registerForm');
+
+        if (passwordToggle && passwordInput) {
+            passwordToggle.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                passwordToggle.textContent = isPassword ? '🙈' : '👁';
+                passwordToggle.setAttribute('aria-label', isPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
+            });
+        }
+
+        if (registerForm) {
+            registerForm.addEventListener('submit', (event) => {
+                const pattern = new RegExp('(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,}');
+                if (!pattern.test(passwordInput.value)) {
+                    event.preventDefault();
+                    passwordInput.setCustomValidity('Kata sandi harus berisi huruf besar, huruf kecil, angka, dan karakter khusus.');
+                    passwordInput.reportValidity();
+                } else {
+                    passwordInput.setCustomValidity('');
+                }
+            });
+        }
+    </script>
 </body>
 </html>
