@@ -6,7 +6,7 @@ if (isset($_POST['register'])) {
     $id_user = "USR" . rand(100, 999);
     $nama = mysqli_real_escape_string($conn, $_POST['nama']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $pass = mysqli_real_escape_string($conn, $_POST['password']);
+    $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
     $telp = mysqli_real_escape_string($conn, $_POST['telepon']);
     $role = "User";
 
@@ -27,7 +27,7 @@ if (isset($_POST['register'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=4">
+    <link rel="stylesheet" href="../assets/css/style.css?v=10">
 </head>
 <body>
     <div class="login-page">

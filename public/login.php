@@ -1,10 +1,54 @@
+<?php
+session_start();
+include '../config/connection.php';
+
+$error = '';
+$oldEmail = '';
+
+if (!empty($_SESSION['id_user'])) {
+    header('Location: ../dashboard');
+    exit;
+}
+
+if (isset($_POST['login'])) {
+    $oldEmail = isset($_POST['email']) ? trim($_POST['email']) : '';
+    $password = isset($_POST['password']) ? $_POST['password'] : '';
+
+    $statement = mysqli_prepare($conn, 'SELECT ID_User, Nama, Email, Password, Role FROM user WHERE Email = ? LIMIT 1');
+
+    if ($statement) {
+        mysqli_stmt_bind_param($statement, 's', $oldEmail);
+        mysqli_stmt_execute($statement);
+        $result = mysqli_stmt_get_result($statement);
+        $user = $result ? mysqli_fetch_assoc($result) : null;
+
+        if ($user) {
+            $storedPassword = (string) $user['Password'];
+            $passwordValid = password_verify($password, $storedPassword) || hash_equals($storedPassword, $password);
+
+            if ($passwordValid) {
+                session_regenerate_id(true);
+                $_SESSION['id_user'] = $user['ID_User'];
+                $_SESSION['nama_user'] = $user['Nama'];
+                $_SESSION['email_user'] = $user['Email'];
+                $_SESSION['role_user'] = $user['Role'];
+
+                header('Location: ../dashboard');
+                exit;
+            }
+        }
+    }
+
+    $error = 'Email atau kata sandi tidak sesuai.';
+}
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=4">
+    <link rel="stylesheet" href="../assets/css/style.css?v=10">
 </head>
 <body>
     <div class="login-page">
@@ -17,12 +61,16 @@
                 </div>
             </div>
 
+            <?php if ($error): ?>
+                <div class="error-message"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php endif; ?>
+
             <form id="loginForm" action="" method="POST" class="login-form">
                 <div class="field-group">
                     <label for="email">Email</label>
                     <div class="field-input">
                         <span class="field-icon">✉</span>
-                        <input id="email" type="email" name="email" placeholder="Masukkan email Anda" required>
+                        <input id="email" type="email" name="email" placeholder="Masukkan email Anda" value="<?php echo htmlspecialchars($oldEmail, ENT_QUOTES, 'UTF-8'); ?>" required>
                     </div>
                 </div>
                 <div class="field-group">
