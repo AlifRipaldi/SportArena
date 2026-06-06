@@ -1,21 +1,34 @@
 arena_sport/
-│
-├── assets/                 # File statis untuk tampilan
-│   ├── css/
-│   │   └── style.css       # Gabungan semua desain web
-│   └── img/                # Tempat menyimpan foto lapangan
-│
-├── config/                 # Pengaturan inti
-│   └── connection.php      # File koneksi ke database "arena sport"
-│
-├── includes/               # Komponen yang dipakai berulang (Template)
-│   ├── header.php          # Navigasi atas
-│   └── footer.php          # Bagian bawah web
-│
-├── public/                 # Halaman interaksi pengguna
-│   ├── login.php           # Form masuk user
-│   ├── register.php        # Form daftar user (Input ke tabel user)
-│   ├── booking.php         # Detail lapangan & jadwal (Input ke tabel booking)
-│   └── logout.php          # Menghapus sesi login
-│
-└── index.php               # Halaman utama (Menampilkan data tabel lapangan)
+|
+|-- app/                         # Struktur framework MVC ringan
+|   |-- Core/                    # Router, controller dasar, view, database
+|   |-- Controllers/             # Pengatur request halaman
+|   |-- Models/                  # Akses data database
+|   |-- Views/                   # Template tampilan
+|   |   |-- layouts/
+|   |   |-- home/
+|   |   `-- errors/
+|   `-- Helpers/                 # Helper URL, asset, escaping
+|
+|-- assets/                      # File statis untuk tampilan
+|   |-- css/
+|   |   `-- style.css
+|   `-- img/
+|
+|-- bootstrap/                   # Inisialisasi aplikasi dan autoload
+|-- config/                      # Konfigurasi aplikasi dan database
+|-- database/                    # Migration dan data contoh
+|   |-- migrations/
+|   `-- seeders/
+|-- docs/                        # Dokumentasi struktur proyek
+|-- includes/                    # Komponen lama yang masih dipertahankan
+|-- public/                      # Halaman lama: login, register, booking, logout
+|-- routes/                      # Daftar route web
+|-- storage/                     # Log dan upload
+|-- tests/                       # Tempat unit/feature test
+|
+|-- .env.example                 # Contoh konfigurasi environment
+|-- .htaccess                    # Rewrite URL ke index.php
+|-- composer.json                # Metadata framework/autoload
+|-- index.php                    # Front controller aplikasi
+`-- README.md                    # Panduan singkat proyek

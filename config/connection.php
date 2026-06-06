@@ -1,12 +1,17 @@
 <?php
-$host = "localhost";
-$user = "root";
-$pass = "";
-$db   = "arena sport"; // Nama database sesuai file SQL Anda
+$database = require __DIR__ . '/database.php';
 
-$conn = mysqli_connect($host, $user, $pass, $db);
+$conn = mysqli_connect(
+    $database['host'],
+    $database['username'],
+    $database['password'],
+    $database['database']
+);
 
 if (!$conn) {
-    die("Koneksi gagal: " . mysqli_connect_error());
+    die('Koneksi gagal: ' . mysqli_connect_error());
 }
-?>
+
+if (isset($database['charset'])) {
+    mysqli_set_charset($conn, $database['charset']);
+}
