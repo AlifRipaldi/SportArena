@@ -16,7 +16,7 @@
             <a href="#"><span>&#9201;</span>Riwayat</a>
             <a href="#"><span>&#9734;</span>Ulasan Saya</a>
             <a href="#"><span>&#9786;</span>Profil</a>
-            <a href="#"><span>&#9881;</span>Pengaturan</a>
+            <a href="<?php echo e(app_url('settings')); ?>"><span>&#9881;</span>Pengaturan</a>
         </nav>
 
         <div class="dashboard-promo">

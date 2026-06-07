@@ -9,6 +9,8 @@ $router->get('/', [HomeController::class, 'index']);
 $router->get('/index.php', [HomeController::class, 'index']);
 $router->get('/lapangan', [HomeController::class, 'index']);
 $router->get('/dashboard', [DashboardController::class, 'index']);
+$router->get('/settings', [DashboardController::class, 'settings']);
+$router->post('/settings', [DashboardController::class, 'updateSettings']);
 
 $router->get('/login', function () {
     header('Location: ' . app_url('public/login.php'));

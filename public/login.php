@@ -4,13 +4,15 @@ include '../config/connection.php';
 
 $error = '';
 $oldEmail = '';
+$alreadyLoggedIn = false;
+$userName = '';
 
 if (!empty($_SESSION['id_user'])) {
-    header('Location: ../dashboard');
-    exit;
+    $alreadyLoggedIn = true;
+    $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna';
 }
 
-if (isset($_POST['login'])) {
+if (!$alreadyLoggedIn && isset($_POST['login'])) {
     $oldEmail = isset($_POST['email']) ? trim($_POST['email']) : '';
     $password = isset($_POST['password']) ? $_POST['password'] : '';
 
@@ -61,34 +63,44 @@ if (isset($_POST['login'])) {
                 </div>
             </div>
 
-            <?php if ($error): ?>
-                <div class="error-message"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+            <?php if ($alreadyLoggedIn): ?>
+                <div class="success-message">
+                    Anda sudah masuk sebagai <strong><?php echo htmlspecialchars($userName, ENT_QUOTES, 'UTF-8'); ?></strong>.
+                </div>
+                <div class="already-logged-in">
+                    <a href="../dashboard" class="btn-primary">Lanjut ke Dashboard</a>
+                    <a href="logout.php" class="btn-google" style="width:auto; margin-top:12px;">Logout</a>
+                </div>
+            <?php else: ?>
+                <?php if ($error): ?>
+                    <div class="error-message"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php endif; ?>
+
+                <form id="loginForm" action="" method="POST" class="login-form">
+                    <div class="field-group">
+                        <label for="email">Email</label>
+                        <div class="field-input">
+                            <span class="field-icon">✉</span>
+                            <input id="email" type="email" name="email" placeholder="Masukkan email Anda" value="<?php echo htmlspecialchars($oldEmail, ENT_QUOTES, 'UTF-8'); ?>" required>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label for="password">Kata Sandi</label>
+                        <div class="field-input">
+                            <span class="field-icon">🔒</span>
+                            <input id="password" type="password" name="password" placeholder="Masukkan kata sandi" required minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan karakter khusus">
+                            <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">👁</button>
+                        </div>
+                        <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
+                    </div>
+
+                    <div class="forgot-link">
+                        <a href="#">Lupa kata sandi?</a>
+                    </div>
+
+                    <button type="submit" name="login" class="btn-primary">Masuk</button>
+                </form>
             <?php endif; ?>
-
-            <form id="loginForm" action="" method="POST" class="login-form">
-                <div class="field-group">
-                    <label for="email">Email</label>
-                    <div class="field-input">
-                        <span class="field-icon">✉</span>
-                        <input id="email" type="email" name="email" placeholder="Masukkan email Anda" value="<?php echo htmlspecialchars($oldEmail, ENT_QUOTES, 'UTF-8'); ?>" required>
-                    </div>
-                </div>
-                <div class="field-group">
-                    <label for="password">Kata Sandi</label>
-                    <div class="field-input">
-                        <span class="field-icon">🔒</span>
-                        <input id="password" type="password" name="password" placeholder="Masukkan kata sandi" required minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan karakter khusus">
-                        <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">👁</button>
-                    </div>
-                    <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
-                </div>
-
-                <div class="forgot-link">
-                    <a href="#">Lupa kata sandi?</a>
-                </div>
-
-                <button type="submit" name="login" class="btn-primary">Masuk</button>
-            </form>
 
             <div class="divider"><span>atau lanjutkan dengan</span></div>
 
