@@ -31,4 +31,4 @@ arena_sport/
 |-- .htaccess                    # Rewrite URL ke index.php
 |-- composer.json                # Metadata framework/autoload
 |-- index.php                    # Front controller aplikasi
-`-- README.md                    # Panduan singkat proyek
+`-- README.md                    # Panduan singkat 
