@@ -1,7 +1,9 @@
 <div class="dashboard-shell">
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
-            <div class="dashboard-logo-mark">A</div>
+            <div class="dashboard-logo-mark">
+                <img src="<?php echo e(app_asset('img/logo.png')); ?>" alt="Arena Sport Logo">
+            </div>
             <div>
                 <strong>Arena</strong>
                 <span>Sport</span>
