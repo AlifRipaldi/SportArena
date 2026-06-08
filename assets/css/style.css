@@ -939,6 +939,22 @@ body.dashboard-body {
     flex-direction: column;
     padding: 28px 18px;
     border-radius: 18px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.dashboard-sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 999px;
+}
+
+.dashboard-sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
 }
 
 .dashboard-brand {

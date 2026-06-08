@@ -1,9 +1,6 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-<<<<<<< HEAD
     RewriteBase /SportArena/
-=======
->>>>>>> 061d785f8d4d0bf926a32c51292f8640f8fc2c32
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
