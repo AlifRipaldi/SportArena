@@ -134,7 +134,7 @@ header nav ul li a:hover {
 /* --- HERO SECTION --- */
 .hero {
     background: radial-gradient(circle at top, rgba(7, 18, 38, 0.92), rgba(6, 13, 25, 0.98)),
-                url('https://images.unsplash.com/photo-1518605336396-d31032230006?q=80&w=2070');
+    url('https://images.unsplash.com/photo-1518605336396-d31032230006?q=80&w=2070');
     background-size: cover;
     background-position: center;
     color: #f8fbff;
@@ -934,6 +934,7 @@ body.dashboard-body {
 .dashboard-sidebar {
     position: sticky;
     top: 14px;
+    z-index: 1010;
     height: calc(100vh - 28px);
     display: flex;
     flex-direction: column;
@@ -1012,6 +1013,10 @@ body.dashboard-body {
     text-decoration: none;
     font-size: 14px;
     font-weight: 700;
+    position: relative;
+    z-index: 1010;
+    cursor: pointer;
+    pointer-events: auto;
     transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
@@ -1036,7 +1041,7 @@ body.dashboard-body {
 }
 
 .dashboard-promo {
-    margin: auto 4px 16px;
+    margin: 24px 4px 16px;
     min-height: 210px;
     display: flex;
     flex-direction: column;
@@ -1733,13 +1738,6 @@ body.dashboard-body {
     display: flex;
     align-items: center;
     gap: 12px;
-    min-height: 58px;
-    padding: 0 18px;
-    border: 1px solid rgba(237, 246, 255, 0.1);
-    border-radius: 13px;
-    background: rgba(255, 255, 255, 0.055);
-    color: rgba(237, 246, 255, 0.66);
-}
     min-height: 58px;
     padding: 0 18px;
     border: 1px solid rgba(237, 246, 255, 0.1);

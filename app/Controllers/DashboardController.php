@@ -7,7 +7,7 @@ use App\Core\Database;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function dashboard()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -18,8 +18,30 @@ class DashboardController extends Controller
             exit;
         }
 
-        return $this->view('dashboard/index', array(
-            'title' => 'Dashboard | Arena Sport',
+        return $this->renderDashboard('dashboard/index', 'dashboard', 'Dashboard | Arena Sport', 'Dashboard', 'Ringkasan aktivitas dan pesanan Anda saat ini.');
+    }
+
+    public function search()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->renderDashboard('dashboard/search', 'lapangan', 'Cari Lapangan | Arena Sport', 'Cari Lapangan', 'Temukan lapangan terbaik di sekitar kamu.');
+    }
+
+    protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
+    {
+        return $this->view($view, array(
+            'title' => $title,
+            'activeMenu' => $activeMenu,
+            'pageHeading' => $heading,
+            'pageSubheading' => $subheading,
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'stats' => $this->stats(),
             'venues' => $this->venues(),
