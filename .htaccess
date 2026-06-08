@@ -1,5 +1,6 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /Project\ Web/arena_sport/
 
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

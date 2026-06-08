@@ -9,7 +9,9 @@
 <body>
     <header>
         <div class="container nav-container">
-            <a href="index.php" class="logo">Arena<span>Sport</span></a>
+            <a href="index.php" class="logo">
+                <img src="assets/img/logo.png" alt="Arena Sport Logo">
+            </a>
             <nav>
                 <ul>
                     <li><a href="index.php">Beranda</a></li>

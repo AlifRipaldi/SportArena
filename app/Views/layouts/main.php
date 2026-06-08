@@ -9,7 +9,9 @@
 <body>
     <header>
         <div class="container nav-container">
-            <div class="logo">Arena<span>Sport</span></div>
+            <a href="<?php echo e(app_url('/')); ?>" class="logo">
+                <img src="<?php echo e(app_asset('img/logo.png')); ?>" alt="Arena Sport Logo">
+            </a>
             <nav>
                 <ul>
                     <li><a href="<?php echo e(app_url('/')); ?>">Beranda</a></li>

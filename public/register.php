@@ -33,7 +33,7 @@ if (isset($_POST['register'])) {
     <div class="login-page">
         <div class="login-card">
             <div class="login-brand">
-                <div class="logo-icon">AS</div>
+                <img class="logo-img" src="../assets/img/logo.png" alt="Arena Sport Logo">
                 <div>
                     <h1>Arena Sport</h1>
                     <p>Buat akun untuk mulai berolahraga.</p>
