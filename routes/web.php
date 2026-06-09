@@ -10,6 +10,8 @@ $router->get('/index.php', [HomeController::class, 'index']);
 $router->get('/lapangan', [HomeController::class, 'index']);
 $router->get('/dashboard', [DashboardController::class, 'dashboard']);
 $router->get('/dashboard/lapangan', [DashboardController::class, 'search']);
+$router->get('/dashboard/booking', [DashboardController::class, 'booking']);
+$router->get('/dashboard/favorit', [DashboardController::class, 'favorit']);
 $router->get('/settings', [DashboardController::class, 'settings']);
 $router->post('/settings', [DashboardController::class, 'updateSettings']);
 

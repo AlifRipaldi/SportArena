@@ -13,8 +13,8 @@
         <nav class="dashboard-menu" aria-label="Menu dashboard">
             <a href="<?php echo e(app_url('dashboard')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'dashboard' ? 'active' : ''; ?>"><span>&#8962;</span>Dashboard</a>
             <a href="<?php echo e(app_url('dashboard/lapangan')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'lapangan' ? 'active' : ''; ?>"><span>&#128269;</span>Cari Lapangan</a>
-            <a href="#"><span>&#128197;</span>Booking Saya</a>
-            <a href="#"><span>&#9825;</span>Favorit</a>
+            <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'booking' ? 'active' : ''; ?>"><span>&#128197;</span>Booking Saya</a>
+            <a href="<?php echo e(app_url('dashboard/favorit')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'favorit' ? 'active' : ''; ?>"><span>&#9825;</span>Favorit</a>
             <a href="#"><span>&#9201;</span>Riwayat</a>
             <a href="#"><span>&#9734;</span>Ulasan Saya</a>
             <a href="#"><span>&#9786;</span>Profil</a>
