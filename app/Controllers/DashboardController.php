@@ -35,6 +35,28 @@ class DashboardController extends Controller
         return $this->renderDashboard('dashboard/search', 'lapangan', 'Cari Lapangan | Arena Sport', 'Cari Lapangan', 'Temukan lapangan terbaik di sekitar kamu.');
     }
 
+    public function ulasan()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->view('dashboard/ulasan', array(
+            'title' => 'Ulasan Saya | Arena Sport',
+            'activeMenu' => 'ulasan',
+            'pageHeading' => 'Ulasan Saya',
+            'pageSubheading' => 'Lihat dan kelola semua ulasan yang pernah kamu berikan',
+            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'reviewSummary' => $this->reviewSummary(),
+            'reviews' => $this->reviews(),
+        ), 'layouts/dashboard');
+    }
+
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
         return $this->view($view, array(
@@ -98,6 +120,68 @@ class DashboardController extends Controller
             'duration' => '1 Jam',
             'status' => 'Akan Datang',
             'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=500&auto=format&fit=crop',
+        );
+    }
+
+    protected function reviewSummary()
+    {
+        return array(
+            'average' => '4.7',
+            'total' => '12',
+            'positive' => '11',
+            'negative' => '1',
+            'positivePercent' => '91.7%',
+            'negativePercent' => '8.3%',
+        );
+    }
+
+    protected function reviews()
+    {
+        return array(
+            array(
+                'venue' => 'Arena Futsal Parepare',
+                'type' => 'Futsal',
+                'location' => 'Jl. Mattirotasi No. 12, Parepare',
+                'rating' => 5.0,
+                'reviews' => 120,
+                'comment' => 'Lapangan bersih, pencahayaan bagus, dan pelayanan ramah. Recommended!',
+                'date' => '22 Mei 2024',
+                'code' => 'AS-220524-00123',
+                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'venue' => 'Lapangan Badminton Center',
+                'type' => 'Badminton',
+                'location' => 'Jl. Bau Massepe No. 45, Parepare',
+                'rating' => 4.0,
+                'reviews' => 85,
+                'comment' => 'Lapangan cukup baik, tapi shuttlecock perlu diganti lebih sering.',
+                'date' => '18 Mei 2024',
+                'code' => 'AS-180524-00098',
+                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'venue' => 'Mini Soccer Victory',
+                'type' => 'Mini Soccer',
+                'location' => 'Jl. Jend. Sudirman, Parepare',
+                'rating' => 5.0,
+                'reviews' => 98,
+                'comment' => 'Rumput sintetis berkualitas, cocok untuk pertandingan malam hari!',
+                'date' => '10 Mei 2024',
+                'code' => 'AS-100524-00056',
+                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'venue' => 'Arena Basketball Court',
+                'type' => 'Basketball',
+                'location' => 'Jl. Andi Makkasau No. 7, Parepare',
+                'rating' => 3.0,
+                'reviews' => 76,
+                'comment' => 'Fasilitas oke, hanya saja area parkir kurang luas.',
+                'date' => '05 Mei 2024',
+                'code' => 'AS-050524-00032',
+                'image' => 'https://images.unsplash.com/photo-1546519638-68711109d298?q=80&w=900&auto=format&fit=crop',
+            ),
         );
     }
 
