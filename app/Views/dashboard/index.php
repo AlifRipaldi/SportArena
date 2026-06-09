@@ -13,8 +13,8 @@
         <nav class="dashboard-menu" aria-label="Menu dashboard">
             <a href="<?php echo e(app_url('dashboard')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'dashboard' ? 'active' : ''; ?>"><span>&#8962;</span>Dashboard</a>
             <a href="<?php echo e(app_url('dashboard/lapangan')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'lapangan' ? 'active' : ''; ?>"><span>&#128269;</span>Cari Lapangan</a>
-            <a href="#"><span>&#128197;</span>Booking Saya</a>
-            <a href="#"><span>&#9825;</span>Favorit</a>
+            <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'booking' ? 'active' : ''; ?>"><span>&#128197;</span>Booking Saya</a>
+            <a href="<?php echo e(app_url('dashboard/favorit')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'favorit' ? 'active' : ''; ?>"><span>&#9825;</span>Favorit</a>
             <a href="#"><span>&#9201;</span>Riwayat</a>
             <a href="<?php echo e(app_url('dashboard/ulasan')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'ulasan' ? 'active' : ''; ?>"><span>&#9734;</span>Ulasan Saya</a>
             <a href="#"><span>&#9786;</span>Profil</a>
@@ -83,25 +83,6 @@
             </div>
         </section>
 
-        <section class="dashboard-section">
-            <div class="dashboard-section-heading">
-                <h2>Booking Terdekat</h2>
-                <a href="#">Lihat semua &#8594;</a>
-            </div>
 
-            <article class="upcoming-booking">
-                <img src="<?php echo e($nextBooking['image']); ?>" alt="Lapangan booking terdekat">
-                <div class="booking-detail">
-                    <h3><?php echo e($nextBooking['venue']); ?></h3>
-                    <p><span>&#128197;</span><?php echo e($nextBooking['date']); ?></p>
-                    <p><span>&#9201;</span><?php echo e($nextBooking['time']); ?></p>
-                    <p><span>&#9711;</span><?php echo e($nextBooking['duration']); ?></p>
-                </div>
-                <div class="booking-actions">
-                    <span><?php echo e($nextBooking['status']); ?></span>
-                    <a href="#">Lihat Detail</a>
-                </div>
-            </article>
-        </section>
     </main>
 </div>

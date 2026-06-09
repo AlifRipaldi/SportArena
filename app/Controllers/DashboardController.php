@@ -67,8 +67,86 @@ class DashboardController extends Controller
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'stats' => $this->stats(),
             'venues' => $this->venues(),
+            'favorites' => $this->favorites(),
             'nextBooking' => $this->nextBooking(),
+            'bookings' => $this->bookings(),
         ), 'layouts/dashboard');
+    }
+
+    protected function bookings()
+    {
+        return array(
+            array(
+                'type' => 'Futsal',
+                'venue' => 'Arena Futsal Parepare',
+                'location' => 'Jl. Mattirotasi No. 12, Parepare',
+                'date' => '22 Mei 2024',
+                'time' => '10:00 - 11:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-220524-00123',
+                'price' => 'Rp82.000',
+                'status' => 'Mendatang',
+                'statusClass' => 'upcoming',
+                'button' => 'Ubah Booking',
+                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=500&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Badminton',
+                'venue' => 'Lapangan Badminton Center',
+                'location' => 'Jl. Bau Massepe No. 45, Parepare',
+                'date' => '18 Mei 2024',
+                'time' => '08:00 - 09:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-180524-00098',
+                'price' => 'Rp60.000',
+                'status' => 'Mendatang',
+                'statusClass' => 'upcoming',
+                'button' => 'Ubah Booking',
+                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=500&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Mini Soccer',
+                'venue' => 'Mini Soccer Victory',
+                'location' => 'Jl. Jend. Sudirman, Parepare',
+                'date' => '25 Mei 2024',
+                'time' => '17:00 - 18:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-250524-00045',
+                'price' => 'Rp100.000',
+                'status' => 'Menunggu Pembayaran',
+                'statusClass' => 'pending',
+                'button' => 'Bayar Sekarang',
+                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=500&auto=format&fit=crop',
+            ),
+        );
+    }
+
+    public function booking()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->renderDashboard('dashboard/booking', 'booking', 'Booking Saya | Arena Sport', 'Booking Saya', 'Kelola semua booking lapangan kamu');
+    }
+
+    public function favorit()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->renderDashboard('dashboard/favorit', 'favorit', 'Favorit | Arena Sport', 'Favorit', 'Lapangan favorit yang ingin kamu mainkan');
     }
 
     protected function stats()
@@ -107,6 +185,56 @@ class DashboardController extends Controller
                 'reviews' => '98 ulasan',
                 'price' => 'Rp100.000',
                 'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=900&auto=format&fit=crop',
+            ),
+        );
+    }
+
+    protected function favorites()
+    {
+        return array(
+            array(
+                'type' => 'Futsal',
+                'venue' => 'Arena Futsal Parepare',
+                'location' => 'Jl. Mattirotasi No. 12, Parepare',
+                'features' => array('Futsal', 'Parkir', 'Musholla', 'Toilet', '+2'),
+                'rating' => '4.8',
+                'reviews' => '120 ulasan',
+                'distance' => '1.2 km',
+                'price' => 'Rp80.000',
+                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Badminton',
+                'venue' => 'Lapangan Badminton Center',
+                'location' => 'Jl. Bau Massepe No. 45, Parepare',
+                'features' => array('Badminton', 'Parkir', 'Musholla', 'Kantin'),
+                'rating' => '4.6',
+                'reviews' => '85 ulasan',
+                'distance' => '2.4 km',
+                'price' => 'Rp60.000',
+                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Mini Soccer',
+                'venue' => 'Mini Soccer Victory',
+                'location' => 'Jl. Jend. Sudirman, Parepare',
+                'features' => array('Mini Soccer', 'Parkir', 'Toilet', 'Kantin', '+1'),
+                'rating' => '4.7',
+                'reviews' => '98 ulasan',
+                'distance' => '2.8 km',
+                'price' => 'Rp100.000',
+                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=900&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Basketball',
+                'venue' => 'Arena Basketball Court',
+                'location' => 'Jl. Andi Makkasau No. 7, Parepare',
+                'features' => array('Basketball', 'Parkir', 'Musholla', 'Toilet'),
+                'rating' => '4.5',
+                'reviews' => '60 ulasan',
+                'distance' => '3.1 km',
+                'price' => 'Rp70.000',
+                'image' => 'https://images.unsplash.com/photo-1521093721353-fcc2b798fbd5?q=80&w=900&auto=format&fit=crop',
             ),
         );
     }
