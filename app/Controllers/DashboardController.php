@@ -373,8 +373,17 @@ class DashboardController extends Controller
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'userEmail' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : 'user@arenasport.id',
             'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
-            'userCity' => 'Parepare',
+            'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
             'userRole' => isset($_SESSION['role_user']) ? $_SESSION['role_user'] : 'User',
+            'themeMode' => isset($_SESSION['theme_mode']) ? $_SESSION['theme_mode'] : 'dark',
+            'language' => isset($_SESSION['language']) ? $_SESSION['language'] : 'id',
+            'notifyBooking' => isset($_SESSION['notify_booking']) ? $_SESSION['notify_booking'] : true,
+            'notifySchedule' => isset($_SESSION['notify_schedule']) ? $_SESSION['notify_schedule'] : true,
+            'notifyOffer' => isset($_SESSION['notify_offer']) ? $_SESSION['notify_offer'] : false,
+            'notifyNew' => isset($_SESSION['notify_new']) ? $_SESSION['notify_new'] : true,
+            'favoriteCity' => isset($_SESSION['favorite_city']) ? $_SESSION['favorite_city'] : 'Parepare',
+            'favoriteSport' => isset($_SESSION['favorite_sport']) ? $_SESSION['favorite_sport'] : 'Futsal',
+            'searchRadius' => isset($_SESSION['search_radius']) ? $_SESSION['search_radius'] : '10',
         ), 'layouts/dashboard');
     }
 
@@ -396,6 +405,19 @@ class DashboardController extends Controller
         $email = isset($_POST['email']) ? trim($_POST['email']) : '';
         $telepon = isset($_POST['telepon']) ? trim($_POST['telepon']) : '';
         $kota = isset($_POST['kota']) ? trim($_POST['kota']) : 'Parepare';
+        $themeMode = isset($_POST['theme_mode']) && in_array($_POST['theme_mode'], array('dark', 'light')) ? $_POST['theme_mode'] : 'dark';
+        $language = isset($_POST['language']) && in_array($_POST['language'], array('id', 'en')) ? $_POST['language'] : 'id';
+        $notifyBooking = isset($_POST['notify_booking']);
+        $notifySchedule = isset($_POST['notify_schedule']);
+        $notifyOffer = isset($_POST['notify_offer']);
+        $notifyNew = isset($_POST['notify_new']);
+        $favoriteCity = trim($_POST['favorite_city'] ?? 'Parepare');
+        $favoriteSport = trim($_POST['favorite_sport'] ?? 'Futsal');
+        $searchRadius = trim($_POST['search_radius'] ?? '10');
+        $searchRadius = preg_replace('/[^0-9]/', '', $searchRadius);
+        if ($searchRadius === '') {
+            $searchRadius = '10';
+        }
 
         if ($nama === '' || $email === '') {
             $errorMessage = 'Nama dan email wajib diisi.';
@@ -412,6 +434,7 @@ class DashboardController extends Controller
                     $_SESSION['nama_user'] = $nama;
                     $_SESSION['email_user'] = $email;
                     $_SESSION['telepon_user'] = $telepon;
+                    $_SESSION['kota_user'] = $kota;
                     $message = 'Perubahan pengaturan berhasil disimpan.';
                 } else {
                     $errorMessage = 'Tidak dapat menyimpan perubahan. Silakan coba lagi.';
@@ -421,6 +444,16 @@ class DashboardController extends Controller
             }
         }
 
+        $_SESSION['theme_mode'] = $themeMode;
+        $_SESSION['language'] = $language;
+        $_SESSION['notify_booking'] = $notifyBooking;
+        $_SESSION['notify_schedule'] = $notifySchedule;
+        $_SESSION['notify_offer'] = $notifyOffer;
+        $_SESSION['notify_new'] = $notifyNew;
+        $_SESSION['favorite_city'] = $favoriteCity;
+        $_SESSION['favorite_sport'] = $favoriteSport;
+        $_SESSION['search_radius'] = $searchRadius;
+
         return $this->view('dashboard/settings', array(
             'title' => 'Pengaturan Akun | Arena Sport',
             'message' => $message,
@@ -428,8 +461,17 @@ class DashboardController extends Controller
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'userEmail' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : 'user@arenasport.id',
             'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
-            'userCity' => $kota,
+            'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
             'userRole' => isset($_SESSION['role_user']) ? $_SESSION['role_user'] : 'User',
+            'themeMode' => $themeMode,
+            'language' => $language,
+            'notifyBooking' => $notifyBooking,
+            'notifySchedule' => $notifySchedule,
+            'notifyOffer' => $notifyOffer,
+            'notifyNew' => $notifyNew,
+            'favoriteCity' => $favoriteCity,
+            'favoriteSport' => $favoriteSport,
+            'searchRadius' => $searchRadius,
         ), 'layouts/dashboard');
     }
 }
