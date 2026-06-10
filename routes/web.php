@@ -11,6 +11,7 @@ $router->get('/lapangan', [HomeController::class, 'index']);
 $router->get('/dashboard', [DashboardController::class, 'dashboard']);
 $router->get('/dashboard/lapangan', [DashboardController::class, 'search']);
 $router->get('/dashboard/booking', [DashboardController::class, 'booking']);
+$router->get('/dashboard/riwayat', [DashboardController::class, 'riwayat']);
 $router->get('/dashboard/favorit', [DashboardController::class, 'favorit']);
 $router->get('/dashboard/ulasan', [DashboardController::class, 'ulasan']);
 $router->get('/settings', [DashboardController::class, 'settings']);

@@ -135,6 +135,27 @@ class DashboardController extends Controller
         return $this->renderDashboard('dashboard/booking', 'booking', 'Booking Saya | Arena Sport', 'Booking Saya', 'Kelola semua booking lapangan kamu');
     }
 
+    public function riwayat()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->view('dashboard/riwayat', array(
+            'title' => 'Riwayat Booking | Arena Sport',
+            'activeMenu' => 'riwayat',
+            'pageHeading' => 'Riwayat',
+            'pageSubheading' => 'Lihat semua riwayat booking lapangan kamu',
+            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'bookings' => $this->bookings(),
+        ), 'layouts/dashboard');
+    }
+
     public function favorit()
     {
         if (session_status() === PHP_SESSION_NONE) {
