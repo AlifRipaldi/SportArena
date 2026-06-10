@@ -57,6 +57,29 @@ class DashboardController extends Controller
         ), 'layouts/dashboard');
     }
 
+    public function profil()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->view('dashboard/profil', array(
+            'title' => 'Profil Saya | Arena Sport',
+            'activeMenu' => 'profil',
+            'pageHeading' => 'Profil Saya',
+            'pageSubheading' => 'Kelola informasi profil dan aktivitas Anda.',
+            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'userEmail' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : 'user@arenasport.id',
+            'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
+            'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
+        ), 'layouts/dashboard');
+    }
+
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
         return $this->view($view, array(

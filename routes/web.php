@@ -14,6 +14,7 @@ $router->get('/dashboard/booking', [DashboardController::class, 'booking']);
 $router->get('/dashboard/riwayat', [DashboardController::class, 'riwayat']);
 $router->get('/dashboard/favorit', [DashboardController::class, 'favorit']);
 $router->get('/dashboard/ulasan', [DashboardController::class, 'ulasan']);
+$router->get('/dashboard/profil', [DashboardController::class, 'profil']);
 $router->get('/settings', [DashboardController::class, 'settings']);
 $router->post('/settings', [DashboardController::class, 'updateSettings']);
 
