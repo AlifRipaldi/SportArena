@@ -52,11 +52,27 @@
                     <h2>Lihat semua riwayat booking lapangan kamu</h2>
                     <p>Berikut adalah riwayat semua booking lapangan yang pernah kamu lakukan. Gunakan tab untuk memfilter berdasarkan status.</p>
                 </div>
-                <div class="history-tabs">
-                    <button class="history-tab active" type="button">Semua</button>
-                    <button class="history-tab" type="button">Selesai</button>
-                    <button class="history-tab" type="button">Dibatalkan</button>
+                <div class="history-actions">
+                    <div class="history-tabs">
+                        <button class="history-tab active" type="button">Semua</button>
+                        <button class="history-tab" type="button">Selesai</button>
+                        <button class="history-tab" type="button">Dibatalkan</button>
+                    </div>
+                    <div class="history-sort">
+                        <label for="sort-history">Urutkan:</label>
+                        <select id="sort-history" name="sort_history">
+                            <option value="latest">Terbaru</option>
+                            <option value="oldest">Terlama</option>
+                            <option value="price_high">Harga Tertinggi</option>
+                            <option value="price_low">Harga Terendah</option>
+                        </select>
+                    </div>
                 </div>
+            </div>
+
+            <div class="history-info-bar">
+                <div class="history-info-icon">&#128197;</div>
+                <p>Berikut adalah riwayat semua booking lapangan kamu.</p>
             </div>
 
             <div class="history-grid">
@@ -73,9 +89,9 @@
                         <article class="history-card">
                             <div class="history-card-left">
                                 <img src="<?php echo e($booking['image']); ?>" alt="<?php echo e($booking['venue']); ?>">
+                                <span class="history-tag"><?php echo e($booking['type']); ?></span>
                             </div>
                             <div class="history-card-mid">
-                                <span class="history-label"><?php echo e($booking['type']); ?></span>
                                 <h3><?php echo e($booking['venue']); ?></h3>
                                 <p class="history-location"><?php echo e($booking['location']); ?></p>
 
@@ -85,7 +101,7 @@
                                     <span>&#9711; <?php echo e($booking['duration']); ?></span>
                                 </div>
 
-                                <div class="history-code">Kode Booking<br><strong><?php echo e($booking['code']); ?></strong></div>
+                                <div class="history-code">Kode Booking <strong><?php echo e($booking['code']); ?></strong></div>
                             </div>
                             <div class="history-card-right">
                                 <?php if(isset($booking['status']) && strtolower($booking['status']) === 'dibatalkan'): ?>
@@ -96,6 +112,7 @@
                                     <span class="history-status upcoming">Selesai</span>
                                 <?php endif; ?>
 
+                                <div class="history-cost-label">Total Pembayaran</div>
                                 <div class="history-cost"><?php echo e($booking['price']); ?></div>
                                 <a href="#" class="btn-small">Lihat Detail</a>
                             </div>
@@ -108,37 +125,62 @@
 </div>
 
 <style>
-    /* reuse and adapt styles from booking view for a compact history layout */
     .history-page { margin-top: 28px; }
-    .history-topbar { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; }
-    .history-title small { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border-radius:999px; background: rgba(139, 232, 70, 0.16); color:#8bdd4a; font-weight:800; font-size:13px; }
+    .history-topbar { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+    .history-title { max-width: 720px; display:grid; gap:8px; }
+    .history-title small { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; background: rgba(139, 232, 70, 0.16); color:#8bdd4a; font-weight:800; font-size:13px; }
     .history-title h2 { color:#fff; margin:0; font-size:32px; }
     .history-title p { color: rgba(237,246,255,0.72); margin:0; max-width:620px; }
-    .history-tabs { display:flex; gap:10px; }
-    .history-tab { border-radius:999px; padding:12px 20px; background: rgba(255,255,255,0.03); color: rgba(237,246,255,0.8); font-weight:700; border:1px solid rgba(255,255,255,0.06); }
+    .history-actions { display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+    .history-tabs { display:flex; gap:10px; flex-wrap:wrap; }
+    .history-tab { min-width:fit-content; border-radius:999px; padding:12px 20px; background: rgba(255,255,255,0.03); color: rgba(237,246,255,0.8); font-weight:700; border:1px solid rgba(255,255,255,0.06); cursor:pointer; }
     .history-tab.active { background: linear-gradient(135deg,#8bdd4a,#43b940); color:#07121f; border-color:transparent; }
+    .history-sort { display:flex; align-items:center; gap:10px; }
+    .history-sort label { color: rgba(237,246,255,0.72); font-size:13px; }
+    .history-sort select { min-width:180px; padding:10px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color:#fff; }
 
-    .history-grid { display:grid; grid-template-columns: 1.5fr 1fr; gap:22px; }
-    .history-sidebar { padding:24px; border-radius:22px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); min-height:360px; }
+    .history-info-bar { display:flex; align-items:center; gap:14px; padding:18px 22px; border-radius:18px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); margin:18px 0 22px; }
+    .history-info-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:16px; background: rgba(139, 232, 70, 0.16); color: #8bdd4a; font-size:18px; }
+    .history-info-bar p { margin:0; color: rgba(237,246,255,0.72); }
+
+    .history-grid { display:grid; grid-template-columns: 1.5fr 0.45fr; gap:22px; }
+    .history-sidebar { padding:24px; border-radius:22px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); display:flex; flex-direction:column; justify-content:space-between; min-height:380px; }
+    .history-sidebar h3 { color:#fff; margin-bottom:14px; font-size:22px; }
+    .history-sidebar p { color: rgba(237,246,255,0.72); line-height:1.75; }
+    .history-sidebar .btn-primary { display:inline-flex; align-items:center; justify-content:center; padding:14px 20px; border-radius:14px; background: linear-gradient(135deg, #8bdd4a, #43b940); color: #07121f; font-weight:900; text-decoration:none; }
 
     .history-list { display:grid; gap:18px; }
-    .history-card { display:grid; grid-template-columns: 220px 1fr 220px; gap:18px; align-items:center; padding:18px; border-radius:16px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); }
-    .history-card-left img { width:100%; height:120px; object-fit:cover; border-radius:12px; }
-    .history-label { display:inline-flex; padding:6px 10px; border-radius:999px; background: rgba(72,196,72,0.12); color:#8bdd4a; font-weight:800; font-size:12px; }
-    .history-card-mid h3 { margin:6px 0 0 0; color:#fff; }
-    .history-location { color: rgba(237,246,255,0.65); margin:6px 0 0 0; }
-    .history-meta { display:flex; gap:12px; color: rgba(237,246,255,0.68); margin-top:8px; }
-    .history-code { color:#8bdd4a; margin-top:10px; font-weight:700; }
+    .history-card { display:grid; grid-template-columns: 220px minmax(0,1fr) 220px; gap:18px; align-items:center; padding:22px; border-radius:18px; border:1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+    .history-card-left { position:relative; overflow:hidden; border-radius:18px; }
+    .history-card-left img { width:100%; height:170px; object-fit:cover; display:block; }
+    .history-tag { position:absolute; top:16px; left:16px; display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border-radius:999px; background: rgba(72,196,72,0.18); color: #8bdd4a; font-weight:800; font-size:12px; }
+
+    .history-card-mid { display:grid; gap:12px; }
+    .history-card-mid h3 { margin:0; color:#fff; font-size:22px; }
+    .history-location { margin:0; color: rgba(237,246,255,0.7); font-size:14px; }
+    .history-meta { display:flex; flex-wrap:wrap; gap:10px; color: rgba(237,246,255,0.68); }
+    .history-meta span { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:14px; background: rgba(255,255,255,0.04); font-size:13px; }
+    .history-code { margin-top:8px; color:#8bdd4a; font-weight:700; font-size:13px; }
+
     .history-card-right { display:grid; gap:10px; justify-items:end; }
-    .history-status { padding:8px 12px; border-radius:12px; font-weight:800; }
+    .history-status { padding:10px 16px; border-radius:14px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; }
     .history-status.finished { background: rgba(72,196,72,0.14); color:#8bdd4a; }
     .history-status.canceled { background: rgba(255,90,90,0.12); color:#ff7b7b; }
-    .history-cost { color:#8bdd4a; font-weight:900; }
-    .btn-small { text-decoration:none; padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); color:#fff; }
+    .history-cost-label { color: rgba(237,246,255,0.66); font-size:13px; }
+    .history-cost { color:#8bdd4a; font-size:22px; font-weight:900; }
+    .btn-small { text-decoration:none; padding:12px 18px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); color:#fff; display:inline-flex; }
 
     @media (max-width:1040px) {
         .history-grid { grid-template-columns: 1fr; }
         .history-card { grid-template-columns: 1fr; }
         .history-card-right { justify-items:stretch; }
+        .history-actions { width:100%; justify-content:space-between; }
+    }
+
+    @media (max-width:720px) {
+        .history-topbar { flex-direction:column; }
+        .history-actions { width:100%; justify-content:flex-start; }
+        .history-sort { width:100%; }
+        .history-sort select { width:100%; }
     }
 </style>
