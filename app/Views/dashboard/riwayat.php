@@ -63,8 +63,6 @@
         <section class="history-page" id="booking-list">
             <div class="history-topbar">
                 <div class="history-title">
-                    <small>Riwayat</small>
-                    <h2>Semua catatan booking lapanganmu dalam satu tampilan</h2>
                     <p>Telusuri riwayat booking, status, dan detail transaksi dengan tampilan yang lebih segar dan mudah dibaca.</p>
                 </div>
                 <div class="history-actions">

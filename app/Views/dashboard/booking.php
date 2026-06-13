@@ -48,8 +48,6 @@
         <section class="booking-page" id="booking-list">
             <div class="booking-topbar">
                 <div class="booking-title">
-                    <small>Booking Saya</small>
-                    <h2>Kelola semua booking lapangan kamu</h2>
                     <p>Jangan lupa datang 15 menit sebelum jadwal booking. Temukan detail booking, status, dan pilihan ubah langsung dari halaman ini.</p>
                 </div>
                 <div class="booking-actions">
