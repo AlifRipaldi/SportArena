@@ -2,6 +2,8 @@
 
 use App\Controllers\HomeController;
 use App\Controllers\DashboardController;
+use App\Controllers\AdminController;
+use App\Controllers\PemilikController;
 
 $router = $app->router();
 
@@ -17,6 +19,10 @@ $router->get('/dashboard/ulasan', [DashboardController::class, 'ulasan']);
 $router->get('/dashboard/profil', [DashboardController::class, 'profil']);
 $router->get('/settings', [DashboardController::class, 'settings']);
 $router->post('/settings', [DashboardController::class, 'updateSettings']);
+$router->get('/admin', [AdminController::class, 'index']);
+$router->get('/admin/dashboard', [AdminController::class, 'index']);
+$router->get('/pemilik', [PemilikController::class, 'index']);
+$router->get('/pemilik/dashboard', [PemilikController::class, 'index']);
 
 $router->get('/login', function () {
     header('Location: ' . app_url('public/login.php'));
