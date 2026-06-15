@@ -142,4 +142,86 @@ class AdminController extends Controller
             array('label' => 'Rata-rata Rating', 'value' => '4.8 / 5', 'trend' => '0.2', 'note' => 'dari bulan lalu', 'icon' => 'fa-calendar-check', 'accent' => 'purple'),
         );
     }
+
+    public function booking()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+
+        if (!$this->isAdminRole($role)) {
+            header('Location: ' . app_url('dashboard'));
+            exit;
+        }
+
+        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+
+        return $this->view('Admin/booking', array(
+            'title' => 'Manajemen Booking | Arena Sport',
+            'activeMenu' => 'booking',
+            'userName' => $userName,
+            'recentBookings' => $this->recentBookings(),
+        ), 'layouts/admin');
+    }
+
+    public function lapangan()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+
+        if (!$this->isAdminRole($role)) {
+            header('Location: ' . app_url('dashboard'));
+            exit;
+        }
+
+        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+
+        return $this->view('Admin/lapangan', array(
+            'title' => 'Manajemen Lapangan | Arena Sport',
+            'activeMenu' => 'lapangan',
+            'userName' => $userName,
+        ), 'layouts/admin');
+    }
+
+    public function users()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+
+        if (!$this->isAdminRole($role)) {
+            header('Location: ' . app_url('dashboard'));
+            exit;
+        }
+
+        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+
+        return $this->view('Admin/users', array(
+            'title' => 'Manajemen User | Arena Sport',
+            'activeMenu' => 'users',
+            'userName' => $userName,
+        ), 'layouts/admin');
+    }
 }
