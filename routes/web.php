@@ -38,3 +38,7 @@ $router->get('/booking/{id}', function ($id) {
     header('Location: ' . app_url('public/booking.php?id=' . rawurlencode($id)));
     exit;
 });
+
+$router->get('/admin/booking', [AdminController::class, 'booking']);
+$router->get('/admin/lapangan', [AdminController::class, 'lapangan']);
+$router->get('/admin/users', [AdminController::class, 'users']); 
