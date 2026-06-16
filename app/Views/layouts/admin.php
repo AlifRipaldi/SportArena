@@ -4,6 +4,7 @@ $adminMenus = array(
     array('key' => 'lapangan', 'label' => 'Kelola Lapangan', 'icon' => 'fa-map-location-dot', 'url' => app_url('admin/lapangan')),
     array('key' => 'booking', 'label' => 'Kelola Booking', 'icon' => 'fa-calendar-check', 'url' => app_url('admin/booking')),
     array('key' => 'user', 'label' => 'Kelola User', 'icon' => 'fa-users', 'url' => app_url('admin/users')),
+    array('key' => 'pemilik-lapangan', 'label' => 'Kelola Pemilik Lapangan', 'icon' => 'fa-user-gear', 'url' => app_url('admin/pemilik-lapangan')),
     array('key' => 'ulasan', 'label' => 'Ulasan & Rating', 'icon' => 'fa-star', 'url' => app_url('admin/ulasan')),
     array('key' => 'transaksi', 'label' => 'Transaksi', 'icon' => 'fa-receipt', 'url' => app_url('admin/transaksi')),
     array('key' => 'laporan', 'label' => 'Laporan', 'icon' => 'fa-chart-column', 'url' => app_url('admin/laporan')),
@@ -20,7 +21,7 @@ $displayRole = isset($userRole) ? $userRole : 'administrator';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e(isset($title) ? $title : 'Dashboard Admin | Arena Sport'); ?></title>
-    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=12')); ?>">
+    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=16')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-mode">

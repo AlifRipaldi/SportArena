@@ -1,5 +1,64 @@
 <?php
-// Admin Users Management Page
+$users = array(
+    array(
+        'name' => 'Ahmad Fauzi',
+        'email' => 'ahmad@email.com',
+        'phone' => '081234567890',
+        'role' => 'User',
+        'roleClass' => 'success',
+        'status' => 'Aktif',
+        'statusClass' => 'success',
+        'registered' => '15 Mei 2024',
+    ),
+    array(
+        'name' => 'Siti Aminah',
+        'email' => 'siti@email.com',
+        'phone' => '082345678901',
+        'role' => 'Pemilik',
+        'roleClass' => 'info',
+        'status' => 'Aktif',
+        'statusClass' => 'success',
+        'registered' => '10 April 2024',
+    ),
+    array(
+        'name' => 'Budi Santoso',
+        'email' => 'budi@email.com',
+        'phone' => '083456789012',
+        'role' => 'User',
+        'roleClass' => 'success',
+        'status' => 'Aktif',
+        'statusClass' => 'success',
+        'registered' => '05 Mei 2024',
+    ),
+    array(
+        'name' => 'Dinda Putri',
+        'email' => 'dinda@email.com',
+        'phone' => '084567890123',
+        'role' => 'User',
+        'roleClass' => 'success',
+        'status' => 'Nonaktif',
+        'statusClass' => 'warning',
+        'registered' => '20 Maret 2024',
+    ),
+);
+
+$activeUsers = 0;
+$ownerUsers = 0;
+$inactiveUsers = 0;
+
+foreach ($users as $user) {
+    if ($user['status'] === 'Aktif') {
+        $activeUsers++;
+    }
+
+    if ($user['role'] === 'Pemilik') {
+        $ownerUsers++;
+    }
+
+    if ($user['status'] === 'Nonaktif') {
+        $inactiveUsers++;
+    }
+}
 ?>
 
 <section class="admin-hero">
@@ -8,20 +67,54 @@
         <p>Kelola semua pengguna dalam sistem Arena Sport</p>
     </div>
     <div class="admin-hero-actions">
-        <button class="btn-primary"><i class="fa-solid fa-plus"></i> Tambah User</button>
+        <button class="btn-primary" type="button"><i class="fa-solid fa-plus"></i> Tambah User</button>
     </div>
+</section>
+
+<section class="admin-summary-grid" aria-label="Ringkasan user">
+    <article class="admin-mini-stat">
+        <span class="admin-mini-stat-icon lime"><i class="fa-solid fa-users"></i></span>
+        <div>
+            <p>Total User</p>
+            <strong><?php echo count($users); ?></strong>
+        </div>
+    </article>
+    <article class="admin-mini-stat">
+        <span class="admin-mini-stat-icon green"><i class="fa-solid fa-user-check"></i></span>
+        <div>
+            <p>User Aktif</p>
+            <strong><?php echo $activeUsers; ?></strong>
+        </div>
+    </article>
+    <article class="admin-mini-stat">
+        <span class="admin-mini-stat-icon blue"><i class="fa-solid fa-building-user"></i></span>
+        <div>
+            <p>Pemilik</p>
+            <strong><?php echo $ownerUsers; ?></strong>
+        </div>
+    </article>
+    <article class="admin-mini-stat">
+        <span class="admin-mini-stat-icon gold"><i class="fa-solid fa-user-slash"></i></span>
+        <div>
+            <p>Nonaktif</p>
+            <strong><?php echo $inactiveUsers; ?></strong>
+        </div>
+    </article>
 </section>
 
 <div class="admin-content-section">
     <div class="admin-filter-bar">
-        <input type="search" placeholder="Cari user..." class="admin-search-input">
-        <select class="admin-filter-select">
+        <label class="admin-filter-search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="search" placeholder="Cari user..." class="admin-search-input" aria-label="Cari user">
+        </label>
+        <select class="admin-filter-select" aria-label="Filter role user">
             <option>Role: Semua</option>
             <option>Admin</option>
             <option>Pemilik</option>
             <option>User</option>
         </select>
-        <select class="admin-filter-select">
+        <select class="admin-filter-select" aria-label="Filter status user">
             <option>Status: Semua</option>
             <option>Aktif</option>
             <option>Nonaktif</option>
@@ -43,103 +136,39 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>
-                            <div class="admin-customer">
-                                <img src="https://ui-avatars.com/api/?name=Ahmad+Fauzi&background=20314a&color=ffffff" alt="">
-                                <span>Ahmad Fauzi</span>
-                            </div>
-                        </td>
-                        <td>ahmad@email.com</td>
-                        <td>081234567890</td>
-                        <td><span class="admin-badge success">User</span></td>
-                        <td><span class="admin-badge success">Aktif</span></td>
-                        <td>15 Mei 2024</td>
-                        <td>
-                            <div class="admin-actions">
-                                <button class="btn-icon" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="admin-customer">
-                                <img src="https://ui-avatars.com/api/?name=Siti+Aminah&background=20314a&color=ffffff" alt="">
-                                <span>Siti Aminah</span>
-                            </div>
-                        </td>
-                        <td>siti@email.com</td>
-                        <td>082345678901</td>
-                        <td><span class="admin-badge info">Pemilik</span></td>
-                        <td><span class="admin-badge success">Aktif</span></td>
-                        <td>10 April 2024</td>
-                        <td>
-                            <div class="admin-actions">
-                                <button class="btn-icon" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="admin-customer">
-                                <img src="https://ui-avatars.com/api/?name=Budi+Santoso&background=20314a&color=ffffff" alt="">
-                                <span>Budi Santoso</span>
-                            </div>
-                        </td>
-                        <td>budi@email.com</td>
-                        <td>083456789012</td>
-                        <td><span class="admin-badge success">User</span></td>
-                        <td><span class="admin-badge success">Aktif</span></td>
-                        <td>05 Mei 2024</td>
-                        <td>
-                            <div class="admin-actions">
-                                <button class="btn-icon" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            <div class="admin-customer">
-                                <img src="https://ui-avatars.com/api/?name=Dinda+Putri&background=20314a&color=ffffff" alt="">
-                                <span>Dinda Putri</span>
-                            </div>
-                        </td>
-                        <td>dinda@email.com</td>
-                        <td>084567890123</td>
-                        <td><span class="admin-badge success">User</span></td>
-                        <td><span class="admin-badge warning">Nonaktif</span></td>
-                        <td>20 Maret 2024</td>
-                        <td>
-                            <div class="admin-actions">
-                                <button class="btn-icon" title="Edit"><i class="fa-solid fa-pen"></i></button>
-                                <button class="btn-icon" title="Delete"><i class="fa-solid fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
+                    <?php foreach ($users as $user): ?>
+                        <tr>
+                            <td>
+                                <div class="admin-customer">
+                                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user['name']); ?>&background=20314a&color=ffffff" alt="">
+                                    <span><?php echo e($user['name']); ?></span>
+                                </div>
+                            </td>
+                            <td><?php echo e($user['email']); ?></td>
+                            <td><?php echo e($user['phone']); ?></td>
+                            <td><span class="admin-badge <?php echo e($user['roleClass']); ?>"><?php echo e($user['role']); ?></span></td>
+                            <td><span class="admin-badge <?php echo e($user['statusClass']); ?>"><?php echo e($user['status']); ?></span></td>
+                            <td><?php echo e($user['registered']); ?></td>
+                            <td>
+                                <div class="admin-actions">
+                                    <button class="btn-icon" type="button" title="Edit <?php echo e($user['name']); ?>" aria-label="Edit <?php echo e($user['name']); ?>">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </button>
+                                    <button class="btn-icon danger" type="button" title="Hapus <?php echo e($user['name']); ?>" aria-label="Hapus <?php echo e($user['name']); ?>">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
 
         <div class="admin-pagination">
-            <button class="admin-pagination-btn"><i class="fa-solid fa-chevron-left"></i></button>
+            <button class="admin-pagination-btn" type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
             <span>Halaman 1 dari 10</span>
-            <button class="admin-pagination-btn"><i class="fa-solid fa-chevron-right"></i></button>
+            <button class="admin-pagination-btn" type="button" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </article>
 </div>
-
-<style>
-.admin-info {
-    background: rgba(102, 159, 252, 0.1);
-    border: 1px solid rgba(102, 159, 252, 0.3);
-}
-
-.admin-info .admin-badge.info {
-    background: rgba(102, 159, 252, 0.15);
-    color: #66a0ff;
-    border-color: rgba(102, 159, 252, 0.3);
-}
-</style>

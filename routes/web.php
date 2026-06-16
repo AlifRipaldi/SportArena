@@ -41,4 +41,5 @@ $router->get('/booking/{id}', function ($id) {
 
 $router->get('/admin/booking', [AdminController::class, 'booking']);
 $router->get('/admin/lapangan', [AdminController::class, 'lapangan']);
-$router->get('/admin/users', [AdminController::class, 'users']); 
+$router->get('/admin/users', [AdminController::class, 'users']);
+$router->get('/admin/pemilik-lapangan', [AdminController::class, 'pemilikLapangan']);

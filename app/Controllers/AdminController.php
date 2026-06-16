@@ -220,8 +220,36 @@ class AdminController extends Controller
 
         return $this->view('Admin/users', array(
             'title' => 'Manajemen User | Arena Sport',
-            'activeMenu' => 'users',
+            'activeMenu' => 'user',
             'userName' => $userName,
+        ), 'layouts/admin');
+    }
+
+    public function pemilikLapangan()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+
+        if (!$this->isAdminRole($role)) {
+            header('Location: ' . app_url('dashboard'));
+            exit;
+        }
+
+        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+
+        return $this->view('Admin/pemilik_lapangan', array(
+            'title' => 'Kelola Pemilik Lapangan | Arena Sport',
+            'activeMenu' => 'pemilik-lapangan',
+            'userName' => $userName,
+            'userRole' => $role,
         ), 'layouts/admin');
     }
 }
