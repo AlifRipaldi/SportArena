@@ -31,10 +31,10 @@
     </aside>
 
     <main class="dashboard-main">
-        <section class="dashboard-topbar search-topbar">
+        <section class="dashboard-topbar">
             <div>
-                <p>Selamat datang kembali, <?php echo e($userName); ?> 👋</p>
-                <h1>Temukan lapangan terbaik di sekitar kamu</h1>
+                <p>Selamat datang kembali,</p>
+                <h1><?php echo e($userName); ?> <span>&#128075;</span></h1>
             </div>
             <div class="dashboard-actions">
                 <button type="button" class="icon-button" aria-label="Notifikasi">&#128276;</button>
@@ -43,6 +43,14 @@
                     <span>&#8964;</span>
                 </div>
             </div>
+        </section>
+
+        <section class="dashboard-search-row" aria-label="Pencarian lapangan">
+            <label class="dashboard-search">
+                <span aria-hidden="true">&#128269;</span>
+                <input type="text" placeholder="Cari lapangan, lokasi, atau jenis olahraga..." aria-label="Cari lapangan, lokasi, atau jenis olahraga">
+            </label>
+            <button type="button" class="dashboard-filter"><span aria-hidden="true">&#9776;</span> Filter</button>
         </section>
 
         <section class="dashboard-stats">
@@ -59,7 +67,7 @@
         <section id="lapangan-populer" class="dashboard-section">
             <div class="dashboard-section-heading">
                 <h2>Lapangan Populer</h2>
-                <a href="#">Lihat semua &#8594;</a>
+                <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Lihat semua &#8594;</a>
             </div>
 
             <div class="venue-grid">
@@ -83,6 +91,27 @@
             </div>
         </section>
 
+        <?php if (!empty($nextBooking)): ?>
+            <section class="dashboard-section">
+                <div class="dashboard-section-heading">
+                    <h2>Booking Terdekat</h2>
+                    <a href="<?php echo e(app_url('dashboard/booking')); ?>">Lihat semua &#8594;</a>
+                </div>
 
+                <article class="upcoming-booking">
+                    <img src="<?php echo e($nextBooking['image']); ?>" alt="<?php echo e($nextBooking['venue']); ?>">
+                    <div class="booking-detail">
+                        <h3><?php echo e($nextBooking['venue']); ?></h3>
+                        <p><span aria-hidden="true">&#128197;</span> <?php echo e($nextBooking['date']); ?></p>
+                        <p><span aria-hidden="true">&#9201;</span> <?php echo e($nextBooking['time']); ?></p>
+                        <p><span aria-hidden="true">&#9711;</span> <?php echo e($nextBooking['duration']); ?></p>
+                    </div>
+                    <div class="booking-actions">
+                        <span><?php echo e($nextBooking['status']); ?></span>
+                        <a href="<?php echo e(app_url('dashboard/booking')); ?>">Lihat Detail</a>
+                    </div>
+                </article>
+            </section>
+        <?php endif; ?>
     </main>
 </div>

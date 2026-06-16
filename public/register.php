@@ -2,18 +2,36 @@
 include '../config/connection.php';
 $error = '';
 
+function register_table_exists($conn, $table)
+{
+    $safeTable = mysqli_real_escape_string($conn, $table);
+    $result = mysqli_query($conn, "SHOW TABLES LIKE '$safeTable'");
+
+    return $result && mysqli_num_rows($result) > 0;
+}
+
+function register_user_table($conn)
+{
+    return register_table_exists($conn, 'users') ? 'users' : 'user';
+}
+
 if (isset($_POST['register'])) {
     $id_user = "USR" . rand(100, 999);
-    $nama = mysqli_real_escape_string($conn, $_POST['nama']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $nama = trim($_POST['nama']);
+    $email = trim($_POST['email']);
     $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
-    $telp = mysqli_real_escape_string($conn, $_POST['telepon']);
-    $role = "User";
+    $telp = trim($_POST['telepon']);
+    $role = "customer";
+    $table = register_user_table($conn);
 
-    $sql = "INSERT INTO user (ID_User, Nama, Email, Password, Nomor_telepon, Role) 
-            VALUES ('$id_user', '$nama', '$email', '$pass', '$telp', '$role')";
-    
-    if (mysqli_query($conn, $sql)) {
+    $sql = "INSERT INTO `$table` (ID_User, Nama, Email, Password, Nomor_telepon, Role) VALUES (?, ?, ?, ?, ?, ?)";
+    $statement = mysqli_prepare($conn, $sql);
+
+    if ($statement) {
+        mysqli_stmt_bind_param($statement, 'ssssss', $id_user, $nama, $email, $pass, $telp, $role);
+    }
+
+    if ($statement && mysqli_stmt_execute($statement)) {
         echo "<script>alert('Pendaftaran Berhasil!'); window.location='login.php';</script>";
         exit;
     } else {

@@ -1,146 +1,228 @@
-<section class="hero">
-    <div class="container hero-inner">
-        <div class="hero-copy">
-            <span class="hero-label">Booking Lapangan</span>
+<?php
+$totalLapangan = is_array($lapangan) ? count($lapangan) : 0;
+$sportImages = array(
+    'futsal' => 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?q=80&w=1000&auto=format&fit=crop',
+    'badminton' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=1000&auto=format&fit=crop',
+    'mini-soccer' => 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1000&auto=format&fit=crop',
+    'basket' => 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1000&auto=format&fit=crop',
+    'default' => 'https://images.unsplash.com/photo-1518605336396-d31032230006?q=80&w=1000&auto=format&fit=crop',
+);
+$fallbackLapangan = array(
+    array('ID_Lapangan' => 'futsal-parepare', 'Nama_lapangan' => 'Arena Futsal Parepare', 'Jenis_olahraga' => 'Futsal', 'Lokasi' => 'Mattirotasi No. 12, Parepare', 'Harga' => 80000, 'rating' => '4.8 (120)'),
+    array('ID_Lapangan' => 'badminton-andi-makkasau', 'Nama_lapangan' => 'Lapangan Badminton Andi Makkasau', 'Jenis_olahraga' => 'Badminton', 'Lokasi' => 'Jend. Sudirman, Parepare', 'Harga' => 50000, 'rating' => '4.6 (85)'),
+    array('ID_Lapangan' => 'mini-soccer-victory', 'Nama_lapangan' => 'Mini Soccer Victory', 'Jenis_olahraga' => 'Mini Soccer', 'Lokasi' => 'Bau Massepe, Parepare', 'Harga' => 100000, 'rating' => '4.7 (68)'),
+    array('ID_Lapangan' => 'basket-ball-center', 'Nama_lapangan' => 'Basket Ball Center', 'Jenis_olahraga' => 'Basket', 'Lokasi' => 'Veteran, Parepare', 'Harga' => 60000, 'rating' => '4.5 (60)'),
+);
+$displayLapangan = is_array($lapangan) && !empty($lapangan) ? array_slice($lapangan, 0, 4) : $fallbackLapangan;
+$totalLapangan = max($totalLapangan, count($displayLapangan));
+$sportSlug = function ($name) {
+    $slug = strtolower(trim((string) $name));
+    $slug = str_replace(array(' ', '_'), '-', $slug);
+
+    return $slug === '' ? 'default' : $slug;
+};
+?>
+
+<section class="home-hero">
+    <div class="container home-hero-inner">
+        <div class="home-hero-copy">
             <h1>Booking Lapangan Jadi <span>Lebih Mudah</span></h1>
             <p>Temukan berbagai pilihan lapangan olahraga terbaik di Kota Parepare dan booking sesuai jadwalmu.</p>
-            <div class="hero-buttons">
-                <a href="#lapangan" class="btn-cta">Cari Lapangan</a>
-            </div>
-        </div>
-        <div class="hero-info">
-            <div class="info-card">
-                <div>
-                    <h3>4.8/5</h3>
-                    <p>Rating Pengguna</p>
+
+            <div class="home-benefits" aria-label="Keunggulan Arena Sport">
+                <div class="home-benefit">
+                    <span><i class="fa-regular fa-calendar-check"></i></span>
+                    <div>
+                        <strong>Booking Cepat</strong>
+                        <small>Pilih, pesan, beres</small>
+                    </div>
+                </div>
+                <div class="home-benefit">
+                    <span><i class="fa-solid fa-shield-halved"></i></span>
+                    <div>
+                        <strong>Aman & Terpercaya</strong>
+                        <small>Transaksi aman</small>
+                    </div>
+                </div>
+                <div class="home-benefit">
+                    <span><i class="fa-solid fa-location-dot"></i></span>
+                    <div>
+                        <strong>Banyak Pilihan</strong>
+                        <small>Lapangan terdekat</small>
+                    </div>
                 </div>
             </div>
-            <div class="info-card small">
-                <p>Lebih dari 120+ pengguna telah booking hari ini</p>
+
+            <form class="home-search" action="#lapangan" method="get" aria-label="Cari lapangan">
+                <label class="home-search-field" for="sport-type">
+                    <span>Jenis Olahraga</span>
+                    <select id="sport-type" name="jenis">
+                        <option value="">Semua</option>
+                        <option value="futsal">Futsal</option>
+                        <option value="badminton">Badminton</option>
+                        <option value="mini-soccer">Mini Soccer</option>
+                        <option value="basket">Basket</option>
+                    </select>
+                </label>
+                <label class="home-search-field" for="field-location">
+                    <span>Lokasi</span>
+                    <select id="field-location" name="lokasi">
+                        <option value="">Semua Lokasi</option>
+                        <option value="parepare">Parepare</option>
+                        <option value="ujung-pandang">Ujung Pandang</option>
+                    </select>
+                </label>
+                <label class="home-search-field" for="booking-date">
+                    <span>Tanggal</span>
+                    <input id="booking-date" name="tanggal" type="date" aria-label="Pilih tanggal">
+                </label>
+                <button class="home-search-button" type="submit">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    Cari Lapangan
+                </button>
+            </form>
+        </div>
+
+        <div class="home-proof" aria-label="Ringkasan rating dan booking">
+            <div class="home-proof-card rating-card">
+                <span class="proof-icon"><i class="fa-solid fa-star"></i></span>
+                <div>
+                    <strong>4.8/5</strong>
+                    <small>Rating Pengguna</small>
+                </div>
+            </div>
+            <div class="home-proof-card users-card">
+                <div class="avatar-stack" aria-hidden="true">
+                    <span>R</span>
+                    <span>A</span>
+                    <span>N</span>
+                    <span>S</span>
+                    <span>+120</span>
+                </div>
+                <strong>Lebih dari 120+ pengguna</strong>
+                <small>telah booking hari ini</small>
             </div>
         </div>
     </div>
 </section>
 
-<section class="feature-row">
-    <div class="container feature-grid">
-        <div class="feature-item">
-            <h4>Booking Cepat</h4>
-            <p>Pilih, pesan, beres.</p>
-        </div>
-        <div class="feature-item">
-            <h4>Aman & Terpercaya</h4>
-            <p>Transaksi aman setiap saat.</p>
-        </div>
-        <div class="feature-item">
-            <h4>Banyak Pilihan</h4>
-            <p>Lapangan terdekat dan terbaik.</p>
-        </div>
-        <div class="feature-item">
-            <h4>Layanan 24/7</h4>
-            <p>Dukungan pelanggan selalu siap.</p>
-        </div>
-    </div>
-</section>
-
-<section class="search-panel container">
-    <div class="search-card">
-        <div class="search-field">
-            <label>Jenis Olahraga</label>
-            <select>
-                <option>Semua</option>
-                <option>Futsal</option>
-                <option>Badminton</option>
-                <option>Mini Soccer</option>
-                <option>Basket</option>
-            </select>
-        </div>
-        <div class="search-field">
-            <label>Lokasi</label>
-            <select>
-                <option>Semua Lokasi</option>
-                <option>Parepare</option>
-                <option>Ujung Pandang</option>
-            </select>
-        </div>
-        <div class="search-field">
-            <label>Tanggal</label>
-            <input type="date">
-        </div>
-        <div class="search-action">
-            <button class="btn-cta">Cari Lapangan</button>
-        </div>
-    </div>
-</section>
-
-<section id="lapangan" class="container content">
-    <div class="section-header">
+<section id="lapangan" class="home-popular container">
+    <div class="home-section-header">
         <div>
             <p class="section-tag">POPULAR</p>
             <h2>Lapangan Populer</h2>
             <p>Beberapa lapangan favorit dengan fasilitas terbaik di Kota Parepare.</p>
         </div>
-        <a href="<?php echo e(app_url('lapangan')); ?>" class="view-all">Lihat Semua -&gt;</a>
+        <a href="<?php echo e(app_url('lapangan')); ?>" class="view-all">Lihat Semua <i class="fa-solid fa-arrow-right"></i></a>
     </div>
 
     <?php if ($dataError): ?>
-        <p><?php echo e($dataError); ?></p>
+        <p class="data-alert"><?php echo e($dataError); ?></p>
     <?php endif; ?>
 
-    <div class="grid-container">
-        <?php foreach ($lapangan as $row): ?>
-            <div class="card popular-card">
-                <div class="card-detail">
-                    <span class="tag"><?php echo e($row['Jenis_olahraga']); ?></span>
-                    <h4><?php echo e($row['Nama_lapangan']); ?></h4>
-                    <p>Jl. <?php echo e($row['Lokasi']); ?></p>
-                    <div class="card-meta">
-                        <span>* 4.8</span>
-                        <span>
-                            <?php
-                            echo isset($row['Harga'])
-                                ? 'Rp' . number_format((int) $row['Harga'], 0, ',', '.') . '/jam'
-                                : 'Mulai dari Rp50.000/jam';
-                            ?>
-                        </span>
+    <div class="home-field-grid">
+        <?php foreach ($displayLapangan as $row): ?>
+            <?php
+            $sportKey = $sportSlug(isset($row['Jenis_olahraga']) ? $row['Jenis_olahraga'] : '');
+            $coverImage = isset($sportImages[$sportKey]) ? $sportImages[$sportKey] : $sportImages['default'];
+            $priceText = isset($row['Harga'])
+                ? 'Rp' . number_format((int) $row['Harga'], 0, ',', '.')
+                : 'Rp50.000';
+            $ratingText = isset($row['rating']) ? $row['rating'] : '4.8 (120)';
+            $bookingUrl = app_url('public/booking.php?id=' . rawurlencode(isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : ''));
+            ?>
+            <article class="home-field-card">
+                <a class="field-card-link" href="<?php echo e($bookingUrl); ?>">
+                    <div class="field-cover">
+                        <img src="<?php echo e($coverImage); ?>" alt="<?php echo e($row['Nama_lapangan']); ?>" loading="lazy">
+                        <span class="field-tag <?php echo e($sportKey); ?>"><?php echo e($row['Jenis_olahraga']); ?></span>
+                        <span class="field-heart" aria-hidden="true"><i class="fa-regular fa-heart"></i></span>
                     </div>
-                    <a href="<?php echo e(app_url('public/booking.php?id=' . rawurlencode($row['ID_Lapangan']))); ?>" class="btn-book">Pilih Jadwal</a>
-                </div>
-            </div>
+                    <div class="field-body">
+                        <h3><?php echo e($row['Nama_lapangan']); ?></h3>
+                        <p><i class="fa-solid fa-location-dot"></i> Jl. <?php echo e($row['Lokasi']); ?></p>
+                        <div class="field-meta">
+                            <span><i class="fa-solid fa-star"></i> <?php echo e($ratingText); ?></span>
+                            <span><small>Mulai dari</small> <?php echo e($priceText); ?> <em>/jam</em></span>
+                        </div>
+                    </div>
+                </a>
+            </article>
         <?php endforeach; ?>
+    </div>
+
+    <div class="home-trust-strip" aria-label="Keunggulan layanan">
+        <div>
+            <i class="fa-solid fa-stopwatch"></i>
+            <span><strong>Mudah & Cepat</strong><small>Booking dalam hitungan menit</small></span>
+        </div>
+        <div>
+            <i class="fa-solid fa-shield-halved"></i>
+            <span><strong>Pembayaran Aman</strong><small>Data dan transaksi terjamin</small></span>
+        </div>
+        <div>
+            <i class="fa-solid fa-headset"></i>
+            <span><strong>Layanan 24/7</strong><small>Customer support selalu siap</small></span>
+        </div>
+        <div>
+            <i class="fa-solid fa-trophy"></i>
+            <span><strong>Lapangan Berkualitas</strong><small>Fasilitas terbaik di Parepare</small></span>
+        </div>
     </div>
 </section>
 
 <section id="cara-kerja" class="how-it-works container">
-    <h2>Cara Kerja</h2>
+    <div class="section-header compact">
+        <div>
+            <p class="section-tag">ALUR BOOKING</p>
+            <h2>Cara Kerja</h2>
+            <p>Tiga langkah sederhana untuk mendapatkan jadwal lapangan yang kamu butuhkan.</p>
+        </div>
+    </div>
     <div class="work-grid">
         <div class="work-step">
             <h3>1</h3>
-            <p>Pilih tipe lapangan yang Anda inginkan.</p>
+            <h4>Pilih Lapangan</h4>
+            <p>Cari tipe olahraga, lokasi, dan fasilitas yang paling pas.</p>
         </div>
         <div class="work-step">
             <h3>2</h3>
-            <p>Pesan jadwal dengan mudah dan cepat.</p>
+            <h4>Tentukan Jadwal</h4>
+            <p>Pilih jam bermain yang tersedia dan isi data pemesanan.</p>
         </div>
         <div class="work-step">
             <h3>3</h3>
-            <p>Bayar dan nikmati lapangan favorit Anda.</p>
+            <h4>Datang & Main</h4>
+            <p>Selesaikan pembayaran, lalu nikmati sesi olahraga favoritmu.</p>
         </div>
     </div>
 </section>
 
 <section id="tentang-kami" class="about container">
     <div class="about-card">
-        <h2>Tentang Kami</h2>
-        <p>Arena Sport hadir untuk memudahkan booking lapangan olahraga di Kota Parepare. Kami menyediakan pilihan lapangan terbaik dengan pengalaman booking yang cepat dan aman.</p>
+        <div>
+            <p class="section-tag">TENTANG ARENA SPORT</p>
+            <h2>Platform booking lapangan untuk pemain dan pengelola.</h2>
+        </div>
+        <p>Arena Sport hadir untuk memudahkan booking lapangan olahraga di Kota Parepare. Kami menghubungkan pengguna dengan pilihan lapangan terbaik melalui pengalaman pemesanan yang cepat, jelas, dan aman.</p>
+        <div class="about-highlights">
+            <span>Jadwal mudah dicek</span>
+            <span>Harga transparan</span>
+            <span>Booking lebih rapi</span>
+        </div>
     </div>
 </section>
 
 <section id="kontak" class="contact container">
     <div class="contact-card">
-        <h2>Kontak</h2>
-        <p>Butuh bantuan? Hubungi kami untuk informasi dan bantuan pemesanan.</p>
-        <p>Email: support@arenasport.co.id</p>
-        <p>Telepon: 0812-3456-7890</p>
+        <div>
+            <p class="section-tag">KONTAK</p>
+            <h2>Butuh bantuan booking?</h2>
+            <p>Hubungi tim Arena Sport untuk informasi lapangan, jadwal, dan bantuan pemesanan.</p>
+        </div>
+        <div class="contact-list">
+            <a href="mailto:support@arenasport.co.id">support@arenasport.co.id</a>
+            <a href="tel:081234567890">0812-3456-7890</a>
+        </div>
     </div>
 </section>

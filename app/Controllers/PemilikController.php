@@ -11,8 +11,7 @@ class PemilikController extends Controller
 
     public function __construct()
     {
-        parent::__construct();
-        $this->db = new Database();
+        $this->db = Database::connection();
     }
 
     public function index()

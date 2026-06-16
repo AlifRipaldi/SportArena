@@ -8,58 +8,64 @@ $alreadyLoggedIn = false;
 $userName = '';
 $dashboardUrl = '../dashboard';
 
-function account_sources()
+function table_exists($conn, $table)
 {
-    return array(
-        array(
-            'table' => 'admin',
-            'id_column' => 'ID_Admin',
-            'default_role' => 'Admin',
-            'type' => 'admin',
-        ),
-        array(
-            'table' => 'pemilik_lapangan',
-            'id_column' => 'ID_Pemilik',
-            'default_role' => 'Pemilik',
-            'type' => 'pemilik',
-        ),
-        array(
-            'table' => 'user',
-            'id_column' => 'ID_User',
-            'default_role' => 'User',
-            'type' => 'user',
-        ),
-    );
+    $safeTable = mysqli_real_escape_string($conn, $table);
+    $result = mysqli_query($conn, "SHOW TABLES LIKE '$safeTable'");
+
+    return $result && mysqli_num_rows($result) > 0;
+}
+
+function auth_user_table($conn)
+{
+    return table_exists($conn, 'users') ? 'users' : 'user';
+}
+
+function normalized_role($role)
+{
+    return strtolower(str_replace(array('_', '-'), ' ', trim((string) $role)));
+}
+
+function auth_type_for_role($role)
+{
+    $normalizedRole = normalized_role($role);
+
+    if (in_array($normalizedRole, array('admin', 'administrator', 'superadmin'), true)) {
+        return 'admin';
+    }
+
+    if (in_array($normalizedRole, array('pemilik', 'pemilik lapangan', 'owner', 'mitra'), true)) {
+        return 'pemilik';
+    }
+
+    return 'user';
 }
 
 function find_account_by_email($conn, $email)
 {
-    foreach (account_sources() as $source) {
-        $sql = 'SELECT `' . $source['id_column'] . '` AS account_id, `Nama`, `Email`, `Password`, `Nomor_telepon`, `Role` '
-            . 'FROM `' . $source['table'] . '` WHERE `Email` = ? LIMIT 1';
-        $statement = mysqli_prepare($conn, $sql);
+    $table = auth_user_table($conn);
+    $sql = 'SELECT `ID_User` AS account_id, `Nama`, `Email`, `Password`, `Nomor_telepon`, `Role` '
+        . 'FROM `' . $table . '` WHERE `Email` = ? LIMIT 1';
+    $statement = mysqli_prepare($conn, $sql);
 
-        if (!$statement) {
-            continue;
-        }
-
-        mysqli_stmt_bind_param($statement, 's', $email);
-        mysqli_stmt_execute($statement);
-
-        $result = mysqli_stmt_get_result($statement);
-        $account = $result ? mysqli_fetch_assoc($result) : null;
-        mysqli_stmt_close($statement);
-
-        if ($account) {
-            $account['Role'] = trim((string) $account['Role']) !== '' ? $account['Role'] : $source['default_role'];
-            $account['auth_table'] = $source['table'];
-            $account['auth_type'] = $source['type'];
-
-            return $account;
-        }
+    if (!$statement) {
+        return null;
     }
 
-    return null;
+    mysqli_stmt_bind_param($statement, 's', $email);
+    mysqli_stmt_execute($statement);
+
+    $result = mysqli_stmt_get_result($statement);
+    $account = $result ? mysqli_fetch_assoc($result) : null;
+    mysqli_stmt_close($statement);
+
+    if ($account) {
+        $account['Role'] = trim((string) $account['Role']) !== '' ? $account['Role'] : 'customer';
+        $account['auth_table'] = $table;
+        $account['auth_type'] = auth_type_for_role($account['Role']);
+    }
+
+    return $account;
 }
 
 function password_is_valid($password, $storedPassword)
@@ -71,13 +77,13 @@ function password_is_valid($password, $storedPassword)
 
 function dashboard_url_for_role($role)
 {
-    $normalizedRole = strtolower(trim((string) $role));
+    $normalizedRole = normalized_role($role);
 
     if (in_array($normalizedRole, array('admin', 'administrator', 'superadmin'), true)) {
         return '../admin/dashboard';
     }
 
-    if (in_array($normalizedRole, array('pemilik', 'owner', 'mitra'), true)) {
+    if (in_array($normalizedRole, array('pemilik', 'pemilik lapangan', 'owner', 'mitra'), true)) {
         return '../pemilik/dashboard';
     }
 
@@ -97,6 +103,7 @@ function set_login_session($account)
     $_SESSION['auth_type'] = $account['auth_type'];
     $_SESSION['nama'] = $account['Nama'];
     $_SESSION['role'] = $account['Role'];
+    $_SESSION['user_id'] = $account['account_id'];
 
     if ($account['auth_type'] === 'admin') {
         $_SESSION['id_admin'] = $account['account_id'];
@@ -120,13 +127,17 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
     $account = find_account_by_email($conn, $oldEmail);
 
     if ($account && password_is_valid($password, $account['Password'])) {
-        set_login_session($account);
+        if (trim((string) $account['account_id']) === '') {
+            $error = 'Akun ditemukan, tetapi ID_User masih kosong. Lengkapi ID_User pada tabel users.';
+        } else {
+            set_login_session($account);
 
-        header('Location: ' . dashboard_url_for_role($account['Role']));
-        exit;
+            header('Location: ' . dashboard_url_for_role($account['Role']));
+            exit;
+        }
+    } else {
+        $error = 'Email atau kata sandi tidak sesuai.';
     }
-
-    $error = 'Email atau kata sandi tidak sesuai.';
 }
 ?>
 <!DOCTYPE html>

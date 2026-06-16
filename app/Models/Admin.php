@@ -1,13 +1,35 @@
 <?php
-// Lokasi: app/Models/Admin.php
-require_once '../app/Core/Model.php';
 
-class Admin extends Model {
-    public function findByEmail($email) {
-        // Pastikan nama tabelnya sesuai dengan yang ada di database MySQL kamu
-        $stmt = $this->db->prepare("SELECT * FROM admins WHERE email = :email");
-        $stmt->bindValue(':email', $email);
-        $stmt->execute();
-        return $stmt->fetch(PDO::FETCH_ASSOC); 
+namespace App\Models;
+
+class Admin extends Model
+{
+    protected function table()
+    {
+        $connection = $this->db();
+        $result = mysqli_query($connection, "SHOW TABLES LIKE 'users'");
+
+        return $result && mysqli_num_rows($result) > 0 ? 'users' : 'user';
+    }
+
+    public function findByEmail($email)
+    {
+        $sql = 'SELECT * FROM `' . $this->table() . '` WHERE Email = ? AND LOWER(Role) IN (?, ?, ?) LIMIT 1';
+        $statement = mysqli_prepare($this->db(), $sql);
+
+        if (!$statement) {
+            return null;
+        }
+
+        $admin = 'admin';
+        $administrator = 'administrator';
+        $superadmin = 'superadmin';
+
+        mysqli_stmt_bind_param($statement, 'ssss', $email, $admin, $administrator, $superadmin);
+        mysqli_stmt_execute($statement);
+
+        $result = mysqli_stmt_get_result($statement);
+
+        return $result ? mysqli_fetch_assoc($result) : null;
     }
 }

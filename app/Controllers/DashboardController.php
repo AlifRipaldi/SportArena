@@ -357,6 +357,13 @@ class DashboardController extends Controller
         );
     }
 
+    protected function accountTable($connection)
+    {
+        $result = mysqli_query($connection, "SHOW TABLES LIKE 'users'");
+
+        return $result && mysqli_num_rows($result) > 0 ? 'users' : 'user';
+    }
+
     public function settings()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -425,7 +432,8 @@ class DashboardController extends Controller
             $errorMessage = 'Email tidak valid.';
         } else {
             $connection = Database::connection();
-            $statement = mysqli_prepare($connection, 'UPDATE user SET Nama = ?, Email = ?, Nomor_telepon = ? WHERE ID_User = ?');
+            $accountTable = $this->accountTable($connection);
+            $statement = mysqli_prepare($connection, 'UPDATE `' . $accountTable . '` SET Nama = ?, Email = ?, Nomor_telepon = ? WHERE ID_User = ?');
 
             if ($statement) {
                 mysqli_stmt_bind_param($statement, 'ssss', $nama, $email, $telepon, $userId);
