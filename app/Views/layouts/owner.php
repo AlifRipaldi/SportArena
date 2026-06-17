@@ -3,11 +3,9 @@ $ownerMenus = array(
     array('key' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'fa-house', 'url' => app_url('pemilik/dashboard')),
     array('key' => 'lapangan', 'label' => 'Lapangan Saya', 'icon' => 'fa-map-location-dot', 'url' => app_url('pemilik/lapangan')),
     array('key' => 'jadwal', 'label' => 'Jadwal Booking', 'icon' => 'fa-calendar-check', 'url' => app_url('pemilik/jadwal')),
-    array('key' => 'booking', 'label' => 'Booking', 'icon' => 'fa-calendar-days', 'url' => app_url('pemilik/booking')),
-    array('key' => 'pendapatan', 'label' => 'Pendapatan', 'icon' => 'fa-coins', 'url' => app_url('pemilik/dashboard#pendapatan')),
-    array('key' => 'ulasan', 'label' => 'Ulasan & Rating', 'icon' => 'fa-star', 'url' => app_url('pemilik/dashboard#ulasan')),
-    array('key' => 'statistik', 'label' => 'Statistik', 'icon' => 'fa-chart-column', 'url' => app_url('pemilik/dashboard#statistik')),
-    array('key' => 'profil', 'label' => 'Profil', 'icon' => 'fa-circle-user', 'url' => app_url('pemilik/dashboard#profil')),
+    array('key' => 'pendapatan', 'label' => 'Pendapatan', 'icon' => 'fa-coins', 'url' => app_url('pemilik/pendapatan')),
+    array('key' => 'ulasan', 'label' => 'Ulasan & Rating', 'icon' => 'fa-star', 'url' => app_url('pemilik/ulasan')),
+    array('key' => 'profil', 'label' => 'Profil', 'icon' => 'fa-circle-user', 'url' => app_url('pemilik/profil')),
     array('key' => 'pengaturan', 'label' => 'Pengaturan', 'icon' => 'fa-gear', 'url' => app_url('pemilik/dashboard#pengaturan')),
 );
 
@@ -21,7 +19,7 @@ $displayRole = 'Pemilik Lapangan';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e(isset($title) ? $title : 'Dashboard Pemilik | Arena Sport'); ?></title>
-    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=46')); ?>">
+    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=50')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-mode owner-mode">
@@ -42,15 +40,29 @@ $displayRole = 'Pemilik Lapangan';
                 <?php endforeach; ?>
             </nav>
 
-            <div class="owner-sidebar-card" aria-label="Ringkasan operasional">
-                <div class="owner-sidebar-visual" aria-hidden="true">
-                    <span></span>
-                    <span></span>
-                    <span></span>
+            <?php if ($currentMenu === 'pendapatan'): ?>
+                <div class="owner-sidebar-card owner-sidebar-income-card" aria-label="Ringkasan pendapatan">
+                    <div class="owner-income-mini-visual" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <strong>Pendapatan Bersih Bulan Ini</strong>
+                    <em>Rp4.190.000</em>
+                    <p>Setelah potongan platform 2%</p>
                 </div>
-                <strong>Kelola lapangan Anda dengan mudah</strong>
-                <p>Pantau booking, pendapatan, dan tingkatkan pelayanan.</p>
-            </div>
+            <?php elseif (!in_array($currentMenu, array('ulasan', 'profil'), true)): ?>
+                <div class="owner-sidebar-card" aria-label="Ringkasan operasional">
+                    <div class="owner-sidebar-visual" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <strong>Kelola lapangan Anda dengan mudah</strong>
+                    <p>Pantau booking, pendapatan, dan tingkatkan pelayanan.</p>
+                </div>
+            <?php endif; ?>
 
             <a class="admin-logout owner-logout" href="<?php echo e(app_url('public/logout.php')); ?>">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>

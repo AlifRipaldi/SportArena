@@ -1,19 +1,233 @@
-<section class="admin-hero">
+<?php
+$settingMeta = array(
+    'umum' => array('title' => 'Pengaturan Umum', 'description' => 'Kelola konfigurasi dasar sistem Arena Sport.'),
+    'notifikasi' => array('title' => 'Pengaturan Notifikasi', 'description' => 'Kelola notifikasi sistem dan preferensi pemberitahuan.'),
+    'pembayaran' => array('title' => 'Pengaturan Pembayaran', 'description' => 'Kelola metode dan konfigurasi pembayaran.'),
+    'keamanan' => array('title' => 'Pengaturan Keamanan', 'description' => 'Kelola keamanan sistem dan aktivitas akun.'),
+    'akun' => array('title' => 'Akun Administrator', 'description' => 'Kelola informasi akun administrator dan keamanan login.'),
+);
+$currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeSettingTab] : $settingMeta['umum'];
+?>
+
+<section class="admin-settings-hero">
     <div>
-        <h1>Pengaturan</h1>
-        <p>Kelola pengaturan sistem Arena Sport.</p>
+        <nav class="admin-settings-breadcrumb" aria-label="Breadcrumb pengaturan">
+            <span>Pengaturan</span>
+            <i class="fa-solid fa-chevron-right"></i>
+            <strong><?php echo e($activeSettingTab === 'akun' ? 'Akun' : $currentSetting['title']); ?></strong>
+        </nav>
+        <h1><?php echo e($currentSetting['title']); ?></h1>
+        <p><?php echo e($currentSetting['description']); ?></p>
     </div>
+    <button class="admin-settings-help" type="button">
+        <i class="fa-regular fa-circle-question"></i>
+        <span>Bantuan</span>
+    </button>
 </section>
 
 <nav class="admin-settings-tabs" aria-label="Kategori pengaturan">
     <?php foreach ($settingTabs as $tab): ?>
         <a class="<?php echo $activeSettingTab === $tab['key'] ? 'active' : ''; ?>" href="<?php echo e(app_url('admin/pengaturan?tab=' . $tab['key'])); ?>">
+            <i class="fa-solid <?php echo e($tab['icon']); ?>"></i>
             <?php echo e($tab['label']); ?>
         </a>
     <?php endforeach; ?>
 </nav>
 
-<?php if ($activeSettingTab === 'notifikasi'): ?>
+<?php if ($activeSettingTab === 'akun'): ?>
+    <section class="admin-account-grid">
+        <article class="admin-panel admin-account-card admin-account-profile-card">
+            <div class="admin-account-card-title">
+                <i class="fa-regular fa-user"></i>
+                <h2>Informasi Profil</h2>
+            </div>
+
+            <div class="admin-account-profile-content">
+                <div class="admin-account-avatar-editor">
+                    <div class="admin-account-avatar">
+                        <span><?php echo e($adminAccountProfile['initials']); ?></span>
+                        <button type="button" aria-label="Upload foto baru">
+                            <i class="fa-regular fa-camera"></i>
+                        </button>
+                    </div>
+                    <strong>Upload foto baru</strong>
+                    <small>PNG, JPG maks. 2MB</small>
+                    <button class="admin-account-delete-photo" type="button">
+                        <i class="fa-regular fa-trash-can"></i>
+                        <span>Hapus Foto</span>
+                    </button>
+                </div>
+
+                <form class="admin-account-profile-form" action="#" method="post">
+                    <label>
+                        <span>Nama Lengkap</span>
+                        <input type="text" value="<?php echo e($adminAccountProfile['name']); ?>">
+                    </label>
+                    <label>
+                        <span>Email</span>
+                        <input type="email" value="<?php echo e($adminAccountProfile['email']); ?>">
+                    </label>
+                    <label>
+                        <span>Nomor Telepon</span>
+                        <input type="text" value="<?php echo e($adminAccountProfile['phone']); ?>">
+                    </label>
+                    <label>
+                        <span>Username</span>
+                        <input type="text" value="<?php echo e($adminAccountProfile['username']); ?>">
+                    </label>
+                    <label>
+                        <span>Role</span>
+                        <input type="text" value="<?php echo e($adminAccountProfile['role']); ?>" readonly>
+                    </label>
+                    <div class="admin-account-form-action">
+                        <button type="button">
+                            <i class="fa-regular fa-floppy-disk"></i>
+                            <span>Simpan Perubahan</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </article>
+
+        <article class="admin-panel admin-account-card">
+            <div class="admin-account-card-title">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h2>Keamanan Akun</h2>
+            </div>
+
+            <form class="admin-account-password-form" action="#" method="post">
+                <label>
+                    <span>Password Saat Ini</span>
+                    <span class="admin-account-password-input">
+                        <input type="password" value="passwordlama">
+                        <button type="button" aria-label="Tampilkan password saat ini"><i class="fa-regular fa-eye"></i></button>
+                    </span>
+                </label>
+                <label>
+                    <span>Password Baru</span>
+                    <span class="admin-account-password-input">
+                        <input type="password" value="passwordbaru">
+                        <button type="button" aria-label="Tampilkan password baru"><i class="fa-regular fa-eye"></i></button>
+                    </span>
+                </label>
+                <label>
+                    <span>Konfirmasi Password Baru</span>
+                    <span class="admin-account-password-input">
+                        <input type="password" value="passwordbaru">
+                        <button type="button" aria-label="Tampilkan konfirmasi password"><i class="fa-regular fa-eye"></i></button>
+                    </span>
+                </label>
+
+                <div class="admin-account-centered-action">
+                    <button type="button">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>Ganti Password</span>
+                    </button>
+                </div>
+            </form>
+        </article>
+
+        <article class="admin-panel admin-account-card">
+            <div class="admin-account-card-title">
+                <i class="fa-solid fa-lock"></i>
+                <h2>Pengaturan Login</h2>
+            </div>
+
+            <div class="admin-account-login-settings">
+                <?php foreach ($adminLoginSettings as $setting): ?>
+                    <div class="admin-account-login-setting">
+                        <div>
+                            <strong><?php echo e($setting['label']); ?></strong>
+                            <small><?php echo e($setting['description']); ?></small>
+                        </div>
+                        <label class="admin-account-switch" aria-label="<?php echo e($setting['label']); ?>">
+                            <input type="checkbox" <?php echo $setting['enabled'] ? 'checked' : ''; ?>>
+                            <span data-on="ON" data-off="OFF"></span>
+                        </label>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </article>
+
+        <article class="admin-panel admin-account-card">
+            <div class="admin-account-card-title">
+                <i class="fa-regular fa-clock"></i>
+                <h2>Aktivitas Login Terakhir</h2>
+            </div>
+
+            <div class="admin-account-activity-list">
+                <?php foreach ($adminLoginActivity as $activity): ?>
+                    <div class="admin-account-activity-row">
+                        <span><?php echo e($activity['label']); ?></span>
+                        <strong><?php echo e($activity['value']); ?></strong>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="admin-account-centered-action">
+                <button type="button">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Lihat Riwayat Login</span>
+                </button>
+            </div>
+        </article>
+
+        <article class="admin-panel admin-account-card">
+            <div class="admin-account-card-title">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h2>Hak Akses Administrator</h2>
+            </div>
+
+            <div class="admin-account-access-grid">
+                <?php foreach ($adminAccessRights as $right): ?>
+                    <span><i class="fa-regular fa-circle-check"></i> <?php echo e($right); ?></span>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="admin-account-centered-action">
+                <button type="button">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>Lihat Detail Hak Akses</span>
+                </button>
+            </div>
+        </article>
+
+        <article class="admin-panel admin-account-card">
+            <div class="admin-account-card-title admin-account-device-title">
+                <span><i class="fa-solid fa-desktop"></i> Perangkat Aktif</span>
+                <em>2 Aktif</em>
+            </div>
+
+            <div class="admin-account-device-list">
+                <?php foreach ($adminActiveDevices as $device): ?>
+                    <article class="admin-account-device-item">
+                        <span class="admin-account-device-icon">
+                            <i class="fa-solid <?php echo e($device['icon']); ?>"></i>
+                        </span>
+                        <div>
+                            <strong>
+                                <?php echo e($device['device']); ?>
+                                <?php if ($device['current']): ?>
+                                    <em>Perangkat Saat Ini</em>
+                                <?php endif; ?>
+                            </strong>
+                            <small><?php echo e($device['ip']); ?><br><?php echo e($device['location']); ?></small>
+                        </div>
+                        <time><?php echo $device['time']; ?></time>
+                        <button type="button" aria-label="Menu perangkat"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="admin-account-logout-devices">
+                <button type="button">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                    <span>Logout Semua Perangkat</span>
+                </button>
+            </div>
+        </article>
+    </section>
+<?php elseif ($activeSettingTab === 'notifikasi'): ?>
     <section class="admin-settings-grid admin-notification-settings-grid">
         <article class="admin-panel admin-settings-card">
             <div class="admin-settings-card-head">
@@ -402,22 +616,24 @@
     </section>
 <?php endif; ?>
 
-<section class="admin-panel admin-system-info-panel">
-    <div class="admin-settings-card-head">
-        <h2>Informasi Sistem</h2>
-    </div>
+<?php if ($activeSettingTab !== 'akun'): ?>
+    <section class="admin-panel admin-system-info-panel">
+        <div class="admin-settings-card-head">
+            <h2>Informasi Sistem</h2>
+        </div>
 
-    <div class="admin-system-info-grid">
-        <?php foreach ($systemInfo as $info): ?>
-            <article class="admin-system-info-card">
-                <span class="admin-system-info-icon <?php echo e($info['accent']); ?>">
-                    <i class="fa-solid <?php echo e($info['icon']); ?>"></i>
-                </span>
-                <div>
-                    <p><?php echo e($info['label']); ?></p>
-                    <strong><?php echo $info['value']; ?></strong>
-                </div>
-            </article>
-        <?php endforeach; ?>
-    </div>
-</section>
+        <div class="admin-system-info-grid">
+            <?php foreach ($systemInfo as $info): ?>
+                <article class="admin-system-info-card">
+                    <span class="admin-system-info-icon <?php echo e($info['accent']); ?>">
+                        <i class="fa-solid <?php echo e($info['icon']); ?>"></i>
+                    </span>
+                    <div>
+                        <p><?php echo e($info['label']); ?></p>
+                        <strong><?php echo $info['value']; ?></strong>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </section>
+<?php endif; ?>

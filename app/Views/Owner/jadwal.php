@@ -1,219 +1,91 @@
 <?php
-// Owner - Schedule/Jadwal Management
+$statusTabs = array('Semua', 'Aktif', 'Pending', 'Selesai', 'Dibatalkan');
+$selectedDate = isset($selectedDate) ? $selectedDate : '16 Juni 2025';
 ?>
 
-<section class="admin-hero">
-    <div>
-        <h1>Manajemen Jadwal</h1>
-        <p>Atur jam operasional lapangan Anda</p>
-    </div>
-    <div class="admin-hero-actions">
-        <button class="btn-primary"><i class="fa-solid fa-plus"></i> Tambah Jadwal</button>
-    </div>
-</section>
-
-<div class="admin-content-section">
-    <div class="admin-filter-bar">
-        <select class="admin-filter-select">
-            <option>Lapangan: Semua</option>
-            <option>Futsal A</option>
-            <option>Badminton B</option>
-            <option>Mini Soccer</option>
-            <option>Basketball A</option>
-        </select>
-        <input type="date" class="admin-filter-select">
-    </div>
-
-    <div class="owner-schedule-grid">
-        <?php foreach ($schedule as $item): ?>
-            <article class="admin-panel owner-schedule-card">
-                <div class="owner-schedule-header">
-                    <h3><?php echo e($item['lapangan']); ?></h3>
-                    <span class="admin-badge success"><?php echo e($item['status']); ?></span>
-                </div>
-                <div class="owner-schedule-info">
-                    <div class="schedule-item">
-                        <label><i class="fa-solid fa-calendar-days"></i> Tanggal</label>
-                        <p><?php echo e($item['date']); ?></p>
-                    </div>
-                    <div class="schedule-item">
-                        <label><i class="fa-regular fa-clock"></i> Jam Mulai</label>
-                        <p><?php echo e($item['jam_mulai']); ?></p>
-                    </div>
-                    <div class="schedule-item">
-                        <label><i class="fa-solid fa-clock"></i> Jam Selesai</label>
-                        <p><?php echo e($item['jam_selesai']); ?></p>
-                    </div>
-                </div>
-                <div class="owner-schedule-actions">
-                    <button class="btn-small"><i class="fa-solid fa-pen"></i> Edit</button>
-                    <button class="btn-small danger"><i class="fa-solid fa-trash"></i> Hapus</button>
-                </div>
-            </article>
-        <?php endforeach; ?>
-    </div>
-
-    <!-- Alternative Calendar View -->
-    <article class="admin-panel admin-full-width" style="margin-top: 20px;">
-        <div class="admin-panel-header">
-            <h2>Kalender Jadwal</h2>
+<section class="owner-jadwal-page">
+    <div class="owner-jadwal-hero">
+        <div>
+            <h1>Jadwal Booking</h1>
+            <p>Lihat dan kelola semua jadwal booking lapangan Anda</p>
         </div>
-        <div class="owner-calendar">
-            <table class="owner-calendar-table">
+    </div>
+
+    <div class="owner-jadwal-toolbar" aria-label="Filter jadwal booking">
+        <div class="owner-jadwal-tabs" role="tablist" aria-label="Status booking">
+            <?php foreach ($statusTabs as $index => $tab): ?>
+                <button class="<?php echo $index === 0 ? 'active' : ''; ?>" type="button" role="tab" aria-selected="<?php echo $index === 0 ? 'true' : 'false'; ?>">
+                    <?php echo e($tab); ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="owner-jadwal-filter-actions">
+            <button class="owner-jadwal-filter-btn owner-jadwal-date" type="button">
+                <i class="fa-regular fa-calendar"></i>
+                <span><?php echo e($selectedDate); ?></span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <button class="owner-jadwal-filter-btn" type="button">
+                <i class="fa-solid fa-filter"></i>
+                <span>Filter</span>
+            </button>
+        </div>
+    </div>
+
+    <article class="admin-panel owner-jadwal-panel">
+        <div class="admin-table-responsive">
+            <table class="admin-table owner-jadwal-table">
                 <thead>
                     <tr>
+                        <th>No</th>
+                        <th>Nama Penyewa</th>
+                        <th>Lapangan</th>
+                        <th>Tanggal</th>
                         <th>Jam</th>
-                        <th>Futsal A</th>
-                        <th>Badminton B</th>
-                        <th>Mini Soccer</th>
-                        <th>Basketball A</th>
+                        <th>Durasi</th>
+                        <th>Status</th>
+                        <th>Total</th>
+                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>10:00 - 11:00</td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-maintenance">Maintenance</span></td>
-                    </tr>
-                    <tr>
-                        <td>11:00 - 12:00</td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-maintenance">Maintenance</span></td>
-                    </tr>
-                    <tr>
-                        <td>14:00 - 15:00</td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                    </tr>
-                    <tr>
-                        <td>17:00 - 18:00</td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                    </tr>
-                    <tr>
-                        <td>19:00 - 20:00</td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-booked">Booked</span></td>
-                        <td><span class="schedule-available">Available</span></td>
-                    </tr>
+                    <?php foreach ($schedule as $index => $booking): ?>
+                        <tr>
+                            <td><?php echo e($index + 1); ?></td>
+                            <td class="owner-jadwal-name"><?php echo e($booking['tenant']); ?></td>
+                            <td><?php echo e($booking['field']); ?></td>
+                            <td><?php echo e($booking['date']); ?></td>
+                            <td><?php echo e($booking['time']); ?></td>
+                            <td><?php echo e($booking['duration']); ?></td>
+                            <td>
+                                <span class="admin-badge owner-jadwal-status <?php echo e($booking['statusClass']); ?>">
+                                    <?php echo e($booking['status']); ?>
+                                </span>
+                            </td>
+                            <td class="owner-jadwal-total"><?php echo e($booking['total']); ?></td>
+                            <td>
+                                <button class="btn-icon owner-jadwal-view" type="button" aria-label="Lihat detail booking <?php echo e($booking['tenant']); ?>">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </article>
-</div>
 
-<style>
-.owner-schedule-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}
-
-.owner-schedule-card {
-    padding: 18px;
-}
-
-.owner-schedule-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.owner-schedule-header h3 {
-    margin: 0;
-    font-size: 16px;
-}
-
-.owner-schedule-info {
-    display: grid;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.schedule-item {
-    padding: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-}
-
-.schedule-item label {
-    display: block;
-    font-size: 12px;
-    color: rgba(237, 246, 255, 0.6);
-    margin-bottom: 4px;
-}
-
-.schedule-item p {
-    margin: 0;
-    font-size: 14px;
-    color: #f7fbff;
-    font-weight: 600;
-}
-
-.owner-schedule-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.owner-calendar-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.owner-calendar-table thead {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-.owner-calendar-table th,
-.owner-calendar-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.owner-calendar-table th {
-    color: rgba(237, 246, 255, 0.8);
-    font-weight: 600;
-    font-size: 13px;
-}
-
-.owner-calendar-table td {
-    color: #f7fbff;
-}
-
-.schedule-available,
-.schedule-booked,
-.schedule-maintenance {
-    display: inline-block;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.schedule-available {
-    background: rgba(123, 229, 125, 0.15);
-    color: #9ef185;
-}
-
-.schedule-booked {
-    background: rgba(102, 159, 252, 0.15);
-    color: #66a0ff;
-}
-
-.schedule-maintenance {
-    background: rgba(255, 193, 7, 0.15);
-    color: #ffc107;
-}
-</style>
+    <div class="owner-jadwal-footer">
+        <p>Menampilkan 1 - 7 dari 25 data</p>
+        <nav class="owner-jadwal-pagination" aria-label="Paginasi jadwal booking">
+            <button class="active" type="button" aria-current="page">1</button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">4</button>
+            <button type="button" aria-label="Halaman berikutnya">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </nav>
+    </div>
+</section>

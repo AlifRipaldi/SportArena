@@ -675,7 +675,7 @@ class AdminController extends Controller
         }
 
         $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
-        $activeSettingTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'umum';
+        $activeSettingTab = isset($_GET['tab']) ? strtolower(trim((string) $_GET['tab'])) : 'akun';
         $allowedSettingTabs = array('umum', 'notifikasi', 'pembayaran', 'keamanan', 'akun');
 
         if (!in_array($activeSettingTab, $allowedSettingTabs, true)) {
@@ -687,6 +687,7 @@ class AdminController extends Controller
             'activeMenu' => 'pengaturan',
             'userName' => $userName,
             'userRole' => $role,
+            'searchPlaceholder' => 'Cari sesuatu...',
             'activeSettingTab' => $activeSettingTab,
             'settingTabs' => $this->settingTabs(),
             'systemInfo' => $this->systemInformation(),
@@ -700,17 +701,22 @@ class AdminController extends Controller
             'securitySettings' => $this->securitySettings(),
             'securityActivities' => $this->securityActivities(),
             'activeSessions' => $this->activeSessions(),
+            'adminAccountProfile' => $this->adminAccountProfile($userName),
+            'adminLoginSettings' => $this->adminLoginSettings(),
+            'adminLoginActivity' => $this->adminLoginActivity(),
+            'adminAccessRights' => $this->adminAccessRights(),
+            'adminActiveDevices' => $this->adminActiveDevices(),
         ), 'layouts/admin');
     }
 
     protected function settingTabs()
     {
         return array(
-            array('key' => 'umum', 'label' => 'Umum'),
-            array('key' => 'notifikasi', 'label' => 'Notifikasi'),
-            array('key' => 'pembayaran', 'label' => 'Pembayaran'),
-            array('key' => 'keamanan', 'label' => 'Keamanan'),
-            array('key' => 'akun', 'label' => 'Akun'),
+            array('key' => 'umum', 'label' => 'Umum', 'icon' => 'fa-gear'),
+            array('key' => 'notifikasi', 'label' => 'Notifikasi', 'icon' => 'fa-bell'),
+            array('key' => 'pembayaran', 'label' => 'Pembayaran', 'icon' => 'fa-credit-card'),
+            array('key' => 'keamanan', 'label' => 'Keamanan', 'icon' => 'fa-shield-halved'),
+            array('key' => 'akun', 'label' => 'Akun', 'icon' => 'fa-id-card'),
         );
     }
 
@@ -817,6 +823,68 @@ class AdminController extends Controller
             array('device' => 'Windows 11', 'type' => '', 'browser' => 'Chrome 126.0', 'location' => 'Parepare, Indonesia', 'ip' => '114.10.20.30', 'lastActive' => '16 Juni 2024<br>17:54 WIB', 'status' => 'Aktif', 'current' => true, 'icon' => 'fa-desktop', 'accent' => 'green'),
             array('device' => 'iPhone 13', 'type' => 'Mobile', 'browser' => 'Safari 17.5', 'location' => 'Makassar, Indonesia', 'ip' => '36.80.15.42', 'lastActive' => '15 Juni 2024<br>21:30 WIB', 'status' => 'Aktif', 'current' => false, 'icon' => 'fa-mobile-screen-button', 'accent' => 'blue'),
             array('device' => 'MacBook Pro', 'type' => 'Laptop', 'browser' => 'Chrome 125.0', 'location' => 'Jakarta, Indonesia', 'ip' => '103.21.45.67', 'lastActive' => '14 Juni 2024<br>11:20 WIB', 'status' => 'Aktif', 'current' => false, 'icon' => 'fa-laptop', 'accent' => 'gold'),
+        );
+    }
+
+    protected function adminAccountProfile($name)
+    {
+        $displayName = trim((string) $name);
+
+        if ($displayName === '' || strtolower($displayName) === 'ripal' || strtolower($displayName) === 'admin arena') {
+            $displayName = 'Ripal Administrator';
+        }
+
+        return array(
+            'name' => $displayName,
+            'initials' => 'RI',
+            'email' => 'admin@arenasport.com',
+            'phone' => '0812-3456-7890',
+            'username' => 'ripal_admin',
+            'role' => 'Administrator',
+        );
+    }
+
+    protected function adminLoginSettings()
+    {
+        return array(
+            array('label' => 'Notifikasi Login Baru', 'description' => 'Kirim notifikasi ketika ada login di perangkat baru', 'enabled' => true),
+            array('label' => 'Autentikasi Dua Faktor (2FA)', 'description' => 'Tambahkan lapisan keamanan ekstra untuk akun', 'enabled' => false),
+            array('label' => 'Logout Otomatis', 'description' => 'Logout otomatis jika tidak aktif selama 30 menit', 'enabled' => true),
+            array('label' => 'Simpan Riwayat Login', 'description' => 'Simpan riwayat perangkat yang pernah login', 'enabled' => true),
+        );
+    }
+
+    protected function adminLoginActivity()
+    {
+        return array(
+            array('label' => 'Login Terakhir', 'value' => '16 Juni 2024 - 17:54 WIB'),
+            array('label' => 'Browser', 'value' => 'Google Chrome 137'),
+            array('label' => 'Sistem Operasi', 'value' => 'Windows 11'),
+            array('label' => 'IP Address', 'value' => '192.168.1.25'),
+            array('label' => 'Lokasi', 'value' => 'Makassar, Sulawesi Selatan, Indonesia'),
+        );
+    }
+
+    protected function adminAccessRights()
+    {
+        return array(
+            'Kelola Lapangan',
+            'Kelola Transaksi',
+            'Kelola Booking',
+            'Kelola Laporan',
+            'Kelola User',
+            'Pengaturan Sistem',
+            'Kelola Pemilik Lapangan',
+            'Manajemen Admin',
+            'Kelola Ulasan & Rating',
+        );
+    }
+
+    protected function adminActiveDevices()
+    {
+        return array(
+            array('device' => 'Windows - Chrome', 'ip' => '192.168.1.25', 'location' => 'Makassar, Indonesia', 'time' => '16 Juni 2024<br>17:54 WIB', 'icon' => 'fa-desktop', 'current' => true),
+            array('device' => 'Android - Chrome Mobile', 'ip' => '192.168.1.33', 'location' => 'Makassar, Indonesia', 'time' => '15 Juni 2024<br>21:30 WIB', 'icon' => 'fa-mobile-screen-button', 'current' => false),
         );
     }
 

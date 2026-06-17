@@ -101,7 +101,7 @@ $linePoints = implode(' ', $linePoints);
     <article class="admin-panel owner-booking-panel">
         <div class="admin-panel-header">
             <h2>Booking Terbaru</h2>
-            <a href="<?php echo e(app_url('pemilik/booking')); ?>">Lihat Semua</a>
+            <a href="<?php echo e(app_url('pemilik/jadwal')); ?>">Lihat Semua</a>
         </div>
 
         <div class="admin-table-responsive">
@@ -168,7 +168,7 @@ $linePoints = implode(' ', $linePoints);
     <article class="admin-panel owner-review-panel" id="ulasan">
         <div class="admin-panel-header">
             <h2>Ulasan Terbaru</h2>
-            <a href="<?php echo e(app_url('pemilik/dashboard#ulasan')); ?>">Lihat Semua</a>
+            <a href="<?php echo e(app_url('pemilik/ulasan')); ?>">Lihat Semua</a>
         </div>
 
         <div class="owner-review-list">

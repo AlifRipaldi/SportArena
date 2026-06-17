@@ -26,6 +26,9 @@ $router->get('/pemilik/dashboard', [PemilikController::class, 'index']);
 $router->get('/pemilik/lapangan', [PemilikController::class, 'lapangan']);
 $router->get('/pemilik/booking', [PemilikController::class, 'booking']);
 $router->get('/pemilik/jadwal', [PemilikController::class, 'jadwal']);
+$router->get('/pemilik/pendapatan', [PemilikController::class, 'pendapatan']);
+$router->get('/pemilik/ulasan', [PemilikController::class, 'ulasan']);
+$router->get('/pemilik/profil', [PemilikController::class, 'profil']);
 
 $router->get('/login', function () {
     header('Location: ' . app_url('public/login.php'));
