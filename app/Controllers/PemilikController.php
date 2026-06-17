@@ -3,107 +3,67 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
-use App\Core\Database;
 
 class PemilikController extends Controller
 {
-    protected $db;
-
-    public function __construct()
-    {
-        $this->db = Database::connection();
-    }
-
     public function index()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
-
-        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
-
-        if (!$this->isOwnerRole($role)) {
-            header('Location: ' . app_url('dashboard'));
-            exit;
-        }
-
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Pemilik Arena');
+        $owner = $this->requireOwner();
 
         return $this->view('Owner/index', array(
             'title' => 'Dashboard Pemilik | Arena Sport',
             'activeMenu' => 'dashboard',
-            'userName' => $userName,
-            'userRole' => $role,
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
             'summaryCards' => $this->summaryCards(),
-            'weeklyRevenue' => $this->weeklyRevenue(),
-            'fieldStatus' => $this->fieldStatus(),
+            'monthlyRevenue' => $this->monthlyRevenue(),
+            'bookingStatus' => $this->bookingStatus(),
             'recentBookings' => $this->recentBookings(),
-            'fieldPerformance' => $this->fieldPerformance(),
-        ), 'layouts/admin');
+            'ownerFields' => $this->ownerFields(),
+            'latestReviews' => $this->latestReviews(),
+        ), 'layouts/owner');
     }
 
     public function lapangan()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
-
-        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
-
-        if (!$this->isOwnerRole($role)) {
-            header('Location: ' . app_url('dashboard'));
-            exit;
-        }
-
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pemilik Arena';
+        $owner = $this->requireOwner();
 
         return $this->view('Owner/lapangan', array(
             'title' => 'Kelola Lapangan | Arena Sport',
             'activeMenu' => 'lapangan',
-            'userName' => $userName,
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
             'lapangan' => $this->getAllLapangan(),
-        ), 'layouts/admin');
+        ), 'layouts/owner');
     }
 
     public function booking()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
-
-        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
-
-        if (!$this->isOwnerRole($role)) {
-            header('Location: ' . app_url('dashboard'));
-            exit;
-        }
-
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pemilik Arena';
+        $owner = $this->requireOwner();
 
         return $this->view('Owner/booking', array(
             'title' => 'Manajemen Booking | Arena Sport',
             'activeMenu' => 'booking',
-            'userName' => $userName,
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
             'bookings' => $this->getOwnerBookings(),
-        ), 'layouts/admin');
+        ), 'layouts/owner');
     }
 
     public function jadwal()
+    {
+        $owner = $this->requireOwner();
+
+        return $this->view('Owner/jadwal', array(
+            'title' => 'Manajemen Jadwal | Arena Sport',
+            'activeMenu' => 'jadwal',
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
+            'schedule' => $this->getSchedule(),
+        ), 'layouts/owner');
+    }
+
+    protected function requireOwner()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -121,19 +81,20 @@ class PemilikController extends Controller
             exit;
         }
 
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pemilik Arena';
-
-        return $this->view('Owner/jadwal', array(
-            'title' => 'Manajemen Jadwal | Arena Sport',
-            'activeMenu' => 'jadwal',
-            'userName' => $userName,
-            'schedule' => $this->getSchedule(),
-        ), 'layouts/admin');
+        return array(
+            'name' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Pemilik Arena'),
+            'role' => $role,
+        );
     }
 
     protected function isOwnerRole($role)
     {
-        return in_array(strtolower(trim((string) $role)), array('owner', 'pemilik', 'pemilik lapangan'), true);
+        return in_array($this->normalizeRole($role), array('owner', 'pemilik', 'pemilik lapangan', 'mitra'), true);
+    }
+
+    protected function normalizeRole($role)
+    {
+        return strtolower(str_replace(array('_', '-'), ' ', trim((string) $role)));
     }
 
     protected function summaryCards()
@@ -141,108 +102,120 @@ class PemilikController extends Controller
         return array(
             array(
                 'label' => 'Total Lapangan',
-                'value' => '5',
-                'trend' => '1',
-                'note' => 'dari bulan lalu',
-                'icon' => 'fa-volleyball',
+                'value' => '3',
+                'trend' => 'Lapangan Aktif',
+                'note' => '',
+                'icon' => 'fa-map-location-dot',
                 'accent' => 'lime',
             ),
             array(
-                'label' => 'Booking Bulan Ini',
-                'value' => '156',
-                'trend' => '8.3%',
-                'note' => 'dari bulan lalu',
+                'label' => 'Booking Hari Ini',
+                'value' => '18',
+                'trend' => '12%',
+                'note' => 'dari kemarin',
                 'icon' => 'fa-calendar-days',
                 'accent' => 'blue',
             ),
             array(
                 'label' => 'Pendapatan Bulan Ini',
-                'value' => 'Rp12.450.000',
-                'trend' => '15.7%',
+                'value' => 'Rp4.250.000',
+                'trend' => '18.6%',
                 'note' => 'dari bulan lalu',
                 'icon' => 'fa-rupiah-sign',
                 'accent' => 'green',
             ),
             array(
                 'label' => 'Rating Rata-rata',
-                'value' => '4.7 / 5',
-                'trend' => '0.1',
+                'value' => '4.8',
+                'trend' => '0.3',
                 'note' => 'dari bulan lalu',
                 'icon' => 'fa-star',
-                'accent' => 'gold',
+                'accent' => 'purple',
             ),
         );
     }
 
-    protected function weeklyRevenue()
+    protected function monthlyRevenue()
     {
         return array(
-            array('day' => 'Senin', 'revenue' => 'Rp2.4jt', 'bookings' => 24),
-            array('day' => 'Selasa', 'revenue' => 'Rp2.1jt', 'bookings' => 21),
-            array('day' => 'Rabu', 'revenue' => 'Rp2.8jt', 'bookings' => 28),
-            array('day' => 'Kamis', 'revenue' => 'Rp2.6jt', 'bookings' => 26),
-            array('day' => 'Jumat', 'revenue' => 'Rp3.2jt', 'bookings' => 32),
-            array('day' => 'Sabtu', 'revenue' => 'Rp3.5jt', 'bookings' => 35),
-            array('day' => 'Minggu', 'revenue' => 'Rp3.1jt', 'bookings' => 31),
+            array('month' => 'Jan', 'amount' => 'Rp2jt', 'x' => 0, 'y' => 80),
+            array('month' => 'Feb', 'amount' => 'Rp3.4jt', 'x' => 9.1, 'y' => 66),
+            array('month' => 'Mar', 'amount' => 'Rp4jt', 'x' => 18.2, 'y' => 60),
+            array('month' => 'Apr', 'amount' => 'Rp5.1jt', 'x' => 27.3, 'y' => 49),
+            array('month' => 'Mei', 'amount' => 'Rp7jt', 'x' => 36.4, 'y' => 30),
+            array('month' => 'Jun', 'amount' => 'Rp4.8jt', 'x' => 45.5, 'y' => 52),
+            array('month' => 'Jul', 'amount' => 'Rp6.5jt', 'x' => 54.6, 'y' => 35),
+            array('month' => 'Agu', 'amount' => 'Rp8.3jt', 'x' => 63.7, 'y' => 17),
+            array('month' => 'Sep', 'amount' => 'Rp7.1jt', 'x' => 72.8, 'y' => 29),
+            array('month' => 'Okt', 'amount' => 'Rp9.1jt', 'x' => 81.9, 'y' => 9),
+            array('month' => 'Nov', 'amount' => 'Rp9.8jt', 'x' => 91, 'y' => 2),
+            array('month' => 'Des', 'amount' => 'Rp7jt', 'x' => 100, 'y' => 30),
         );
     }
 
-    protected function fieldStatus()
+    protected function bookingStatus()
     {
         return array(
-            array('name' => 'Futsal A', 'status' => 'Aktif', 'bookingToday' => 8, 'rating' => 4.8),
-            array('name' => 'Badminton B', 'status' => 'Aktif', 'bookingToday' => 6, 'rating' => 4.6),
-            array('name' => 'Mini Soccer', 'status' => 'Aktif', 'bookingToday' => 5, 'rating' => 4.7),
-            array('name' => 'Futsal B', 'status' => 'Maintenance', 'bookingToday' => 0, 'rating' => 4.5),
-            array('name' => 'Basket A', 'status' => 'Aktif', 'bookingToday' => 4, 'rating' => 4.4),
+            array('label' => 'Selesai', 'value' => '55%', 'count' => '66', 'color' => 'lime'),
+            array('label' => 'Aktif', 'value' => '25%', 'count' => '30', 'color' => 'blue'),
+            array('label' => 'Pending', 'value' => '15%', 'count' => '18', 'color' => 'gold'),
+            array('label' => 'Dibatalkan', 'value' => '5%', 'count' => '6', 'color' => 'red'),
         );
     }
 
     protected function recentBookings()
     {
         return array(
-            array('code' => 'AS-20240531-001', 'field' => 'Futsal A', 'user' => 'Ahmad Fauzi', 'date' => '31 Mei 2024', 'time' => '10:00 - 11:00', 'status' => 'Selesai', 'statusClass' => 'success', 'total' => 'Rp80.000'),
-            array('code' => 'AS-20240531-002', 'field' => 'Badminton B', 'user' => 'Rizal Maulana', 'date' => '31 Mei 2024', 'time' => '14:00 - 15:00', 'status' => 'Aktif', 'statusClass' => 'active', 'total' => 'Rp60.000'),
-            array('code' => 'AS-20240531-003', 'field' => 'Mini Soccer', 'user' => 'Dinda Putri', 'date' => '31 Mei 2024', 'time' => '17:00 - 18:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp100.000'),
+            array('code' => 'AS-20260617-001', 'field' => 'Arena Futsal A', 'user' => 'Ahmad', 'date' => '17 Juni 2026', 'time' => '19:00 - 20:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('code' => 'AS-20260617-002', 'field' => 'Arena Badminton 1', 'user' => 'Rizal', 'date' => '17 Juni 2026', 'time' => '20:00 - 21:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
+            array('code' => 'AS-20260618-003', 'field' => 'Arena Futsal B', 'user' => 'Akbar', 'date' => '18 Juni 2026', 'time' => '16:00 - 17:00', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp80.000'),
+            array('code' => 'AS-20260618-004', 'field' => 'Arena Badminton 2', 'user' => 'Dewi', 'date' => '18 Juni 2026', 'time' => '18:00 - 19:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
+            array('code' => 'AS-20260619-005', 'field' => 'Arena Futsal A', 'user' => 'Fajar', 'date' => '19 Juni 2026', 'time' => '17:00 - 18:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp80.000'),
         );
     }
 
-    protected function fieldPerformance()
+    protected function ownerFields()
     {
         return array(
-            array('name' => 'Futsal A', 'bookings' => '210', 'percent' => 35),
-            array('name' => 'Badminton B', 'bookings' => '140', 'percent' => 23),
-            array('name' => 'Mini Soccer', 'bookings' => '155', 'percent' => 26),
-            array('name' => 'Basket A', 'bookings' => '95', 'percent' => 16),
+            array('name' => 'Arena Futsal A', 'location' => 'Parepare', 'rating' => '4.8', 'reviews' => '120', 'price' => 'Rp80.000', 'status' => 'Aktif', 'visual' => 'futsal'),
+            array('name' => 'Arena Badminton 1', 'location' => 'Parepare', 'rating' => '4.7', 'reviews' => '85', 'price' => 'Rp60.000', 'status' => 'Aktif', 'visual' => 'badminton'),
+        );
+    }
+
+    protected function latestReviews()
+    {
+        return array(
+            array('name' => 'Rahman', 'time' => '2 hari lalu', 'rating' => 5, 'text' => 'Lapangan bersih dan nyaman, pelayanan ramah, rekomendasi!'),
+            array('name' => 'Akbar', 'time' => '3 hari lalu', 'rating' => 4, 'text' => 'Parkiran luas dan lokasi strategis, mantap!'),
+            array('name' => 'Dewi', 'time' => '5 hari lalu', 'rating' => 5, 'text' => 'Fasilitas lengkap dan terawat dengan baik.'),
         );
     }
 
     protected function getAllLapangan()
     {
         return array(
-            array('id' => '1', 'name' => 'Futsal A', 'type' => 'Futsal', 'location' => 'Area 1', 'price' => 'Rp80.000', 'status' => 'Aktif'),
-            array('id' => '2', 'name' => 'Badminton B', 'type' => 'Badminton', 'location' => 'Area 2', 'price' => 'Rp60.000', 'status' => 'Aktif'),
-            array('id' => '3', 'name' => 'Mini Soccer', 'type' => 'Mini Soccer', 'location' => 'Area 3', 'price' => 'Rp100.000', 'status' => 'Aktif'),
-            array('id' => '4', 'name' => 'Basket A', 'type' => 'Basketball', 'location' => 'Area 4', 'price' => 'Rp70.000', 'status' => 'Maintenance'),
+            array('id' => '1', 'name' => 'Arena Futsal A', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp80.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.8', 'reviews' => '120', 'visual' => 'futsal'),
+            array('id' => '2', 'name' => 'Arena Badminton 1', 'type' => 'Badminton', 'location' => 'Parepare', 'price' => 'Rp60.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.7', 'reviews' => '85', 'visual' => 'badminton'),
+            array('id' => '3', 'name' => 'Arena Futsal B', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp75.000', 'status' => 'Nonaktif', 'cardStatus' => 'Aktif', 'rating' => '4.5', 'reviews' => '60', 'visual' => 'futsal-alt'),
         );
     }
 
     protected function getOwnerBookings()
     {
         return array(
-            array('code' => 'AS-20240531-001', 'field' => 'Futsal A', 'user' => 'Ahmad Fauzi', 'date' => '31 Mei 2024', 'time' => '10:00 - 11:00', 'status' => 'Selesai', 'statusClass' => 'success', 'total' => 'Rp80.000'),
-            array('code' => 'AS-20240531-002', 'field' => 'Badminton B', 'user' => 'Rizal Maulana', 'date' => '31 Mei 2024', 'time' => '14:00 - 15:00', 'status' => 'Aktif', 'statusClass' => 'active', 'total' => 'Rp60.000'),
-            array('code' => 'AS-20240531-003', 'field' => 'Mini Soccer', 'user' => 'Dinda Putri', 'date' => '31 Mei 2024', 'time' => '17:00 - 18:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp100.000'),
-            array('code' => 'AS-20240531-004', 'field' => 'Futsal B', 'user' => 'Budi Santoso', 'date' => '31 Mei 2024', 'time' => '19:00 - 20:00', 'status' => 'Dibatalkan', 'statusClass' => 'danger', 'total' => 'Rp80.000'),
+            array('code' => 'AS-20260617-001', 'field' => 'Arena Futsal A', 'user' => 'Ahmad', 'date' => '17 Juni 2026', 'time' => '19:00 - 20:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('code' => 'AS-20260617-002', 'field' => 'Arena Badminton 1', 'user' => 'Rizal', 'date' => '17 Juni 2026', 'time' => '20:00 - 21:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
+            array('code' => 'AS-20260618-003', 'field' => 'Arena Futsal B', 'user' => 'Akbar', 'date' => '18 Juni 2026', 'time' => '16:00 - 17:00', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp80.000'),
+            array('code' => 'AS-20260618-004', 'field' => 'Arena Badminton 2', 'user' => 'Dewi', 'date' => '18 Juni 2026', 'time' => '18:00 - 19:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
         );
     }
 
     protected function getSchedule()
     {
         return array(
-            array('lapangan' => 'Futsal A', 'date' => '01 Juni 2024', 'jam_mulai' => '10:00', 'jam_selesai' => '22:00', 'status' => 'Available'),
-            array('lapangan' => 'Badminton B', 'date' => '01 Juni 2024', 'jam_mulai' => '08:00', 'jam_selesai' => '20:00', 'status' => 'Available'),
-            array('lapangan' => 'Mini Soccer', 'date' => '01 Juni 2024', 'jam_mulai' => '10:00', 'jam_selesai' => '23:00', 'status' => 'Available'),
+            array('lapangan' => 'Arena Futsal A', 'date' => '17 Juni 2026', 'jam_mulai' => '10:00', 'jam_selesai' => '22:00', 'status' => 'Available'),
+            array('lapangan' => 'Arena Badminton 1', 'date' => '17 Juni 2026', 'jam_mulai' => '08:00', 'jam_selesai' => '20:00', 'status' => 'Available'),
+            array('lapangan' => 'Arena Futsal B', 'date' => '18 Juni 2026', 'jam_mulai' => '10:00', 'jam_selesai' => '23:00', 'status' => 'Available'),
         );
     }
 }

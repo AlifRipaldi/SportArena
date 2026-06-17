@@ -14,6 +14,7 @@ $adminMenus = array(
 $currentMenu = isset($activeMenu) ? $activeMenu : 'dashboard';
 $displayName = isset($userName) ? $userName : 'Admin Arena';
 $displayRole = isset($userRole) ? $userRole : 'administrator';
+$topbarSearchPlaceholder = isset($searchPlaceholder) ? $searchPlaceholder : 'Cari apa saja...';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -21,7 +22,7 @@ $displayRole = isset($userRole) ? $userRole : 'administrator';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e(isset($title) ? $title : 'Dashboard Admin | Arena Sport'); ?></title>
-    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=16')); ?>">
+    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=24')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-mode">
@@ -52,7 +53,7 @@ $displayRole = isset($userRole) ? $userRole : 'administrator';
             <header class="admin-topbar">
                 <form class="admin-search" action="#" method="get">
                     <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="search" name="q" placeholder="Cari apa saja..." aria-label="Cari data admin">
+                    <input type="search" name="q" placeholder="<?php echo e($topbarSearchPlaceholder); ?>" aria-label="Cari data admin">
                 </form>
 
                 <div class="admin-profile">

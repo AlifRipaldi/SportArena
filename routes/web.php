@@ -23,6 +23,9 @@ $router->get('/admin', [AdminController::class, 'index']);
 $router->get('/admin/dashboard', [AdminController::class, 'index']);
 $router->get('/pemilik', [PemilikController::class, 'index']);
 $router->get('/pemilik/dashboard', [PemilikController::class, 'index']);
+$router->get('/pemilik/lapangan', [PemilikController::class, 'lapangan']);
+$router->get('/pemilik/booking', [PemilikController::class, 'booking']);
+$router->get('/pemilik/jadwal', [PemilikController::class, 'jadwal']);
 
 $router->get('/login', function () {
     header('Location: ' . app_url('public/login.php'));
@@ -43,3 +46,7 @@ $router->get('/admin/booking', [AdminController::class, 'booking']);
 $router->get('/admin/lapangan', [AdminController::class, 'lapangan']);
 $router->get('/admin/users', [AdminController::class, 'users']);
 $router->get('/admin/pemilik-lapangan', [AdminController::class, 'pemilikLapangan']);
+$router->get('/admin/ulasan', [AdminController::class, 'ulasan']);
+$router->get('/admin/transaksi', [AdminController::class, 'transaksi']);
+$router->get('/admin/laporan', [AdminController::class, 'laporan']);
+$router->get('/admin/pengaturan', [AdminController::class, 'pengaturan']);

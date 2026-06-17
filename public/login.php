@@ -146,7 +146,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=40">
+    <link rel="stylesheet" href="../assets/css/style.css?v=45">
 </head>
 <body class="login-auth-page">
     <div class="login-page">
@@ -198,7 +198,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
                         <a href="#">Lupa kata sandi?</a>
                     </div>
 
-                    <button type="submit" name="login" class="btn-primary">Masuk <span aria-hidden="true">&#8594;</span></button>
+                    <button type="submit" name="login" class="btn-primary">Masuk</button>
                 </form>
             <?php endif; ?>
 

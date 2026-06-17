@@ -1,110 +1,133 @@
 <?php
-// Owner Dashboard
+$linePoints = array();
+
+foreach ($monthlyRevenue as $point) {
+    $linePoints[] = $point['x'] . ',' . $point['y'];
+}
+
+$linePoints = implode(' ', $linePoints);
 ?>
 
-<section class="admin-hero">
+<section class="owner-dashboard-hero">
     <div>
-        <h1>Dashboard Pemilik</h1>
-        <p>Selamat datang kembali, <?php echo e($userName); ?>!</p>
+        <p>Selamat datang kembali, <strong><?php echo e($userName); ?></strong></p>
+        <h1>Kelola lapangan dan pantau pendapatan Anda</h1>
     </div>
 </section>
 
-<section class="admin-stat-grid">
+<section class="admin-stat-grid owner-stat-grid" aria-label="Ringkasan dashboard pemilik">
     <?php foreach ($summaryCards as $card): ?>
-        <article class="admin-stat-card">
+        <article class="admin-stat-card owner-stat-card">
             <div class="admin-stat-icon <?php echo e($card['accent']); ?>">
                 <i class="fa-solid <?php echo e($card['icon']); ?>"></i>
             </div>
             <div class="admin-stat-details">
                 <p><?php echo e($card['label']); ?></p>
                 <strong><?php echo e($card['value']); ?></strong>
-                <small><i class="fa-solid fa-arrow-up"></i> <?php echo e($card['trend']); ?> <span><?php echo e($card['note']); ?></span></small>
+                <?php if ($card['note'] !== ''): ?>
+                    <small><i class="fa-solid fa-arrow-up"></i> <?php echo e($card['trend']); ?> <span><?php echo e($card['note']); ?></span></small>
+                <?php else: ?>
+                    <small class="owner-stat-muted"><?php echo e($card['trend']); ?></small>
+                <?php endif; ?>
             </div>
         </article>
     <?php endforeach; ?>
 </section>
 
-<section class="admin-dashboard-grid">
-    <article class="admin-panel owner-revenue-panel">
+<section class="admin-dashboard-grid owner-dashboard-grid">
+    <article class="admin-panel owner-revenue-panel" id="pendapatan">
         <div class="admin-panel-header">
-            <h2>Pendapatan Mingguan</h2>
+            <h2>Pendapatan Bulanan</h2>
+            <button type="button">Tahun Ini <i class="fa-solid fa-chevron-down"></i></button>
         </div>
 
-        <div class="owner-weekly-chart">
-            <div class="owner-chart-bars">
-                <?php foreach ($weeklyRevenue as $item): ?>
-                    <div class="owner-chart-bar-group">
-                        <div class="owner-chart-bar">
-                            <div class="owner-chart-fill" style="height: <?php echo (intval($item['bookings']) / 40 * 100); ?>%;" title="<?php echo e($item['revenue']); ?>"></div>
-                        </div>
-                        <span class="owner-chart-label"><?php echo e(substr($item['day'], 0, 3)); ?></span>
-                    </div>
+        <div class="admin-line-chart owner-line-chart">
+            <div class="admin-chart-y">
+                <span>Rp10jt</span>
+                <span>Rp8jt</span>
+                <span>Rp6jt</span>
+                <span>Rp4jt</span>
+                <span>Rp0</span>
+            </div>
+            <div class="admin-chart-stage">
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                    <polygon points="0,100 <?php echo e($linePoints); ?> 100,100" class="admin-chart-fill"></polygon>
+                    <polyline points="<?php echo e($linePoints); ?>" class="admin-chart-line"></polyline>
+                </svg>
+
+                <?php foreach ($monthlyRevenue as $point): ?>
+                    <span class="admin-chart-dot" title="<?php echo e($point['month'] . ' - ' . $point['amount']); ?>" style="left: <?php echo e($point['x']); ?>%; top: <?php echo e($point['y']); ?>%;"></span>
                 <?php endforeach; ?>
+
+                <div class="admin-chart-months">
+                    <?php foreach ($monthlyRevenue as $point): ?>
+                        <span><?php echo e($point['month']); ?></span>
+                    <?php endforeach; ?>
+                </div>
             </div>
-            <div class="owner-chart-info">
-                <p>Total Minggu Ini: <strong>Rp19.7 juta</strong></p>
-                <p>Total Booking: <strong>177</strong></p>
-            </div>
+        </div>
+        <div class="owner-chart-legend">
+            <span class="admin-status-dot lime"></span>
+            <span>Pendapatan (Rp)</span>
         </div>
     </article>
 
-    <article class="admin-panel owner-status-panel">
+    <article class="admin-panel owner-status-panel" id="statistik">
         <div class="admin-panel-header">
-            <h2>Status Lapangan</h2>
+            <h2>Status Booking</h2>
         </div>
 
-        <div class="owner-field-status">
-            <?php foreach ($fieldStatus as $field): ?>
-                <div class="owner-field-item">
-                    <div class="owner-field-info">
-                        <strong><?php echo e($field['name']); ?></strong>
-                        <span class="admin-badge <?php echo $field['status'] === 'Aktif' ? 'success' : 'warning'; ?>"><?php echo e($field['status']); ?></span>
+        <div class="admin-booking-status owner-booking-status">
+            <div class="admin-donut owner-donut">
+                <span>Total</span>
+                <strong>120</strong>
+                <small>Booking</small>
+            </div>
+
+            <div class="admin-status-list">
+                <?php foreach ($bookingStatus as $status): ?>
+                    <div class="admin-status-item">
+                        <span class="admin-status-dot <?php echo e($status['color']); ?>"></span>
+                        <strong><?php echo e($status['label']); ?></strong>
+                        <em><?php echo e($status['value']); ?> (<?php echo e($status['count']); ?>)</em>
                     </div>
-                    <div class="owner-field-stats">
-                        <span>📅 <?php echo e($field['bookingToday']); ?> booking hari ini</span>
-                        <span>⭐ <?php echo e($field['rating']); ?>/5</span>
-                    </div>
-                </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
         </div>
     </article>
 </section>
 
-<section class="admin-dashboard-grid secondary">
-    <article class="admin-panel admin-booking-table-panel">
+<section class="owner-bottom-grid">
+    <article class="admin-panel owner-booking-panel">
         <div class="admin-panel-header">
             <h2>Booking Terbaru</h2>
             <a href="<?php echo e(app_url('pemilik/booking')); ?>">Lihat Semua</a>
         </div>
 
         <div class="admin-table-responsive">
-            <table class="admin-table">
+            <table class="admin-table owner-booking-table">
                 <thead>
                     <tr>
-                        <th>Kode Booking</th>
+                        <th>Nama</th>
                         <th>Lapangan</th>
-                        <th>User</th>
                         <th>Tanggal</th>
-                        <th>Waktu</th>
+                        <th>Jam</th>
                         <th>Status</th>
-                        <th>Total</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php foreach ($recentBookings as $booking): ?>
                         <tr>
-                            <td><strong><?php echo e($booking['code']); ?></strong></td>
-                            <td><?php echo e($booking['field']); ?></td>
                             <td>
                                 <div class="admin-customer">
                                     <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($booking['user']); ?>&background=20314a&color=ffffff" alt="">
                                     <span><?php echo e($booking['user']); ?></span>
                                 </div>
                             </td>
+                            <td><?php echo e($booking['field']); ?></td>
                             <td><?php echo e($booking['date']); ?></td>
                             <td><?php echo e($booking['time']); ?></td>
                             <td><span class="admin-badge <?php echo e($booking['statusClass']); ?>"><?php echo e($booking['status']); ?></span></td>
-                            <td><?php echo e($booking['total']); ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
@@ -112,160 +135,63 @@
         </div>
     </article>
 
-    <article class="admin-panel admin-popular-panel">
+    <article class="admin-panel owner-fields-panel">
         <div class="admin-panel-header">
-            <h2>Performa Lapangan</h2>
+            <h2>Lapangan Saya</h2>
+            <a href="<?php echo e(app_url('pemilik/lapangan')); ?>">Lihat Semua</a>
         </div>
 
-        <div class="owner-performance">
-            <?php foreach ($fieldPerformance as $field): ?>
-                <div class="owner-perf-item">
+        <div class="owner-field-cards">
+            <?php foreach ($ownerFields as $field): ?>
+                <article class="owner-field-card">
+                    <div class="owner-field-visual <?php echo e($field['visual']); ?>">
+                        <span class="admin-badge success"><?php echo e($field['status']); ?></span>
+                        <button class="btn-icon owner-field-like" type="button" aria-label="Favorit">
+                            <i class="fa-regular fa-heart"></i>
+                        </button>
+                    </div>
+                    <div class="owner-field-body">
+                        <h3><?php echo e($field['name']); ?></h3>
+                        <p><i class="fa-solid fa-location-dot"></i> <?php echo e($field['location']); ?></p>
+                        <p class="owner-rating"><i class="fa-solid fa-star"></i> <?php echo e($field['rating']); ?> <span>(<?php echo e($field['reviews']); ?> ulasan)</span></p>
+                        <strong><?php echo e($field['price']); ?> <span>/jam</span></strong>
+                        <div class="owner-field-actions">
+                            <a class="admin-secondary-btn" href="<?php echo e(app_url('pemilik/lapangan')); ?>"><i class="fa-solid fa-pen"></i> Edit</a>
+                            <a class="admin-secondary-btn primary" href="<?php echo e(app_url('pemilik/lapangan')); ?>"><i class="fa-solid fa-eye"></i> Detail</a>
+                        </div>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+    </article>
+
+    <article class="admin-panel owner-review-panel" id="ulasan">
+        <div class="admin-panel-header">
+            <h2>Ulasan Terbaru</h2>
+            <a href="<?php echo e(app_url('pemilik/dashboard#ulasan')); ?>">Lihat Semua</a>
+        </div>
+
+        <div class="owner-review-list">
+            <?php foreach ($latestReviews as $review): ?>
+                <article class="owner-review-item">
+                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($review['name']); ?>&background=20314a&color=ffffff" alt="">
                     <div>
-                        <strong><?php echo e($field['name']); ?></strong>
-                        <p><?php echo e($field['bookings']); ?> bookings</p>
+                        <div class="owner-review-head">
+                            <strong><?php echo e($review['name']); ?></strong>
+                            <small><?php echo e($review['time']); ?></small>
+                        </div>
+                        <div class="owner-review-stars" aria-label="<?php echo e($review['rating']); ?> dari 5">
+                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                <i class="<?php echo $i <= $review['rating'] ? 'fa-solid' : 'fa-regular'; ?> fa-star"></i>
+                            <?php endfor; ?>
+                        </div>
+                        <p><?php echo e($review['text']); ?></p>
                     </div>
-                    <div class="owner-progress-bar">
-                        <div class="owner-progress-fill" style="width: <?php echo e($field['percent']); ?>%;"></div>
-                    </div>
-                    <span><?php echo e($field['percent']); ?>%</span>
-                </div>
+                </article>
             <?php endforeach; ?>
         </div>
     </article>
 </section>
 
-<style>
-.owner-weekly-chart {
-    display: grid;
-    gap: 20px;
-}
-
-.owner-chart-bars {
-    display: flex;
-    gap: 12px;
-    align-items: flex-end;
-    height: 150px;
-    padding: 16px 0;
-}
-
-.owner-chart-bar-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-}
-
-.owner-chart-bar {
-    width: 100%;
-    height: 100px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px 8px 0 0;
-    overflow: hidden;
-}
-
-.owner-chart-fill {
-    width: 100%;
-    background: linear-gradient(180deg, #7be57d, #2ecc71);
-    border-radius: 8px 8px 0 0;
-}
-
-.owner-chart-label {
-    font-size: 12px;
-    color: rgba(237, 246, 255, 0.7);
-}
-
-.owner-chart-info {
-    display: flex;
-    gap: 20px;
-    padding: 12px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.owner-chart-info p {
-    margin: 0;
-    font-size: 14px;
-    color: rgba(237, 246, 255, 0.8);
-}
-
-.owner-field-status {
-    display: grid;
-    gap: 12px;
-}
-
-.owner-field-item {
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.owner-field-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.owner-field-info strong {
-    font-size: 14px;
-}
-
-.owner-field-stats {
-    display: flex;
-    gap: 12px;
-    font-size: 13px;
-    color: rgba(237, 246, 255, 0.7);
-}
-
-.owner-performance {
-    display: grid;
-    gap: 16px;
-}
-
-.owner-perf-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    border-radius: 12px;
-}
-
-.owner-perf-item > div:first-child {
-    min-width: 120px;
-}
-
-.owner-perf-item strong {
-    display: block;
-    font-size: 14px;
-}
-
-.owner-perf-item p {
-    margin: 4px 0 0 0;
-    font-size: 12px;
-    color: rgba(237, 246, 255, 0.6);
-}
-
-.owner-progress-bar {
-    flex: 1;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 999px;
-    overflow: hidden;
-}
-
-.owner-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #7be57d, #2ecc71);
-    border-radius: 999px;
-}
-
-.owner-perf-item > span:last-child {
-    min-width: 40px;
-    text-align: right;
-    font-size: 12px;
-    color: #7be57d;
-    font-weight: 700;
-}
-</style>
+<span class="owner-anchor" id="profil"></span>
+<span class="owner-anchor" id="pengaturan"></span>

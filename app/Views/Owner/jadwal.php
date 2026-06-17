@@ -33,15 +33,15 @@
                 </div>
                 <div class="owner-schedule-info">
                     <div class="schedule-item">
-                        <label>📅 Tanggal</label>
+                        <label><i class="fa-solid fa-calendar-days"></i> Tanggal</label>
                         <p><?php echo e($item['date']); ?></p>
                     </div>
                     <div class="schedule-item">
-                        <label>🕐 Jam Mulai</label>
+                        <label><i class="fa-regular fa-clock"></i> Jam Mulai</label>
                         <p><?php echo e($item['jam_mulai']); ?></p>
                     </div>
                     <div class="schedule-item">
-                        <label>🕑 Jam Selesai</label>
+                        <label><i class="fa-solid fa-clock"></i> Jam Selesai</label>
                         <p><?php echo e($item['jam_selesai']); ?></p>
                     </div>
                 </div>

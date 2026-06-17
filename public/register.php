@@ -45,7 +45,7 @@ if (isset($_POST['register'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=40">
+    <link rel="stylesheet" href="../assets/css/style.css?v=45">
 </head>
 <body class="login-auth-page register-auth-page">
     <div class="login-page">
@@ -105,7 +105,7 @@ if (isset($_POST['register'])) {
                     <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
                 </div>
 
-                <button type="submit" name="register" class="btn-primary">Daftar <span aria-hidden="true">&#8594;</span></button>
+                <button type="submit" name="register" class="btn-primary">Daftar</button>
             </form>
 
             <div class="divider"><span>atau daftar dengan</span></div>
