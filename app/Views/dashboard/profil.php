@@ -1,4 +1,4 @@
-<div class="dashboard-shell">
+<div class="dashboard-shell profile-dashboard">
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
             <div class="dashboard-logo-mark">
@@ -21,83 +21,107 @@
             <a href="<?php echo e(app_url('settings')); ?>" class="<?php echo isset($activeMenu) && $activeMenu === 'settings' ? 'active' : ''; ?>"><span>&#9881;</span>Pengaturan</a>
         </nav>
 
-        <div class="dashboard-promo">
-            <p>Kelola informasi akun dan aktivitas kamu.</p>
-            <small>Tinjau profil, statistik, dan prestasi game favoritmu.</small>
-            <a href="#profil">Lihat Profil &#8594;</a>
+        <div class="dashboard-promo profile-promo">
+            <p>Mainkan Game Terbaikmu</p>
+            <small>Pesan lapangan favoritmu sekarang!</small>
+            <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Booking Sekarang &#8594;</a>
         </div>
 
         <a class="dashboard-logout" href="<?php echo e(app_url('public/logout.php')); ?>"><span>&#8634;</span>Keluar</a>
     </aside>
 
-    <main class="dashboard-main profile-main">
-        <section class="profile-topbar" id="profil">
-            <div class="profile-hero-card">
-                <div class="profile-hero-header">
-                    <div class="profile-hero-avatar">
-                        <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
-                        <button type="button" class="profile-photo-button">Ubah Foto</button>
-                    </div>
-                    <div class="profile-hero-meta">
-                        <div class="profile-badge">Akun Terverifikasi</div>
-                        <h1><?php echo e($userName); ?></h1>
-                        <p><?php echo e($userEmail); ?></p>
-                        <div class="profile-contact-row">
-                            <span><?php echo e($userPhone); ?></span>
-                            <span><?php echo e($userCity); ?></span>
-                        </div>
-                        <div class="profile-hero-actions">
-                            <button type="button" class="btn-primary">Edit Profil</button>
-                        </div>
-                    </div>
-                    <div class="profile-hero-stats-container">
-                        <div class="profile-stats-header">
-                            <h2>Aktivitas</h2>
-                            <p>Ringkasan aktivitas dan riwayat booking Anda.</p>
-                        </div>
-                        <div class="profile-hero-stats">
-                            <div class="stat-card">
-                                <span>Total Booking</span>
-                                <strong>28 Kali</strong>
-                            </div>
-                            <div class="stat-card">
-                                <span>Booking Selesai</span>
-                                <strong>24 Kali</strong>
-                            </div>
-                            <div class="stat-card">
-                                <span>Total Pembayaran</span>
-                                <strong>Rp2.140.000</strong>
-                            </div>
-                            <div class="stat-card">
-                                <span>Member Sejak</span>
-                                <strong>Mei 2024</strong>
-                            </div>
-                        </div>
-                    </div>
+    <main class="dashboard-main profile-main" id="profil">
+        <section class="profile-page-head">
+            <div>
+                <h1><?php echo e(isset($pageHeading) ? $pageHeading : 'Profil Saya'); ?></h1>
+                <p><?php echo e(isset($pageSubheading) ? $pageSubheading : 'Kelola informasi profil dan aktivitas Anda.'); ?></p>
+            </div>
+            <div class="profile-head-actions">
+                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                    <span>&#128276;</span>
+                    <sup>2</sup>
+                </button>
+                <div class="profile-account-menu">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                    <span>&#8964;</span>
                 </div>
             </div>
         </section>
 
-        <section class="profile-grid">
-            <article class="profile-card profile-card-large">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Informasi Pribadi</h2>
-                        <p>Detail dasar profil dan kontak kamu.</p>
-                    </div>
+        <section class="profile-overview">
+            <div class="profile-photo-wrap">
+                <div class="profile-photo-ring">
+                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
                 </div>
-                <div class="profile-card-body profile-data-grid">
+                <button type="button" class="profile-camera-button" aria-label="Ubah foto">&#128247;</button>
+            </div>
+
+            <div class="profile-summary-copy">
+                <div class="profile-name-row">
+                    <h2><?php echo e($userName); ?></h2>
+                    <span class="profile-verified">Akun Terverifikasi <span>&#10003;</span></span>
+                </div>
+                <ul class="profile-contact-list">
+                    <li><span>&#9993;</span><?php echo e($userEmail); ?></li>
+                    <li><span>&#9742;</span><?php echo e($userPhone); ?></li>
+                    <li><span>&#9906;</span><?php echo e($userCity); ?>, Sulawesi Selatan</li>
+                    <li><span>&#128197;</span>Bergabung sejak Mei 2024</li>
+                </ul>
+                <div class="profile-action-row">
+                    <a href="<?php echo e(app_url('settings')); ?>" class="profile-btn primary"><span>&#9998;</span>Edit Profil</a>
+                    <button type="button" class="profile-btn"><span>&#128247;</span>Ubah Foto</button>
+                </div>
+            </div>
+
+            <div class="profile-quick-stats" aria-label="Ringkasan profil">
+                <div class="profile-quick-stat green">
+                    <span class="profile-stat-icon">&#128197;</span>
+                    <strong>28</strong>
+                    <small>Booking</small>
+                </div>
+                <div class="profile-quick-stat purple">
+                    <span class="profile-stat-icon">&#9825;</span>
+                    <strong>12</strong>
+                    <small>Favorit</small>
+                </div>
+                <div class="profile-quick-stat gold">
+                    <span class="profile-stat-icon">&#9734;</span>
+                    <strong>4.8</strong>
+                    <small>Rating</small>
+                </div>
+                <div class="profile-quick-stat blue">
+                    <span class="profile-stat-icon">&#128197;</span>
+                    <strong>16</strong>
+                    <small>Ulasan</small>
+                </div>
+            </div>
+        </section>
+
+        <nav class="profile-tabs" aria-label="Bagian profil">
+            <a href="#informasi" class="active">Informasi Pribadi</a>
+            <a href="#aktivitas">Aktivitas</a>
+            <a href="#ulasan">Ulasan</a>
+            <a href="#pembayaran">Metode Pembayaran</a>
+            <a href="#voucher">Voucher Saya</a>
+        </nav>
+
+        <section class="profile-content-grid">
+            <article class="profile-panel profile-info-panel" id="informasi">
+                <div class="profile-panel-header">
+                    <h2><span>&#9786;</span>Informasi Pribadi</h2>
+                </div>
+                <dl class="profile-details-list">
                     <div>
                         <dt>Nama Lengkap</dt>
                         <dd><?php echo e($userName); ?></dd>
                     </div>
                     <div>
                         <dt>Email</dt>
-                        <dd><?php echo e($userEmail); ?></dd>
+                        <dd><?php echo e($userEmail); ?> <span class="profile-label-success">Terverifikasi</span></dd>
                     </div>
                     <div>
                         <dt>Nomor Handphone</dt>
-                        <dd><?php echo e($userPhone); ?></dd>
+                        <dd><?php echo e($userPhone); ?> <span class="profile-label-success">Terverifikasi</span></dd>
                     </div>
                     <div>
                         <dt>Tanggal Lahir</dt>
@@ -113,7 +137,7 @@
                     </div>
                     <div>
                         <dt>Alamat</dt>
-                        <dd>Jl. Mattirotasi No. 12, Parepare, Sulawesi Selatan</dd>
+                        <dd>Jl. Mattirotasi No. 12, <?php echo e($userCity); ?>, Sulawesi Selatan</dd>
                     </div>
                     <div>
                         <dt>Pekerjaan</dt>
@@ -123,18 +147,16 @@
                         <dt>Bio</dt>
                         <dd>Pecinta olahraga dan futsal. Selalu semangat bermain!</dd>
                     </div>
-                </div>
+                </dl>
+                <a href="<?php echo e(app_url('settings')); ?>" class="profile-panel-action"><span>&#9998;</span>Edit Informasi</a>
             </article>
 
-            <article class="profile-card">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Statistik Aktivitas</h2>
-                        <p>Ringkasan performa dan riwayat booking.</p>
+            <div class="profile-side-stack">
+                <article class="profile-panel">
+                    <div class="profile-panel-header">
+                        <h2><span>&#128200;</span>Statistik Aktivitas</h2>
                     </div>
-                </div>
-                <div class="profile-card-body">
-                    <div class="stats-list">
+                    <div class="profile-stat-list">
                         <div>
                             <span>Total Booking</span>
                             <strong>28 Kali</strong>
@@ -152,105 +174,103 @@
                             <strong>Mei 2024</strong>
                         </div>
                     </div>
+                </article>
+
+                <article class="profile-panel">
+                    <div class="profile-panel-header">
+                        <h2><span>&#9881;</span>Preferensi Saya</h2>
+                    </div>
+                    <div class="profile-preference-list">
+                        <div>
+                            <span><i>&#9673;</i>Olahraga Favorit</span>
+                            <strong>Futsal</strong>
+                        </div>
+                        <div>
+                            <span><i>&#9201;</i>Waktu Favorit</span>
+                            <strong>Sore - Malam</strong>
+                        </div>
+                        <div>
+                            <span><i>&#9906;</i>Kota Favorit</span>
+                            <strong><?php echo e($userCity); ?></strong>
+                        </div>
+                        <div>
+                            <span><i>&#9678;</i>Radius Pencarian</span>
+                            <strong>10 KM</strong>
+                        </div>
+                    </div>
+                </article>
+            </div>
+
+            <article class="profile-panel profile-social-panel">
+                <div class="profile-panel-header">
+                    <h2><span>&#8984;</span>Media Sosial</h2>
+                </div>
+                <div class="profile-social-list">
+                    <a href="#"><span><i>IG</i>Instagram</span><strong>@ahmadfauzi_98</strong><em>&#8599;</em></a>
+                    <a href="#"><span><i>f</i>Facebook</span><strong>Ahmad Fauzi</strong><em>&#8599;</em></a>
+                    <a href="#"><span><i>X</i>Twitter</span><strong>@ahmadfauzi_98</strong><em>&#8599;</em></a>
                 </div>
             </article>
 
-            <article class="profile-card">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Preferensi Saya</h2>
-                        <p>Pilih olahraga, waktu, dan radius favorit.</p>
-                    </div>
+            <article class="profile-panel profile-achievements-panel">
+                <div class="profile-panel-header">
+                    <h2><span>&#127942;</span>Pencapaian</h2>
                 </div>
-                <div class="profile-card-body profile-preferences">
-                    <div>
-                        <strong>Olahraga Favorit</strong>
-                        <span>Futsal</span>
-                    </div>
-                    <div>
-                        <strong>Waktu Favorit</strong>
-                        <span>Sore - Malam</span>
-                    </div>
-                    <div>
-                        <strong>Kota Favorit</strong>
-                        <span>Parepare</span>
-                    </div>
-                    <div>
-                        <strong>Radius Pencarian</strong>
-                        <span>10 KM</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="profile-card social-card">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Media Sosial</h2>
-                        <p>Hubungkan akun dan media sosial kamu.</p>
-                    </div>
-                </div>
-                <div class="profile-card-body social-links">
-                    <a href="#">Instagram <span>@ahmadfauzi_98</span></a>
-                    <a href="#">Facebook <span>Ahmad Fauzi</span></a>
-                    <a href="#">Twitter <span>@ahmadfauzi_98</span></a>
-                </div>
-            </article>
-
-            <article class="profile-card achievement-card">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Pencapaian</h2>
-                        <p>Prestasi loyalty dan aktivitas kamu.</p>
-                    </div>
-                </div>
-                <div class="profile-card-body achievement-list">
-                    <div class="badge-card green">
+                <div class="profile-achievement-list">
+                    <div class="profile-achievement green">
+                        <span>&#9917;</span>
                         <strong>Player Aktif</strong>
-                        <span>Melakukan 10 booking</span>
-                        <small>10 Mei 2024</small>
+                        <small>Melakukan 10 booking</small>
+                        <em>10 Mei 2024</em>
                     </div>
-                    <div class="badge-card blue">
+                    <div class="profile-achievement blue">
+                        <span>&#9733;</span>
                         <strong>Pelanggan Setia</strong>
-                        <span>Melakukan 20 booking</span>
-                        <small>22 Juni 2024</small>
+                        <small>Melakukan 20 booking</small>
+                        <em>22 Juni 2024</em>
                     </div>
-                    <div class="badge-card purple">
+                    <div class="profile-achievement purple">
+                        <span>&#9819;</span>
                         <strong>Top Reviewer</strong>
-                        <span>Memberikan 10 ulasan</span>
-                        <small>15 Juli 2024</small>
+                        <small>Memberikan 10 ulasan</small>
+                        <em>15 Juli 2024</em>
                     </div>
                 </div>
             </article>
 
-            <article class="profile-card activity-card">
-                <div class="profile-card-header">
-                    <div>
-                        <h2>Aktivitas Terbaru</h2>
-                        <p>Booking dan status terbaru Anda.</p>
-                    </div>
+            <article class="profile-panel profile-activity-panel" id="aktivitas">
+                <div class="profile-panel-header row">
+                    <h2><span>&#9201;</span>Aktivitas Terbaru</h2>
+                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">Lihat Semua &#8594;</a>
                 </div>
-                <div class="profile-card-body activity-list">
-                    <div class="activity-item">
-                        <div>
+                <div class="profile-activity-list">
+                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
+                        <span class="profile-activity-icon">&#128197;</span>
+                        <span>
                             <strong>Booking Arena Futsal Parepare</strong>
-                            <span>22 Mei 2024 • 10:00 - 11:00</span>
-                        </div>
-                        <span class="status-complete">Selesai</span>
-                    </div>
-                    <div class="activity-item">
-                        <div>
+                            <small>22 Mei 2024 &bull; 10:00 - 11:00</small>
+                        </span>
+                        <em>Selesai</em>
+                        <i>&#8250;</i>
+                    </a>
+                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
+                        <span class="profile-activity-icon">&#128197;</span>
+                        <span>
                             <strong>Booking Lapangan Badminton Center</strong>
-                            <span>18 Mei 2024 • 08:00 - 09:00</span>
-                        </div>
-                        <span class="status-complete">Selesai</span>
-                    </div>
-                    <div class="activity-item">
-                        <div>
+                            <small>18 Mei 2024 &bull; 08:00 - 09:00</small>
+                        </span>
+                        <em>Selesai</em>
+                        <i>&#8250;</i>
+                    </a>
+                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
+                        <span class="profile-activity-icon">&#128197;</span>
+                        <span>
                             <strong>Booking Mini Soccer Victory</strong>
-                            <span>10 Mei 2024 • 17:00 - 18:00</span>
-                        </div>
-                        <span class="status-complete">Selesai</span>
-                    </div>
+                            <small>10 Mei 2024 &bull; 17:00 - 18:00</small>
+                        </span>
+                        <em>Selesai</em>
+                        <i>&#8250;</i>
+                    </a>
                 </div>
             </article>
         </section>

@@ -175,8 +175,62 @@ class DashboardController extends Controller
             'pageHeading' => 'Riwayat',
             'pageSubheading' => 'Lihat semua riwayat booking lapangan kamu',
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
-            'bookings' => $this->bookings(),
+            'bookings' => $this->historyBookings(),
         ), 'layouts/dashboard');
+    }
+
+    protected function historyBookings()
+    {
+        return array(
+            array(
+                'type' => 'Futsal',
+                'venue' => 'Arena Futsal Parepare',
+                'location' => 'Jl. Mattirotasi No. 12, Parepare',
+                'date' => '22 Mei 2024',
+                'time' => '10:00 - 11:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-220524-00123',
+                'price' => 'Rp82.000',
+                'status' => 'Selesai',
+                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=700&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Badminton',
+                'venue' => 'Lapangan Badminton Center',
+                'location' => 'Jl. Bau Massepe No. 45, Parepare',
+                'date' => '18 Mei 2024',
+                'time' => '08:00 - 09:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-180524-00098',
+                'price' => 'Rp60.000',
+                'status' => 'Selesai',
+                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=700&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Mini Soccer',
+                'venue' => 'Mini Soccer Victory',
+                'location' => 'Jl. Jend. Sudirman, Parepare',
+                'date' => '10 Mei 2024',
+                'time' => '17:00 - 18:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-100524-00056',
+                'price' => 'Rp100.000',
+                'status' => 'Selesai',
+                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=700&auto=format&fit=crop',
+            ),
+            array(
+                'type' => 'Basketball',
+                'venue' => 'Arena Basketball Court',
+                'location' => 'Jl. Andi Makkasau No. 7, Parepare',
+                'date' => '5 Mei 2024',
+                'time' => '14:00 - 15:00',
+                'duration' => '1 Jam',
+                'code' => 'AS-050524-00032',
+                'price' => 'Rp70.000',
+                'status' => 'Dibatalkan',
+                'image' => 'https://images.unsplash.com/photo-1546519638-68711109d298?q=80&w=700&auto=format&fit=crop',
+            ),
+        );
     }
 
     public function favorit()

@@ -146,16 +146,16 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=10">
+    <link rel="stylesheet" href="../assets/css/style.css?v=40">
 </head>
-<body>
+<body class="login-auth-page">
     <div class="login-page">
         <div class="login-card">
             <div class="login-brand">
-                <img class="logo-img" src="../assets/img/logo.png" alt="Arena Sport Logo">
+                <img class="logo-img" src="../assets/img/logo.png" alt="Logo Arena Sport">
                 <div>
-                    <h1>Arena Sport</h1>
-                    <p>Selamat datang kembali! Masuk untuk melanjutkan.</p>
+                    <h1>Selamat Datang!</h1>
+                    <p>Masuk untuk melanjutkan permainan</p>
                 </div>
             </div>
 
@@ -164,8 +164,8 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
                     Anda sudah masuk sebagai <strong><?php echo htmlspecialchars($userName, ENT_QUOTES, 'UTF-8'); ?></strong>.
                 </div>
                 <div class="already-logged-in">
-                    <a href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary">Lanjut ke Dashboard</a>
-                    <a href="logout.php" class="btn-google" style="width:auto; margin-top:12px;">Logout</a>
+                    <a href="<?php echo htmlspecialchars($dashboardUrl, ENT_QUOTES, 'UTF-8'); ?>" class="btn-primary">Lanjut ke Dasbor <span aria-hidden="true">&#8594;</span></a>
+                    <a href="logout.php" class="btn-google">Keluar</a>
                 </div>
             <?php else: ?>
                 <?php if ($error): ?>
@@ -174,18 +174,23 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
 
                 <form id="loginForm" action="" method="POST" class="login-form">
                     <div class="field-group">
-                        <label for="email">Email</label>
                         <div class="field-input">
-                            <span class="field-icon">✉</span>
-                            <input id="email" type="email" name="email" placeholder="Masukkan email Anda" value="<?php echo htmlspecialchars($oldEmail, ENT_QUOTES, 'UTF-8'); ?>" required>
+                            <span class="field-icon">&#9993;</span>
+                            <div class="auth-input-copy">
+                                <label for="email">Email</label>
+                                <input id="email" type="email" name="email" placeholder="Masukkan email Anda" value="<?php echo htmlspecialchars($oldEmail, ENT_QUOTES, 'UTF-8'); ?>" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+                            </div>
                         </div>
                     </div>
+
                     <div class="field-group">
-                        <label for="password">Kata Sandi</label>
                         <div class="field-input">
-                            <span class="field-icon">🔒</span>
-                            <input id="password" type="password" name="password" placeholder="Masukkan kata sandi" required>
-                            <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">👁</button>
+                            <span class="field-icon">&#128274;</span>
+                            <div class="auth-input-copy">
+                                <label for="password">Kata Sandi</label>
+                                <input id="password" type="password" name="password" placeholder="Masukkan kata sandi" autocomplete="current-password" required>
+                            </div>
+                            <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">&#128065;</button>
                         </div>
                     </div>
 
@@ -193,7 +198,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
                         <a href="#">Lupa kata sandi?</a>
                     </div>
 
-                    <button type="submit" name="login" class="btn-primary">Masuk</button>
+                    <button type="submit" name="login" class="btn-primary">Masuk <span aria-hidden="true">&#8594;</span></button>
                 </form>
             <?php endif; ?>
 
@@ -209,7 +214,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
             </div>
 
             <div class="back-home">
-                <a href="../index.php">← Kembali ke beranda</a>
+                <a href="../index.php">&larr; Kembali ke beranda</a>
             </div>
         </div>
     </div>
@@ -222,7 +227,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
             passwordToggle.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
-                passwordToggle.textContent = isPassword ? '🙈' : '👁';
+                passwordToggle.innerHTML = isPassword ? '&#128584;' : '&#128065;';
                 passwordToggle.setAttribute('aria-label', isPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
             });
         }

@@ -45,69 +45,82 @@ if (isset($_POST['register'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=10">
+    <link rel="stylesheet" href="../assets/css/style.css?v=40">
 </head>
-<body>
+<body class="login-auth-page register-auth-page">
     <div class="login-page">
         <div class="login-card">
             <div class="login-brand">
-                <img class="logo-img" src="../assets/img/logo.png" alt="Arena Sport Logo">
+                <img class="logo-img" src="../assets/img/logo.png" alt="Logo Arena Sport">
                 <div>
-                    <h1>Arena Sport</h1>
-                    <p>Buat akun untuk mulai berolahraga.</p>
+                    <h1>Buat Akun</h1>
+                    <p>Daftar untuk mulai bermain</p>
                 </div>
             </div>
 
             <?php if ($error): ?>
-                <div class="error-message"><?php echo $error; ?></div>
+                <div class="error-message"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php endif; ?>
 
             <form id="registerForm" action="" method="POST" class="login-form">
                 <div class="field-group">
-                    <label for="nama">Nama Lengkap</label>
                     <div class="field-input">
-                        <span class="field-icon">👤</span>
-                        <input id="nama" type="text" name="nama" placeholder="Masukkan nama lengkap Anda" required>
+                        <span class="field-icon">&#9786;</span>
+                        <div class="auth-input-copy">
+                            <label for="nama">Nama Lengkap</label>
+                            <input id="nama" type="text" name="nama" placeholder="Masukkan nama lengkap" autocomplete="name" required>
+                        </div>
                     </div>
                 </div>
 
                 <div class="field-group">
-                    <label for="email">Email</label>
                     <div class="field-input">
-                        <span class="field-icon">✉</span>
-                        <input id="email" type="email" name="email" placeholder="Masukkan email Anda" required>
+                        <span class="field-icon">&#9993;</span>
+                        <div class="auth-input-copy">
+                            <label for="email">Email</label>
+                            <input id="email" type="email" name="email" placeholder="Masukkan email Anda" autocomplete="email" autocapitalize="none" spellcheck="false" required>
+                        </div>
                     </div>
                 </div>
 
                 <div class="field-group">
-                    <label for="telepon">Nomor Telepon</label>
                     <div class="field-input">
-                        <span class="field-icon">📱</span>
-                        <input id="telepon" type="tel" name="telepon" placeholder="08123456789" required maxlength="12" pattern="08[0-9]{9,10}" title="Nomor telepon harus dimulai dengan 08 dan 10-12 digit">
+                        <span class="field-icon">&#9742;</span>
+                        <div class="auth-input-copy">
+                            <label for="telepon">Nomor Telepon</label>
+                            <input id="telepon" type="tel" name="telepon" placeholder="08123456789" autocomplete="tel" required maxlength="12" pattern="08[0-9]{9,10}" title="Nomor telepon harus dimulai dengan 08 dan 10-12 digit">
+                        </div>
                     </div>
                 </div>
 
                 <div class="field-group">
-                    <label for="password">Kata Sandi</label>
                     <div class="field-input">
-                        <span class="field-icon">🔒</span>
-                        <input id="password" type="password" name="password" placeholder="Buat kata sandi" required minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan karakter khusus">
-                        <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">👁</button>
+                        <span class="field-icon">&#128274;</span>
+                        <div class="auth-input-copy">
+                            <label for="password">Kata Sandi</label>
+                            <input id="password" type="password" name="password" placeholder="Buat kata sandi" autocomplete="new-password" required minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}" title="Minimal 8 karakter, berisi huruf besar, huruf kecil, angka, dan karakter khusus">
+                        </div>
+                        <button type="button" class="password-toggle" aria-label="Tampilkan atau sembunyikan kata sandi">&#128065;</button>
                     </div>
                     <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
                 </div>
 
-                <button type="submit" name="register" class="btn-primary">Daftar</button>
+                <button type="submit" name="register" class="btn-primary">Daftar <span aria-hidden="true">&#8594;</span></button>
             </form>
 
-            <div class="divider"><span>atau</span></div>
+            <div class="divider"><span>atau daftar dengan</span></div>
+
+            <a href="#" class="btn-google">
+                <span class="google-logo">G</span>
+                Lanjutkan dengan Google
+            </a>
 
             <div class="register-note">
                 Sudah punya akun? <a href="login.php">Masuk</a>
             </div>
 
             <div class="back-home">
-                <a href="../index.php">← Kembali ke beranda</a>
+                <a href="../index.php">&larr; Kembali ke beranda</a>
             </div>
         </div>
     </div>
@@ -121,7 +134,7 @@ if (isset($_POST['register'])) {
             passwordToggle.addEventListener('click', () => {
                 const isPassword = passwordInput.type === 'password';
                 passwordInput.type = isPassword ? 'text' : 'password';
-                passwordToggle.textContent = isPassword ? '🙈' : '👁';
+                passwordToggle.innerHTML = isPassword ? '&#128584;' : '&#128065;';
                 passwordToggle.setAttribute('aria-label', isPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi');
             });
         }
