@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Database;
 
 class PemilikController extends Controller
 {
@@ -53,14 +54,22 @@ class PemilikController extends Controller
     public function jadwal()
     {
         $owner = $this->requireOwner();
+        $selectedStatus = $this->sanitizeScheduleStatus(isset($_GET['status']) ? $_GET['status'] : 'Semua');
+        $selectedDateValue = $this->sanitizeScheduleDate(isset($_GET['date']) ? $_GET['date'] : '2025-06-16');
+        $currentPage = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $scheduleResult = $this->getFilteredSchedule($selectedStatus, $selectedDateValue, $currentPage);
 
         return $this->view('Owner/jadwal', array(
             'title' => 'Jadwal Booking | Arena Sport',
             'activeMenu' => 'jadwal',
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
-            'schedule' => $this->getSchedule(),
-            'selectedDate' => '16 Juni 2025',
+            'statusTabs' => $this->scheduleStatusTabs(),
+            'selectedStatus' => $selectedStatus,
+            'selectedDate' => $this->formatScheduleDate($selectedDateValue),
+            'selectedDateValue' => $selectedDateValue,
+            'schedule' => $scheduleResult['items'],
+            'pagination' => $scheduleResult['pagination'],
         ), 'layouts/owner');
     }
 
@@ -78,6 +87,47 @@ class PemilikController extends Controller
             'revenueSummary' => $this->revenueSummary(),
             'revenueTransactions' => $this->revenueTransactions(),
             'selectedPeriod' => 'Juni 2025',
+        ), 'layouts/owner');
+    }
+
+    public function downloadPendapatan()
+    {
+        $owner = $this->requireOwner();
+        $period = $this->sanitizeOwnerReportPeriod(isset($_GET['periode_laporan']) ? $_GET['periode_laporan'] : '30_hari');
+        $type = $this->sanitizeOwnerReportType(isset($_GET['tipe_laporan']) ? $_GET['tipe_laporan'] : 'pendapatan');
+        $format = $this->sanitizeOwnerReportFormat(isset($_GET['format_laporan']) ? $_GET['format_laporan'] : 'xlsx');
+        $range = $this->resolveOwnerReportRange(
+            $period,
+            isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '',
+            isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : ''
+        );
+        $report = $this->buildOwnerRevenueReport($owner, $type, $range['start'], $range['end']);
+        $filename = 'arena-sport-' . $report['slug'] . '-' . $range['start']->format('Ymd') . '-' . $range['end']->format('Ymd');
+
+        if ($format === 'csv') {
+            $this->sendOwnerCsvReport($report, $filename . '.csv');
+        }
+
+        if ($format === 'pdf') {
+            $this->sendOwnerPdfReport($report, $filename . '.pdf');
+        }
+
+        $this->sendOwnerXlsxReport($report, $filename . '.xlsx');
+    }
+
+    public function transaksi()
+    {
+        $owner = $this->requireOwner();
+
+        return $this->view('Owner/transaksi', array(
+            'title' => 'Lihat Semua Transaksi | Arena Sport',
+            'activeMenu' => 'pendapatan',
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
+            'ownerTopbarSearchPlaceholder' => 'Cari transaksi...',
+            'transactionStats' => $this->ownerTransactionStats(),
+            'transactions' => $this->ownerTransactionRows(),
+            'transactionTotal' => 152,
         ), 'layouts/owner');
     }
 
@@ -100,7 +150,8 @@ class PemilikController extends Controller
     public function profil()
     {
         $owner = $this->requireOwner();
-        $profile = $this->ownerProfile($owner['name']);
+        $profile = $this->ownerProfile($owner);
+        $flash = $this->pullOwnerProfileFlash();
 
         return $this->view('Owner/profil', array(
             'title' => 'Profil | Arena Sport',
@@ -108,7 +159,40 @@ class PemilikController extends Controller
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
             'profile' => $profile,
+            'profileFlash' => $flash,
             'managedFields' => $this->profileManagedFields(),
+        ), 'layouts/owner');
+    }
+
+    public function updateProfil()
+    {
+        $owner = $this->requireOwner();
+        $action = isset($_POST['profile_action']) ? $_POST['profile_action'] : 'update_profile';
+
+        if ($action === 'change_password') {
+            $this->changeOwnerPassword($owner);
+            header('Location: ' . app_url('pemilik/profil'));
+            exit;
+        }
+
+        $this->saveOwnerProfile($owner);
+        header('Location: ' . app_url('pemilik/profil'));
+        exit;
+    }
+
+    public function pengaturan()
+    {
+        $owner = $this->requireOwner();
+        $profile = $this->ownerProfile($owner);
+
+        return $this->view('Owner/pengaturan', array(
+            'title' => 'Pengaturan | Arena Sport',
+            'activeMenu' => 'pengaturan',
+            'userName' => $owner['name'],
+            'userRole' => $owner['role'],
+            'profile' => $profile,
+            'settingsGroups' => $this->ownerSettingsGroups(),
+            'helpItems' => $this->ownerHelpItems(),
         ), 'layouts/owner');
     }
 
@@ -131,7 +215,10 @@ class PemilikController extends Controller
         }
 
         return array(
+            'id' => isset($_SESSION['id_user']) ? $_SESSION['id_user'] : (isset($_SESSION['user_id']) ? $_SESSION['user_id'] : ''),
             'name' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Pemilik Arena'),
+            'email' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : '',
+            'phone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '',
             'role' => $role,
         );
     }
@@ -243,9 +330,57 @@ class PemilikController extends Controller
     protected function getAllLapangan()
     {
         return array(
-            array('id' => '1', 'name' => 'Arena Futsal A', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp80.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.8', 'reviews' => '120', 'visual' => 'futsal'),
-            array('id' => '2', 'name' => 'Arena Badminton 1', 'type' => 'Badminton', 'location' => 'Parepare', 'price' => 'Rp60.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.7', 'reviews' => '85', 'visual' => 'badminton'),
-            array('id' => '3', 'name' => 'Arena Futsal B', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp75.000', 'status' => 'Nonaktif', 'cardStatus' => 'Aktif', 'rating' => '4.5', 'reviews' => '60', 'visual' => 'futsal-alt'),
+            array(
+                'id' => '1',
+                'name' => 'Arena Futsal A',
+                'type' => 'Futsal',
+                'location' => 'Parepare',
+                'price' => 'Rp80.000',
+                'priceNumber' => 80000,
+                'status' => 'Aktif',
+                'cardStatus' => 'Aktif',
+                'rating' => '4.8',
+                'reviews' => '120',
+                'visual' => 'futsal',
+                'description' => 'Arena futsal dengan lapangan berkualitas dan fasilitas lengkap untuk permainan yang nyaman.',
+                'hours' => '06:00 - 23:00 Setiap Hari',
+                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'WiFi', 'Kantin', 'CCTV'),
+                'rules' => array('Dilarang merokok di dalam area arena', 'Gunakan sepatu khusus futsal', 'Jagalah kebersihan dan buang sampah pada tempatnya', 'Kerusakan fasilitas menjadi tanggung jawab penyewa'),
+            ),
+            array(
+                'id' => '2',
+                'name' => 'Arena Badminton 1',
+                'type' => 'Badminton',
+                'location' => 'Parepare',
+                'price' => 'Rp60.000',
+                'priceNumber' => 60000,
+                'status' => 'Aktif',
+                'cardStatus' => 'Aktif',
+                'rating' => '4.7',
+                'reviews' => '85',
+                'visual' => 'badminton',
+                'description' => 'Lapangan badminton indoor dengan lantai nyaman, pencahayaan terang, dan net yang terawat.',
+                'hours' => '07:00 - 22:00 Setiap Hari',
+                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'Kantin', 'Loker', 'CCTV'),
+                'rules' => array('Gunakan sepatu non-marking', 'Tidak membawa makanan ke area lapangan', 'Datang 10 menit sebelum jadwal', 'Jaga perlengkapan arena tetap rapi'),
+            ),
+            array(
+                'id' => '3',
+                'name' => 'Arena Futsal B',
+                'type' => 'Futsal',
+                'location' => 'Parepare',
+                'price' => 'Rp75.000',
+                'priceNumber' => 75000,
+                'status' => 'Nonaktif',
+                'cardStatus' => 'Aktif',
+                'rating' => '4.5',
+                'reviews' => '60',
+                'visual' => 'futsal-alt',
+                'description' => 'Arena futsal alternatif untuk latihan tim, sparing, dan sesi bermain santai.',
+                'hours' => '08:00 - 21:00 Setiap Hari',
+                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'Kantin', 'Ruang Tunggu', 'CCTV'),
+                'rules' => array('Booking mengikuti jadwal yang sudah dipilih', 'Gunakan perlengkapan olahraga yang aman', 'Jaga kebersihan area lapangan', 'Pembatalan mengikuti ketentuan pengelola'),
+            ),
         );
     }
 
@@ -262,14 +397,125 @@ class PemilikController extends Controller
     protected function getSchedule()
     {
         return array(
-            array('tenant' => 'Ahmad', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
-            array('tenant' => 'Rizal', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'time' => '20:00 - 21:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
-            array('tenant' => 'Akbar', 'field' => 'Arena Futsal B', 'date' => '17 Juni 2025', 'time' => '16:00 - 17:00', 'duration' => '1 Jam', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp75.000'),
-            array('tenant' => 'Dewi', 'field' => 'Arena Badminton 1', 'date' => '17 Juni 2025', 'time' => '18:00 - 19:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
-            array('tenant' => 'Fajar', 'field' => 'Arena Futsal A', 'date' => '17 Juni 2025', 'time' => '17:00 - 18:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp80.000'),
-            array('tenant' => 'Rudi', 'field' => 'Arena Futsal A', 'date' => '18 Juni 2025', 'time' => '20:00 - 21:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
-            array('tenant' => 'Sandi', 'field' => 'Arena Badminton 1', 'date' => '18 Juni 2025', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Dibatalkan', 'statusClass' => 'danger', 'total' => 'Rp60.000'),
+            array('tenant' => 'Ahmad', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('tenant' => 'Rizal', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '20:00 - 21:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
+            array('tenant' => 'Nadia', 'field' => 'Arena Futsal B', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '08:00 - 09:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp75.000'),
+            array('tenant' => 'Bima', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '09:00 - 10:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
+            array('tenant' => 'Lina', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '10:00 - 11:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('tenant' => 'Yusuf', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '11:00 - 12:00', 'duration' => '1 Jam', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp60.000'),
+            array('tenant' => 'Maya', 'field' => 'Arena Futsal B', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '12:00 - 13:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp75.000'),
+            array('tenant' => 'Ilham', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '13:00 - 14:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('tenant' => 'Tari', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '14:00 - 15:00', 'duration' => '1 Jam', 'status' => 'Dibatalkan', 'statusClass' => 'danger', 'total' => 'Rp60.000'),
+            array('tenant' => 'Hendra', 'field' => 'Arena Futsal B', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '15:00 - 16:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp75.000'),
+            array('tenant' => 'Putri', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '16:00 - 17:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('tenant' => 'Kirana', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '17:00 - 18:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
+            array('tenant' => 'Akbar', 'field' => 'Arena Futsal B', 'date' => '17 Juni 2025', 'dateValue' => '2025-06-17', 'time' => '16:00 - 17:00', 'duration' => '1 Jam', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp75.000'),
+            array('tenant' => 'Dewi', 'field' => 'Arena Badminton 1', 'date' => '17 Juni 2025', 'dateValue' => '2025-06-17', 'time' => '18:00 - 19:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
+            array('tenant' => 'Fajar', 'field' => 'Arena Futsal A', 'date' => '17 Juni 2025', 'dateValue' => '2025-06-17', 'time' => '17:00 - 18:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp80.000'),
+            array('tenant' => 'Rudi', 'field' => 'Arena Futsal A', 'date' => '18 Juni 2025', 'dateValue' => '2025-06-18', 'time' => '20:00 - 21:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
+            array('tenant' => 'Sandi', 'field' => 'Arena Badminton 1', 'date' => '18 Juni 2025', 'dateValue' => '2025-06-18', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Dibatalkan', 'statusClass' => 'danger', 'total' => 'Rp60.000'),
         );
+    }
+
+    protected function getFilteredSchedule($selectedStatus, $selectedDateValue, $page)
+    {
+        $filtered = array();
+
+        foreach ($this->getSchedule() as $booking) {
+            $matchesStatus = $selectedStatus === 'Semua' || $booking['status'] === $selectedStatus;
+            $matchesDate = $booking['dateValue'] === $selectedDateValue;
+
+            if ($matchesStatus && $matchesDate) {
+                $filtered[] = $booking;
+            }
+        }
+
+        return $this->paginateSchedule($filtered, $page, 7);
+    }
+
+    protected function paginateSchedule(array $schedule, $page, $perPage)
+    {
+        $total = count($schedule);
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        $currentPage = max(1, min($totalPages, (int) $page));
+        $offset = ($currentPage - 1) * $perPage;
+        $items = array_slice($schedule, $offset, $perPage);
+        $firstItem = $total > 0 ? $offset + 1 : 0;
+        $lastItem = $total > 0 ? $offset + count($items) : 0;
+
+        return array(
+            'items' => $items,
+            'pagination' => array(
+                'currentPage' => $currentPage,
+                'totalPages' => $totalPages,
+                'total' => $total,
+                'firstItem' => $firstItem,
+                'lastItem' => $lastItem,
+                'perPage' => $perPage,
+            ),
+        );
+    }
+
+    protected function sanitizeScheduleStatus($status)
+    {
+        $normalizedStatus = $this->normalizeScheduleFilter($status);
+
+        foreach ($this->scheduleStatusTabs() as $allowedStatus) {
+            if ($this->normalizeScheduleFilter($allowedStatus) === $normalizedStatus) {
+                return $allowedStatus;
+            }
+        }
+
+        return 'Semua';
+    }
+
+    protected function sanitizeScheduleDate($date)
+    {
+        $date = trim((string) $date);
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return $date;
+        }
+
+        return '2025-06-16';
+    }
+
+    protected function normalizeScheduleFilter($value)
+    {
+        return strtolower(trim((string) $value));
+    }
+
+    protected function scheduleStatusTabs()
+    {
+        return array('Semua', 'Aktif', 'Pending', 'Selesai', 'Dibatalkan');
+    }
+
+    protected function formatScheduleDate($date)
+    {
+        $parts = explode('-', $date);
+        $months = array(
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        );
+
+        if (count($parts) !== 3) {
+            return '16 Juni 2025';
+        }
+
+        $monthNumber = (int) $parts[1];
+        $monthName = isset($months[$monthNumber]) ? $months[$monthNumber] : 'Juni';
+
+        return (int) $parts[2] . ' ' . $monthName . ' ' . $parts[0];
     }
 
     protected function revenueStats()
@@ -332,6 +578,561 @@ class PemilikController extends Controller
         );
     }
 
+    protected function sanitizeOwnerReportPeriod($period)
+    {
+        $period = strtolower(trim((string) $period));
+        $allowed = array('hari_ini', 'kemarin', '7_hari', '30_hari', 'bulan_ini', 'kustom');
+
+        return in_array($period, $allowed, true) ? $period : '30_hari';
+    }
+
+    protected function sanitizeOwnerReportType($type)
+    {
+        $type = strtolower(trim((string) $type));
+        $allowed = array('pendapatan', 'transaksi', 'potongan');
+
+        return in_array($type, $allowed, true) ? $type : 'pendapatan';
+    }
+
+    protected function sanitizeOwnerReportFormat($format)
+    {
+        $format = strtolower(trim((string) $format));
+        $allowed = array('xlsx', 'pdf', 'csv');
+
+        return in_array($format, $allowed, true) ? $format : 'xlsx';
+    }
+
+    protected function resolveOwnerReportRange($period, $startInput, $endInput)
+    {
+        $baseDate = new \DateTimeImmutable('2025-06-30');
+        $start = $baseDate->modify('first day of this month');
+        $end = $baseDate;
+
+        if ($period === 'hari_ini') {
+            $start = $baseDate;
+            $end = $baseDate;
+        } elseif ($period === 'kemarin') {
+            $start = $baseDate->modify('-1 day');
+            $end = $start;
+        } elseif ($period === '7_hari') {
+            $start = $baseDate->modify('-6 days');
+            $end = $baseDate;
+        } elseif ($period === '30_hari') {
+            $start = $baseDate->modify('-29 days');
+            $end = $baseDate;
+        } elseif ($period === 'bulan_ini') {
+            $start = $baseDate->modify('first day of this month');
+            $end = $baseDate->modify('last day of this month');
+        } elseif ($period === 'kustom') {
+            $start = $this->parseOwnerReportDate($startInput);
+            $end = $this->parseOwnerReportDate($endInput);
+
+            if (!$start) {
+                $start = $baseDate->modify('first day of this month');
+            }
+
+            if (!$end) {
+                $end = $baseDate->modify('last day of this month');
+            }
+        }
+
+        if ($start > $end) {
+            $swap = $start;
+            $start = $end;
+            $end = $swap;
+        }
+
+        return array('start' => $start, 'end' => $end);
+    }
+
+    protected function buildOwnerRevenueReport(array $owner, $type, \DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        $titleMap = array(
+            'pendapatan' => 'Laporan Pendapatan',
+            'transaksi' => 'Laporan Transaksi',
+            'potongan' => 'Laporan Potongan Platform',
+        );
+        $slugMap = array(
+            'pendapatan' => 'laporan-pendapatan',
+            'transaksi' => 'laporan-transaksi',
+            'potongan' => 'laporan-potongan-platform',
+        );
+        $headersMap = array(
+            'pendapatan' => array('Tanggal', 'Lapangan', 'Nama Penyewa', 'Total', 'Potongan Platform', 'Pendapatan Bersih', 'Status'),
+            'transaksi' => array('Tanggal', 'Nama Penyewa', 'Lapangan', 'Metode Pembayaran', 'Total', 'Status'),
+            'potongan' => array('Tanggal', 'Lapangan', 'Total Transaksi', 'Potongan Platform', 'Pendapatan Bersih'),
+        );
+        $transactions = $this->filterOwnerRevenueTransactions($start, $end);
+        $rows = array();
+        $totalGross = 0;
+        $totalFee = 0;
+        $totalNet = 0;
+
+        foreach ($transactions as $transaction) {
+            $totalGross += $this->ownerRupiahToInt($transaction['total']);
+            $totalFee += $this->ownerRupiahToInt($transaction['fee']);
+            $totalNet += $this->ownerRupiahToInt($transaction['net']);
+
+            if ($type === 'transaksi') {
+                $rows[] = array(
+                    $transaction['date'],
+                    $transaction['tenant'],
+                    $transaction['field'],
+                    $transaction['method'],
+                    $transaction['total'],
+                    $transaction['status'],
+                );
+                continue;
+            }
+
+            if ($type === 'potongan') {
+                $rows[] = array(
+                    $transaction['date'],
+                    $transaction['field'],
+                    $transaction['total'],
+                    $transaction['fee'],
+                    $transaction['net'],
+                );
+                continue;
+            }
+
+            $rows[] = array(
+                $transaction['date'],
+                $transaction['field'],
+                $transaction['tenant'],
+                $transaction['total'],
+                $transaction['fee'],
+                $transaction['net'],
+                $transaction['status'],
+            );
+        }
+
+        if (empty($rows)) {
+            $rows[] = array('Tidak ada data pada periode ini');
+        }
+
+        return array(
+            'title' => $titleMap[$type],
+            'slug' => $slugMap[$type],
+            'ownerName' => isset($owner['name']) ? $owner['name'] : 'Pemilik Arena',
+            'period' => $this->formatOwnerReportPeriod($start, $end),
+            'generatedAt' => date('d/m/Y H:i'),
+            'headers' => $headersMap[$type],
+            'rows' => $rows,
+            'summary' => array(
+                array('Total Transaksi', (string) count($transactions)),
+                array('Pendapatan Kotor', $this->formatOwnerRupiah($totalGross)),
+                array('Potongan Platform', $this->formatOwnerRupiah($totalFee)),
+                array('Pendapatan Bersih', $this->formatOwnerRupiah($totalNet)),
+            ),
+        );
+    }
+
+    protected function filterOwnerRevenueTransactions(\DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        $filtered = array();
+
+        foreach ($this->revenueTransactions() as $transaction) {
+            $date = $this->parseOwnerReportDate($transaction['date']);
+
+            if ($date && $date >= $start && $date <= $end) {
+                $filtered[] = $transaction;
+            }
+        }
+
+        return $filtered;
+    }
+
+    protected function parseOwnerReportDate($date)
+    {
+        $date = trim((string) $date);
+
+        if ($date === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new \DateTimeImmutable($date);
+        }
+
+        $months = array(
+            'jan' => 1,
+            'januari' => 1,
+            'feb' => 2,
+            'februari' => 2,
+            'mar' => 3,
+            'maret' => 3,
+            'apr' => 4,
+            'april' => 4,
+            'mei' => 5,
+            'may' => 5,
+            'jun' => 6,
+            'juni' => 6,
+            'jul' => 7,
+            'juli' => 7,
+            'agu' => 8,
+            'agus' => 8,
+            'agustus' => 8,
+            'aug' => 8,
+            'sep' => 9,
+            'september' => 9,
+            'okt' => 10,
+            'oktober' => 10,
+            'oct' => 10,
+            'nov' => 11,
+            'november' => 11,
+            'des' => 12,
+            'desember' => 12,
+            'dec' => 12,
+        );
+        $normalized = strtolower(preg_replace('/\s+/', ' ', str_replace(array(',', '.'), ' ', $date)));
+
+        if (!preg_match('/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/', $normalized, $matches)) {
+            return null;
+        }
+
+        $monthName = $matches[2];
+
+        if (!isset($months[$monthName])) {
+            return null;
+        }
+
+        return new \DateTimeImmutable(sprintf('%04d-%02d-%02d', (int) $matches[3], $months[$monthName], (int) $matches[1]));
+    }
+
+    protected function formatOwnerReportPeriod(\DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        if ($start->format('Y-m-d') === $end->format('Y-m-d')) {
+            return $this->formatOwnerReportDate($start);
+        }
+
+        return $this->formatOwnerReportDate($start) . ' - ' . $this->formatOwnerReportDate($end);
+    }
+
+    protected function formatOwnerReportDate(\DateTimeImmutable $date)
+    {
+        $months = array(
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        );
+        $monthNumber = (int) $date->format('n');
+
+        return (int) $date->format('j') . ' ' . $months[$monthNumber] . ' ' . $date->format('Y');
+    }
+
+    protected function ownerRupiahToInt($value)
+    {
+        return (int) preg_replace('/[^0-9]/', '', (string) $value);
+    }
+
+    protected function formatOwnerRupiah($amount)
+    {
+        return 'Rp' . number_format((int) $amount, 0, ',', '.');
+    }
+
+    protected function ownerReportSpreadsheetRows(array $report)
+    {
+        $rows = array(
+            array($report['title']),
+            array('Pemilik', $report['ownerName']),
+            array('Periode', $report['period']),
+            array('Dibuat', $report['generatedAt']),
+            array(''),
+            $report['headers'],
+        );
+
+        foreach ($report['rows'] as $row) {
+            $rows[] = $row;
+        }
+
+        $rows[] = array('');
+        $rows[] = array('Ringkasan');
+
+        foreach ($report['summary'] as $item) {
+            $rows[] = $item;
+        }
+
+        return $rows;
+    }
+
+    protected function sendOwnerCsvReport(array $report, $filename)
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, "\xEF\xBB\xBF");
+
+        foreach ($this->ownerReportSpreadsheetRows($report) as $row) {
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $content = stream_get_contents($handle);
+        fclose($handle);
+
+        $this->clearOwnerReportOutputBuffer();
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $this->sanitizeOwnerReportFilename($filename) . '"');
+        header('Content-Length: ' . strlen($content));
+        echo $content;
+        exit;
+    }
+
+    protected function sendOwnerXlsxReport(array $report, $filename)
+    {
+        if (!class_exists('\ZipArchive')) {
+            $this->sendOwnerCsvReport($report, preg_replace('/\.xlsx$/', '.csv', $filename));
+        }
+
+        $tempFile = tempnam(sys_get_temp_dir(), 'arena-report-');
+        $zip = new \ZipArchive();
+        $zip->open($tempFile, \ZipArchive::OVERWRITE);
+        $zip->addFromString('[Content_Types].xml', $this->ownerXlsxContentTypesXml());
+        $zip->addFromString('_rels/.rels', $this->ownerXlsxRootRelsXml());
+        $zip->addFromString('xl/workbook.xml', $this->ownerXlsxWorkbookXml());
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $this->ownerXlsxWorkbookRelsXml());
+        $zip->addFromString('xl/styles.xml', $this->ownerXlsxStylesXml());
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->ownerXlsxSheetXml($this->ownerReportSpreadsheetRows($report)));
+        $zip->close();
+
+        $this->clearOwnerReportOutputBuffer();
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="' . $this->sanitizeOwnerReportFilename($filename) . '"');
+        header('Content-Length: ' . filesize($tempFile));
+        readfile($tempFile);
+        unlink($tempFile);
+        exit;
+    }
+
+    protected function sendOwnerPdfReport(array $report, $filename)
+    {
+        $lines = array(
+            $report['title'],
+            'Pemilik: ' . $report['ownerName'],
+            'Periode: ' . $report['period'],
+            'Dibuat: ' . $report['generatedAt'],
+            '',
+            implode(' | ', $report['headers']),
+        );
+
+        foreach ($report['rows'] as $row) {
+            $lines[] = implode(' | ', $row);
+        }
+
+        $lines[] = '';
+        $lines[] = 'Ringkasan';
+
+        foreach ($report['summary'] as $item) {
+            $lines[] = $item[0] . ': ' . $item[1];
+        }
+
+        $content = $this->ownerBuildSimplePdf($lines);
+        $this->clearOwnerReportOutputBuffer();
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $this->sanitizeOwnerReportFilename($filename) . '"');
+        header('Content-Length: ' . strlen($content));
+        echo $content;
+        exit;
+    }
+
+    protected function ownerXlsxContentTypesXml()
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            . '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            . '<Default Extension="xml" ContentType="application/xml"/>'
+            . '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            . '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            . '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            . '</Types>';
+    }
+
+    protected function ownerXlsxRootRelsXml()
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            . '</Relationships>';
+    }
+
+    protected function ownerXlsxWorkbookXml()
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            . '<sheets><sheet name="Laporan" sheetId="1" r:id="rId1"/></sheets>'
+            . '</workbook>';
+    }
+
+    protected function ownerXlsxWorkbookRelsXml()
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            . '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            . '</Relationships>';
+    }
+
+    protected function ownerXlsxStylesXml()
+    {
+        return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+            . '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+            . '<borders count="1"><border/></borders>'
+            . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            . '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+            . '</styleSheet>';
+    }
+
+    protected function ownerXlsxSheetXml(array $rows)
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetData>';
+
+        foreach ($rows as $rowIndex => $row) {
+            $rowNumber = $rowIndex + 1;
+            $xml .= '<row r="' . $rowNumber . '">';
+
+            foreach ($row as $columnIndex => $value) {
+                $cell = $this->ownerXlsxColumnName($columnIndex + 1) . $rowNumber;
+                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>'
+                    . htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8')
+                    . '</t></is></c>';
+            }
+
+            $xml .= '</row>';
+        }
+
+        return $xml . '</sheetData></worksheet>';
+    }
+
+    protected function ownerXlsxColumnName($number)
+    {
+        $name = '';
+
+        while ($number > 0) {
+            $number--;
+            $name = chr(65 + ($number % 26)) . $name;
+            $number = (int) floor($number / 26);
+        }
+
+        return $name;
+    }
+
+    protected function ownerBuildSimplePdf(array $lines)
+    {
+        $commands = array();
+        $y = 552;
+
+        foreach ($lines as $index => $line) {
+            if ($y < 38) {
+                break;
+            }
+
+            $fontSize = $index === 0 ? 16 : 9;
+            $commands[] = 'BT /F1 ' . $fontSize . ' Tf 40 ' . $y . ' Td (' . $this->ownerPdfEscape($this->ownerPdfText($line)) . ') Tj ET';
+            $y -= $index === 0 ? 24 : 17;
+        }
+
+        $stream = implode("\n", $commands);
+        $objects = array(
+            '<< /Type /Catalog /Pages 2 0 R >>',
+            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+            "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream",
+        );
+        $pdf = "%PDF-1.4\n";
+        $offsets = array(0);
+
+        foreach ($objects as $index => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($index + 1) . " 0 obj\n" . $object . "\nendobj\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        for ($index = 1; $index < count($offsets); $index++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$index]);
+        }
+
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefOffset . "\n%%EOF";
+
+        return $pdf;
+    }
+
+    protected function ownerPdfText($text)
+    {
+        $text = (string) $text;
+        $converted = function_exists('iconv') ? @iconv('UTF-8', 'Windows-1252//TRANSLIT', $text) : false;
+
+        if ($converted !== false) {
+            $text = $converted;
+        }
+
+        $text = preg_replace('/[^\x20-\x7E]/', '', $text);
+
+        return strlen($text) > 132 ? substr($text, 0, 129) . '...' : $text;
+    }
+
+    protected function ownerPdfEscape($text)
+    {
+        return str_replace(array('\\', '(', ')'), array('\\\\', '\\(', '\\)'), $text);
+    }
+
+    protected function sanitizeOwnerReportFilename($filename)
+    {
+        $filename = preg_replace('/[^A-Za-z0-9._-]/', '-', (string) $filename);
+
+        return trim($filename, '-') !== '' ? $filename : 'laporan-arena-sport';
+    }
+
+    protected function clearOwnerReportOutputBuffer()
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+    }
+
+    protected function ownerTransactionStats()
+    {
+        return array(
+            array('label' => 'Total Transaksi', 'value' => '152', 'note' => 'Transaksi', 'icon' => 'fa-money-check-dollar', 'accent' => 'lime'),
+            array('label' => 'Total Pendapatan', 'value' => 'Rp 12.350.000', 'note' => 'Dari semua transaksi', 'icon' => 'fa-sack-dollar', 'accent' => 'blue'),
+            array('label' => 'Menunggu Pembayaran', 'value' => '8', 'note' => 'Transaksi', 'icon' => 'fa-clock', 'accent' => 'gold'),
+            array('label' => 'Transaksi Selesai', 'value' => '141', 'note' => 'Transaksi', 'icon' => 'fa-check', 'accent' => 'green'),
+            array('label' => 'Transaksi Dibatalkan', 'value' => '3', 'note' => 'Transaksi', 'icon' => 'fa-xmark', 'accent' => 'red'),
+        );
+    }
+
+    protected function ownerTransactionRows()
+    {
+        return array(
+            array('orderId' => 'ORD-240531-001', 'date' => '31 Mei 2024', 'time' => '21:15 WIB', 'customer' => 'Budi Santoso', 'phone' => '0812-3456-7890', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240531-002', 'date' => '31 Mei 2024', 'time' => '19:48 WIB', 'customer' => 'Rizky Maulana', 'phone' => '0821-1111-2222', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '20:00 - 21:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240531-003', 'date' => '31 Mei 2024', 'time' => '18:30 WIB', 'customer' => 'Ahmad Fauzi', 'phone' => '0813-2222-3333', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '19:00 - 20:00', 'method' => 'OVO', 'methodClass' => 'ovo', 'methodIcon' => 'fa-circle-dot', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240530-025', 'date' => '30 Mei 2024', 'time' => '22:10 WIB', 'customer' => 'Deni Kurniawan', 'phone' => '0857-7777-8888', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'Transfer Bank', 'methodClass' => 'bank', 'methodIcon' => 'fa-building-columns', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240530-024', 'date' => '30 Mei 2024', 'time' => '20:05 WIB', 'customer' => 'Joko Prasetyo', 'phone' => '0812-9999-0000', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '21:00 - 22:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Menunggu', 'statusClass' => 'warning'),
+            array('orderId' => 'ORD-240530-023', 'date' => '30 Mei 2024', 'time' => '17:50 WIB', 'customer' => 'M. Iqbal', 'phone' => '0823-1234-5678', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '18:00 - 19:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240529-018', 'date' => '29 Mei 2024', 'time' => '21:33 WIB', 'customer' => 'Andi Setiawan', 'phone' => '0811-2222-3333', 'field' => 'Arena Futsal A', 'bookingDate' => '29 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'OVO', 'methodClass' => 'ovo', 'methodIcon' => 'fa-circle-dot', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240529-017', 'date' => '29 Mei 2024', 'time' => '20:12 WIB', 'customer' => 'Farhan Ramadhan', 'phone' => '0856-4444-5555', 'field' => 'Arena Futsal A', 'bookingDate' => '29 Mei 2024', 'bookingTime' => '20:00 - 21:00', 'method' => 'Transfer Bank', 'methodClass' => 'bank', 'methodIcon' => 'fa-building-columns', 'total' => 'Rp 80.000', 'status' => 'Dibatalkan', 'statusClass' => 'danger'),
+            array('orderId' => 'ORD-240528-015', 'date' => '28 Mei 2024', 'time' => '19:18 WIB', 'customer' => 'Rama Saputra', 'phone' => '0821-3333-4444', 'field' => 'Arena Futsal A', 'bookingDate' => '28 Mei 2024', 'bookingTime' => '19:00 - 20:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+            array('orderId' => 'ORD-240528-014', 'date' => '28 Mei 2024', 'time' => '16:45 WIB', 'customer' => 'Kevin Putra', 'phone' => '0812-1234-0000', 'field' => 'Arena Futsal A', 'bookingDate' => '28 Mei 2024', 'bookingTime' => '17:00 - 18:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+        );
+    }
+
     protected function ownerReviewStats()
     {
         return array(
@@ -373,20 +1174,527 @@ class PemilikController extends Controller
         );
     }
 
-    protected function ownerProfile($name)
+    protected function ownerProfile(array $owner)
     {
-        $displayName = trim((string) $name) !== '' ? $name : 'Rahmat';
+        $account = $this->findOwnerAccount(isset($owner['id']) ? $owner['id'] : '');
+        $extras = $this->readOwnerProfileExtras(isset($owner['id']) ? $owner['id'] : '');
+        $displayName = isset($owner['name']) && trim((string) $owner['name']) !== '' ? $owner['name'] : 'Rahmat';
+        $email = isset($owner['email']) && trim((string) $owner['email']) !== '' ? $owner['email'] : 'rahmat@email.com';
+        $phone = isset($owner['phone']) && trim((string) $owner['phone']) !== '' ? $owner['phone'] : '0812-3456-7890';
+
+        if ($account) {
+            $displayName = isset($account['name']) && trim((string) $account['name']) !== '' ? $account['name'] : $displayName;
+            $email = isset($account['email']) && trim((string) $account['email']) !== '' ? $account['email'] : $email;
+            $phone = isset($account['phone']) && trim((string) $account['phone']) !== '' ? $account['phone'] : $phone;
+        }
+
+        if (!empty($extras['name'])) {
+            $displayName = $extras['name'];
+        }
+
+        if (!empty($extras['email'])) {
+            $email = $extras['email'];
+        }
+
+        if (!empty($extras['phone'])) {
+            $phone = $extras['phone'];
+        }
+
+        $avatar = isset($extras['avatar']) && trim((string) $extras['avatar']) !== ''
+            ? $extras['avatar']
+            : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=320&auto=format&fit=crop';
 
         return array(
             'name' => $displayName,
-            'email' => 'rahmat@email.com',
-            'phone' => '0812-3456-7890',
-            'location' => 'Parepare, Sulawesi Selatan',
-            'bio' => 'Pemilik beberapa lapangan olahraga di Parepare. Berkomitmen memberikan fasilitas terbaik untuk pelanggan.',
+            'email' => $email,
+            'phone' => $phone,
+            'location' => isset($extras['location']) && trim((string) $extras['location']) !== '' ? $extras['location'] : 'Parepare, Sulawesi Selatan',
+            'bio' => isset($extras['bio']) && trim((string) $extras['bio']) !== '' ? $extras['bio'] : 'Pemilik beberapa lapangan olahraga di Parepare. Berkomitmen memberikan fasilitas terbaik untuk pelanggan.',
             'joined' => '12 Maret 2024',
             'totalFields' => '3 Lapangan',
             'lastLogin' => '16 Juni 2025, 21:15',
-            'avatar' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=320&auto=format&fit=crop',
+            'avatar' => $this->profileAvatarUrl($avatar),
+        );
+    }
+
+    protected function saveOwnerProfile(array $owner)
+    {
+        $ownerId = isset($owner['id']) ? trim((string) $owner['id']) : '';
+        $name = $this->cleanProfileValue(isset($_POST['name']) ? $_POST['name'] : '', 120);
+        $email = $this->cleanProfileValue(isset($_POST['email']) ? $_POST['email'] : '', 160);
+        $phone = $this->cleanProfileValue(isset($_POST['phone']) ? $_POST['phone'] : '', 30);
+        $location = $this->cleanProfileValue(isset($_POST['location']) ? $_POST['location'] : '', 180);
+        $bio = $this->cleanProfileTextarea(isset($_POST['bio']) ? $_POST['bio'] : '', 700);
+
+        if ($name === '' || $email === '') {
+            $this->setOwnerProfileFlash('error', 'Nama lengkap dan email wajib diisi.');
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->setOwnerProfileFlash('error', 'Format email belum valid.');
+            return;
+        }
+
+        if ($this->ownerEmailConflicts($ownerId, $email)) {
+            $this->setOwnerProfileFlash('error', 'Email sudah digunakan akun lain.');
+            return;
+        }
+
+        $extras = $this->readOwnerProfileExtras($ownerId);
+        $avatar = isset($extras['avatar']) ? $extras['avatar'] : '';
+        $uploadResult = $this->storeOwnerProfilePhoto($ownerId);
+
+        if (!$uploadResult['ok']) {
+            $this->setOwnerProfileFlash('error', $uploadResult['message']);
+            return;
+        }
+
+        if ($uploadResult['path'] !== '') {
+            $avatar = $uploadResult['path'];
+        }
+
+        $extras = array_merge($extras, array(
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'location' => $location,
+            'bio' => $bio,
+            'avatar' => $avatar,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ));
+
+        $profileSaved = $this->writeOwnerProfileExtras($ownerId, $extras);
+        $databaseSaved = $this->updateOwnerAccount($ownerId, $name, $email, $phone);
+
+        $_SESSION['nama_user'] = $name;
+        $_SESSION['nama'] = $name;
+        $_SESSION['email_user'] = $email;
+        $_SESSION['telepon_user'] = $phone;
+
+        if ($profileSaved && $databaseSaved) {
+            $this->setOwnerProfileFlash('success', 'Profil berhasil disimpan. Data akun juga tersimpan ke database.');
+            return;
+        }
+
+        if ($profileSaved) {
+            $this->setOwnerProfileFlash('success', 'Profil berhasil disimpan. Data tambahan tersimpan lokal; database belum bisa diperbarui.');
+            return;
+        }
+
+        $this->setOwnerProfileFlash('error', 'Profil belum bisa disimpan. Coba lagi beberapa saat lagi.');
+    }
+
+    protected function changeOwnerPassword(array $owner)
+    {
+        $ownerId = isset($owner['id']) ? trim((string) $owner['id']) : '';
+        $currentPassword = isset($_POST['current_password']) ? (string) $_POST['current_password'] : '';
+        $newPassword = isset($_POST['new_password']) ? (string) $_POST['new_password'] : '';
+        $confirmPassword = isset($_POST['confirm_password']) ? (string) $_POST['confirm_password'] : '';
+
+        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+            $this->setOwnerProfileFlash('error', 'Semua kolom password wajib diisi.');
+            return;
+        }
+
+        if (strlen($newPassword) < 6) {
+            $this->setOwnerProfileFlash('error', 'Password baru minimal 6 karakter.');
+            return;
+        }
+
+        if ($newPassword !== $confirmPassword) {
+            $this->setOwnerProfileFlash('error', 'Konfirmasi password baru belum sama.');
+            return;
+        }
+
+        $account = $this->findOwnerAccount($ownerId, true);
+
+        if (!$account || empty($account['password'])) {
+            $this->setOwnerProfileFlash('error', 'Data akun belum bisa dibaca dari database.');
+            return;
+        }
+
+        $storedPassword = (string) $account['password'];
+
+        if (!password_verify($currentPassword, $storedPassword) && !hash_equals($storedPassword, $currentPassword)) {
+            $this->setOwnerProfileFlash('error', 'Password lama tidak sesuai.');
+            return;
+        }
+
+        if ($this->updateOwnerPassword($ownerId, password_hash($newPassword, PASSWORD_DEFAULT))) {
+            $this->setOwnerProfileFlash('success', 'Password berhasil diperbarui.');
+            return;
+        }
+
+        $this->setOwnerProfileFlash('error', 'Password belum bisa diperbarui di database.');
+    }
+
+    protected function findOwnerAccount($ownerId, $withPassword = false)
+    {
+        $ownerId = trim((string) $ownerId);
+
+        if ($ownerId === '') {
+            return null;
+        }
+
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return null;
+        }
+
+        $table = $this->ownerUserTable($connection);
+        $columns = $this->tableColumns($connection, $table);
+        $idColumn = in_array('ID_User', $columns, true) ? 'ID_User' : (in_array('id', $columns, true) ? 'id' : '');
+
+        if ($idColumn === '') {
+            return null;
+        }
+
+        $statement = mysqli_prepare($connection, 'SELECT * FROM `' . $table . '` WHERE `' . $idColumn . '` = ? LIMIT 1');
+
+        if (!$statement) {
+            return null;
+        }
+
+        mysqli_stmt_bind_param($statement, 's', $ownerId);
+        mysqli_stmt_execute($statement);
+
+        $result = mysqli_stmt_get_result($statement);
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+        mysqli_stmt_close($statement);
+
+        if (!$row) {
+            return null;
+        }
+
+        $account = array(
+            'name' => isset($row['Nama']) ? $row['Nama'] : (isset($row['name']) ? $row['name'] : ''),
+            'email' => isset($row['Email']) ? $row['Email'] : (isset($row['email']) ? $row['email'] : ''),
+            'phone' => isset($row['Nomor_telepon']) ? $row['Nomor_telepon'] : (isset($row['phone']) ? $row['phone'] : ''),
+        );
+
+        if ($withPassword) {
+            $account['password'] = isset($row['Password']) ? $row['Password'] : (isset($row['password']) ? $row['password'] : '');
+        }
+
+        return $account;
+    }
+
+    protected function updateOwnerAccount($ownerId, $name, $email, $phone)
+    {
+        $ownerId = trim((string) $ownerId);
+
+        if ($ownerId === '') {
+            return false;
+        }
+
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return false;
+        }
+
+        $table = $this->ownerUserTable($connection);
+        $columns = $this->tableColumns($connection, $table);
+        $idColumn = in_array('ID_User', $columns, true) ? 'ID_User' : (in_array('id', $columns, true) ? 'id' : '');
+        $nameColumn = in_array('Nama', $columns, true) ? 'Nama' : (in_array('name', $columns, true) ? 'name' : '');
+        $emailColumn = in_array('Email', $columns, true) ? 'Email' : (in_array('email', $columns, true) ? 'email' : '');
+        $phoneColumn = in_array('Nomor_telepon', $columns, true) ? 'Nomor_telepon' : (in_array('phone', $columns, true) ? 'phone' : '');
+
+        if ($idColumn === '' || $nameColumn === '' || $emailColumn === '') {
+            return false;
+        }
+
+        if ($phoneColumn !== '') {
+            $sql = 'UPDATE `' . $table . '` SET `' . $nameColumn . '` = ?, `' . $emailColumn . '` = ?, `' . $phoneColumn . '` = ? WHERE `' . $idColumn . '` = ?';
+            $statement = mysqli_prepare($connection, $sql);
+
+            if (!$statement) {
+                return false;
+            }
+
+            mysqli_stmt_bind_param($statement, 'ssss', $name, $email, $phone, $ownerId);
+        } else {
+            $sql = 'UPDATE `' . $table . '` SET `' . $nameColumn . '` = ?, `' . $emailColumn . '` = ? WHERE `' . $idColumn . '` = ?';
+            $statement = mysqli_prepare($connection, $sql);
+
+            if (!$statement) {
+                return false;
+            }
+
+            mysqli_stmt_bind_param($statement, 'sss', $name, $email, $ownerId);
+        }
+
+        $saved = mysqli_stmt_execute($statement);
+        mysqli_stmt_close($statement);
+
+        return $saved;
+    }
+
+    protected function updateOwnerPassword($ownerId, $hashedPassword)
+    {
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return false;
+        }
+
+        $table = $this->ownerUserTable($connection);
+        $columns = $this->tableColumns($connection, $table);
+        $idColumn = in_array('ID_User', $columns, true) ? 'ID_User' : (in_array('id', $columns, true) ? 'id' : '');
+        $passwordColumn = in_array('Password', $columns, true) ? 'Password' : (in_array('password', $columns, true) ? 'password' : '');
+
+        if ($idColumn === '' || $passwordColumn === '') {
+            return false;
+        }
+
+        $statement = mysqli_prepare($connection, 'UPDATE `' . $table . '` SET `' . $passwordColumn . '` = ? WHERE `' . $idColumn . '` = ?');
+
+        if (!$statement) {
+            return false;
+        }
+
+        mysqli_stmt_bind_param($statement, 'ss', $hashedPassword, $ownerId);
+        $saved = mysqli_stmt_execute($statement);
+        mysqli_stmt_close($statement);
+
+        return $saved;
+    }
+
+    protected function emailIsUsedByAnotherOwner($connection, $table, $idColumn, $emailColumn, $ownerId, $email)
+    {
+        $statement = mysqli_prepare($connection, 'SELECT `' . $idColumn . '` FROM `' . $table . '` WHERE `' . $emailColumn . '` = ? AND `' . $idColumn . '` <> ? LIMIT 1');
+
+        if (!$statement) {
+            return false;
+        }
+
+        mysqli_stmt_bind_param($statement, 'ss', $email, $ownerId);
+        mysqli_stmt_execute($statement);
+
+        $result = mysqli_stmt_get_result($statement);
+        $exists = $result && mysqli_fetch_assoc($result);
+        mysqli_stmt_close($statement);
+
+        return (bool) $exists;
+    }
+
+    protected function ownerEmailConflicts($ownerId, $email)
+    {
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return false;
+        }
+
+        $table = $this->ownerUserTable($connection);
+        $columns = $this->tableColumns($connection, $table);
+        $idColumn = in_array('ID_User', $columns, true) ? 'ID_User' : (in_array('id', $columns, true) ? 'id' : '');
+        $emailColumn = in_array('Email', $columns, true) ? 'Email' : (in_array('email', $columns, true) ? 'email' : '');
+
+        if ($idColumn === '' || $emailColumn === '') {
+            return false;
+        }
+
+        return $this->emailIsUsedByAnotherOwner($connection, $table, $idColumn, $emailColumn, $ownerId, $email);
+    }
+
+    protected function ownerUserTable($connection)
+    {
+        $result = mysqli_query($connection, "SHOW TABLES LIKE 'users'");
+
+        return $result && mysqli_num_rows($result) > 0 ? 'users' : 'user';
+    }
+
+    protected function tableColumns($connection, $table)
+    {
+        $columns = array();
+        $result = mysqli_query($connection, 'SHOW COLUMNS FROM `' . $table . '`');
+
+        if (!$result) {
+            return $columns;
+        }
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $columns[] = $row['Field'];
+        }
+
+        return $columns;
+    }
+
+    protected function storeOwnerProfilePhoto($ownerId)
+    {
+        if (empty($_FILES['avatar']) || !isset($_FILES['avatar']['error']) || $_FILES['avatar']['error'] === UPLOAD_ERR_NO_FILE) {
+            return array('ok' => true, 'path' => '', 'message' => '');
+        }
+
+        if ($_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+            return array('ok' => false, 'path' => '', 'message' => 'Foto profil gagal diupload.');
+        }
+
+        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
+            return array('ok' => false, 'path' => '', 'message' => 'Ukuran foto maksimal 2MB.');
+        }
+
+        $imageInfo = @getimagesize($_FILES['avatar']['tmp_name']);
+        $allowedTypes = array(
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+        );
+
+        if (!$imageInfo || !isset($allowedTypes[$imageInfo[2]])) {
+            return array('ok' => false, 'path' => '', 'message' => 'Format foto harus PNG atau JPG.');
+        }
+
+        $directory = __DIR__ . '/../../storage/uploads/profiles';
+
+        if (!is_dir($directory) && !mkdir($directory, 0775, true)) {
+            return array('ok' => false, 'path' => '', 'message' => 'Folder upload profil belum bisa dibuat.');
+        }
+
+        $safeOwnerId = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $ownerId);
+        $safeOwnerId = $safeOwnerId !== '' ? $safeOwnerId : 'owner';
+        $filename = 'owner_' . $safeOwnerId . '_' . time() . '.' . $allowedTypes[$imageInfo[2]];
+        $target = $directory . '/' . $filename;
+
+        if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $target)) {
+            return array('ok' => false, 'path' => '', 'message' => 'Foto profil belum bisa disimpan.');
+        }
+
+        return array('ok' => true, 'path' => 'storage/uploads/profiles/' . $filename, 'message' => '');
+    }
+
+    protected function readOwnerProfileExtras($ownerId)
+    {
+        $file = $this->ownerProfileStorageFile($ownerId);
+
+        if (!is_file($file)) {
+            return array();
+        }
+
+        $content = file_get_contents($file);
+        $data = json_decode($content, true);
+
+        return is_array($data) ? $data : array();
+    }
+
+    protected function writeOwnerProfileExtras($ownerId, array $data)
+    {
+        $directory = dirname($this->ownerProfileStorageFile($ownerId));
+
+        if (!is_dir($directory) && !mkdir($directory, 0775, true)) {
+            return false;
+        }
+
+        return file_put_contents($this->ownerProfileStorageFile($ownerId), json_encode($data, JSON_PRETTY_PRINT)) !== false;
+    }
+
+    protected function ownerProfileStorageFile($ownerId)
+    {
+        $safeOwnerId = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $ownerId);
+        $safeOwnerId = $safeOwnerId !== '' ? $safeOwnerId : 'owner';
+
+        return __DIR__ . '/../../storage/profiles/' . $safeOwnerId . '.json';
+    }
+
+    protected function profileAvatarUrl($avatar)
+    {
+        $avatar = trim((string) $avatar);
+
+        if ($avatar === '') {
+            return 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=320&auto=format&fit=crop';
+        }
+
+        if (preg_match('#^https?://#', $avatar)) {
+            return $avatar;
+        }
+
+        return app_url($avatar);
+    }
+
+    protected function cleanProfileValue($value, $maxLength)
+    {
+        $value = trim((string) $value);
+        $value = preg_replace('/\s+/', ' ', $value);
+
+        if (function_exists('mb_substr')) {
+            return mb_substr($value, 0, $maxLength, 'UTF-8');
+        }
+
+        return substr($value, 0, $maxLength);
+    }
+
+    protected function cleanProfileTextarea($value, $maxLength)
+    {
+        $value = trim((string) $value);
+        $value = preg_replace("/[ \t]+/", ' ', $value);
+        $value = preg_replace("/\r\n|\r/", "\n", $value);
+
+        if (function_exists('mb_substr')) {
+            return mb_substr($value, 0, $maxLength, 'UTF-8');
+        }
+
+        return substr($value, 0, $maxLength);
+    }
+
+    protected function setOwnerProfileFlash($type, $message)
+    {
+        $_SESSION['owner_profile_flash'] = array(
+            'type' => $type,
+            'message' => $message,
+        );
+    }
+
+    protected function pullOwnerProfileFlash()
+    {
+        if (empty($_SESSION['owner_profile_flash']) || !is_array($_SESSION['owner_profile_flash'])) {
+            return null;
+        }
+
+        $flash = $_SESSION['owner_profile_flash'];
+        unset($_SESSION['owner_profile_flash']);
+
+        return $flash;
+    }
+
+    protected function ownerSettingsGroups()
+    {
+        return array(
+            array(
+                'title' => 'Pengaturan Akun',
+                'items' => array(
+                    array('label' => 'Informasi Akun', 'description' => 'Kelola informasi pribadi, email, dan nomor telepon', 'icon' => 'fa-user', 'url' => app_url('pemilik/profil')),
+                    array('label' => 'Keamanan Akun', 'description' => 'Ubah password dan aktifkan verifikasi 2 langkah', 'icon' => 'fa-lock', 'url' => '#'),
+                    array('label' => 'Notifikasi', 'description' => 'Atur preferensi notifikasi dan email', 'icon' => 'fa-bell', 'url' => '#'),
+                ),
+            ),
+            array(
+                'title' => 'Pengaturan Bisnis',
+                'items' => array(
+                    array('label' => 'Informasi Lapangan', 'description' => 'Kelola informasi usaha dan detail lapangan', 'icon' => 'fa-landmark', 'url' => app_url('pemilik/lapangan')),
+                    array('label' => 'Jam Operasional', 'description' => 'Atur jam buka tutup dan hari operasional', 'icon' => 'fa-clock', 'url' => '#'),
+                    array('label' => 'Pembayaran', 'description' => 'Kelola rekening, metode pembayaran, dan pencairan dana', 'icon' => 'fa-rupiah-sign', 'url' => app_url('pemilik/pendapatan')),
+                    array('label' => 'Pajak & Dokumen', 'description' => 'Kelola NPWP dan dokumen bisnis', 'icon' => 'fa-file-lines', 'url' => '#'),
+                ),
+            ),
+            array(
+                'title' => 'Pengaturan Aplikasi',
+                'items' => array(
+                    array('label' => 'Tampilan Aplikasi', 'description' => 'Atur tema, bahasa, dan tampilan aplikasi', 'icon' => 'fa-palette', 'url' => '#'),
+                    array('label' => 'Privasi & Data', 'description' => 'Kelola data, izin, dan preferensi privasi', 'icon' => 'fa-shield-halved', 'url' => '#'),
+                    array('label' => 'Tentang Aplikasi', 'description' => 'Informasi versi aplikasi dan kebijakan', 'icon' => 'fa-circle-info', 'url' => '#'),
+                ),
+            ),
+        );
+    }
+
+    protected function ownerHelpItems()
+    {
+        return array(
+            array('label' => 'FAQ', 'icon' => 'fa-circle-question', 'url' => '#'),
+            array('label' => 'Panduan Penggunaan', 'icon' => 'fa-book', 'url' => '#'),
+            array('label' => 'Hubungi Kami', 'icon' => 'fa-headset', 'url' => '#'),
         );
     }
 

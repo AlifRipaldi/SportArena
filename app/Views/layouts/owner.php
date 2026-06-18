@@ -6,12 +6,13 @@ $ownerMenus = array(
     array('key' => 'pendapatan', 'label' => 'Pendapatan', 'icon' => 'fa-coins', 'url' => app_url('pemilik/pendapatan')),
     array('key' => 'ulasan', 'label' => 'Ulasan & Rating', 'icon' => 'fa-star', 'url' => app_url('pemilik/ulasan')),
     array('key' => 'profil', 'label' => 'Profil', 'icon' => 'fa-circle-user', 'url' => app_url('pemilik/profil')),
-    array('key' => 'pengaturan', 'label' => 'Pengaturan', 'icon' => 'fa-gear', 'url' => app_url('pemilik/dashboard#pengaturan')),
+    array('key' => 'pengaturan', 'label' => 'Pengaturan', 'icon' => 'fa-gear', 'url' => app_url('pemilik/pengaturan')),
 );
 
 $currentMenu = isset($activeMenu) ? $activeMenu : 'dashboard';
 $displayName = isset($userName) ? $userName : 'Pemilik Arena';
 $displayRole = 'Pemilik Lapangan';
+$topbarSearchPlaceholder = isset($ownerTopbarSearchPlaceholder) ? $ownerTopbarSearchPlaceholder : '';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -19,7 +20,7 @@ $displayRole = 'Pemilik Lapangan';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo e(isset($title) ? $title : 'Dashboard Pemilik | Arena Sport'); ?></title>
-    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=50')); ?>">
+    <link rel="stylesheet" href="<?php echo e(app_asset('css/style.css?v=60')); ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="admin-mode owner-mode">
@@ -40,30 +41,6 @@ $displayRole = 'Pemilik Lapangan';
                 <?php endforeach; ?>
             </nav>
 
-            <?php if ($currentMenu === 'pendapatan'): ?>
-                <div class="owner-sidebar-card owner-sidebar-income-card" aria-label="Ringkasan pendapatan">
-                    <div class="owner-income-mini-visual" aria-hidden="true">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                    <strong>Pendapatan Bersih Bulan Ini</strong>
-                    <em>Rp4.190.000</em>
-                    <p>Setelah potongan platform 2%</p>
-                </div>
-            <?php elseif (!in_array($currentMenu, array('ulasan', 'profil'), true)): ?>
-                <div class="owner-sidebar-card" aria-label="Ringkasan operasional">
-                    <div class="owner-sidebar-visual" aria-hidden="true">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                    <strong>Kelola lapangan Anda dengan mudah</strong>
-                    <p>Pantau booking, pendapatan, dan tingkatkan pelayanan.</p>
-                </div>
-            <?php endif; ?>
-
             <a class="admin-logout owner-logout" href="<?php echo e(app_url('public/logout.php')); ?>">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 <span>Logout</span>
@@ -72,7 +49,14 @@ $displayRole = 'Pemilik Lapangan';
 
         <div class="admin-wrapper owner-wrapper">
             <header class="admin-topbar owner-topbar">
-                <div class="owner-topbar-space"></div>
+                <?php if ($topbarSearchPlaceholder !== ''): ?>
+                    <label class="admin-search owner-topbar-search">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="search" placeholder="<?php echo e($topbarSearchPlaceholder); ?>" aria-label="<?php echo e($topbarSearchPlaceholder); ?>">
+                    </label>
+                <?php else: ?>
+                    <div class="owner-topbar-space"></div>
+                <?php endif; ?>
 
                 <div class="admin-profile owner-profile">
                     <button class="admin-notification owner-notification" type="button" aria-label="Notifikasi">

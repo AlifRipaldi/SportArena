@@ -23,7 +23,7 @@ $sportSlug = function ($name) {
 };
 ?>
 
-<section class="home-hero">
+<section id="beranda" class="home-hero">
     <div class="container home-hero-inner">
         <div class="home-hero-copy">
             <h1>Booking Lapangan Jadi <span>Lebih Mudah</span></h1>

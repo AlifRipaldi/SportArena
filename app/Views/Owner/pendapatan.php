@@ -37,7 +37,7 @@ $linePoints = implode(' ', $linePoints);
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
 
-            <button class="owner-pendapatan-download" type="button">
+            <button class="owner-pendapatan-download" type="button" data-owner-report-open aria-haspopup="dialog" aria-controls="ownerRevenueReportModal" aria-expanded="false">
                 <i class="fa-solid fa-download"></i>
                 <span>Download Laporan</span>
             </button>
@@ -136,10 +136,10 @@ $linePoints = implode(' ', $linePoints);
     <article class="admin-panel owner-pendapatan-table-panel">
         <div class="owner-pendapatan-table-header">
             <h2>Riwayat Transaksi</h2>
-            <button type="button">
+            <a href="<?php echo e(app_url('pemilik/transaksi')); ?>">
                 <i class="fa-solid fa-list"></i>
                 <span>Lihat Semua Transaksi</span>
-            </button>
+            </a>
         </div>
 
         <div class="admin-table-responsive">
@@ -193,4 +193,403 @@ $linePoints = implode(' ', $linePoints);
             </nav>
         </div>
     </article>
+
+    <div class="owner-report-modal" id="ownerRevenueReportModal" data-owner-report-modal hidden>
+        <div class="owner-report-modal-backdrop" data-owner-report-close></div>
+
+        <section class="owner-report-dialog" role="dialog" aria-modal="true" aria-labelledby="ownerRevenueReportTitle">
+            <header class="owner-report-header">
+                <div>
+                    <h2 id="ownerRevenueReportTitle">Download Laporan</h2>
+                    <p>Pilih periode dan format laporan yang ingin Anda download.</p>
+                </div>
+
+                <button class="owner-report-close" type="button" data-owner-report-close aria-label="Tutup download laporan">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <form class="owner-report-form" method="get" action="<?php echo e(app_url('pemilik/pendapatan/download')); ?>" data-owner-report-form>
+                <section class="owner-report-section">
+                    <h3>1. Pilih Periode Laporan</h3>
+
+                    <div class="owner-report-period-options" role="group" aria-label="Periode laporan">
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="hari_ini">
+                            <span>Hari Ini</span>
+                        </label>
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="kemarin">
+                            <span>Kemarin</span>
+                        </label>
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="7_hari">
+                            <span>7 Hari Terakhir</span>
+                        </label>
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="30_hari" checked>
+                            <span>30 Hari Terakhir</span>
+                        </label>
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="bulan_ini">
+                            <span>Bulan Ini</span>
+                        </label>
+                        <label class="owner-report-period-option">
+                            <input type="radio" name="periode_laporan" value="kustom">
+                            <span>Kustom <i class="fa-regular fa-calendar-days"></i></span>
+                        </label>
+                    </div>
+
+                    <div class="owner-report-date-grid">
+                        <label class="owner-report-date-field">
+                            <span>Dari Tanggal</span>
+                            <span class="owner-report-date-input">
+                                <input type="text" name="tanggal_mulai" value="01 Juni 2025" aria-label="Tanggal mulai laporan" autocomplete="off" data-owner-report-start>
+                                <i class="fa-regular fa-calendar-days"></i>
+                            </span>
+                        </label>
+
+                        <label class="owner-report-date-field">
+                            <span>Sampai Tanggal</span>
+                            <span class="owner-report-date-input">
+                                <input type="text" name="tanggal_selesai" value="30 Juni 2025" aria-label="Tanggal selesai laporan" autocomplete="off" data-owner-report-end>
+                                <i class="fa-regular fa-calendar-days"></i>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="owner-report-section">
+                    <h3>2. Pilih Tipe Laporan</h3>
+
+                    <div class="owner-report-type-list">
+                        <label class="owner-report-type-option">
+                            <input type="radio" name="tipe_laporan" value="pendapatan" checked>
+                            <span class="owner-report-type-mark"></span>
+                            <span class="owner-report-type-copy">
+                                <strong>Laporan Pendapatan</strong>
+                                <small>Ringkasan pemasukan dan pendapatan bersih</small>
+                            </span>
+                        </label>
+
+                        <label class="owner-report-type-option">
+                            <input type="radio" name="tipe_laporan" value="transaksi">
+                            <span class="owner-report-type-mark"></span>
+                            <span class="owner-report-type-copy">
+                                <strong>Laporan Transaksi</strong>
+                                <small>Berisi semua detail transaksi pembayaran</small>
+                            </span>
+                        </label>
+
+                        <label class="owner-report-type-option">
+                            <input type="radio" name="tipe_laporan" value="potongan">
+                            <span class="owner-report-type-mark"></span>
+                            <span class="owner-report-type-copy">
+                                <strong>Laporan Potongan Platform</strong>
+                                <small>Rincian biaya platform dan pendapatan bersih</small>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="owner-report-section">
+                    <h3>3. Pilih Format File</h3>
+
+                    <div class="owner-report-format-grid">
+                        <label class="owner-report-format-option">
+                            <input type="radio" name="format_laporan" value="xlsx" checked>
+                            <span class="owner-report-format-body">
+                                <span class="owner-report-format-icon excel"><i class="fa-solid fa-file-excel"></i></span>
+                                <span>
+                                    <strong>Excel (.xlsx)</strong>
+                                    <small>Cocok untuk analisis data</small>
+                                </span>
+                            </span>
+                        </label>
+
+                        <label class="owner-report-format-option">
+                            <input type="radio" name="format_laporan" value="pdf">
+                            <span class="owner-report-format-body">
+                                <span class="owner-report-format-icon pdf"><i class="fa-solid fa-file-pdf"></i></span>
+                                <span>
+                                    <strong>PDF (.pdf)</strong>
+                                    <small>Cocok untuk dokumen</small>
+                                </span>
+                            </span>
+                        </label>
+
+                        <label class="owner-report-format-option">
+                            <input type="radio" name="format_laporan" value="csv">
+                            <span class="owner-report-format-body">
+                                <span class="owner-report-format-icon csv"><i class="fa-solid fa-file-csv"></i></span>
+                                <span>
+                                    <strong>CSV (.csv)</strong>
+                                    <small>Cocok untuk data mentah</small>
+                                </span>
+                            </span>
+                        </label>
+                    </div>
+                </section>
+
+                <div class="owner-report-actions">
+                    <button class="owner-report-cancel" type="button" data-owner-report-close>Batal</button>
+                    <button class="owner-report-submit" type="submit">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Download Laporan</span>
+                    </button>
+                </div>
+
+                <p class="owner-report-note" data-owner-report-note>
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Laporan akan diunduh sesuai filter dan pengaturan yang Anda pilih.</span>
+                </p>
+            </form>
+        </section>
+    </div>
 </section>
+
+<script>
+(function () {
+    var modal = document.querySelector('[data-owner-report-modal]');
+    var openButton = document.querySelector('[data-owner-report-open]');
+
+    if (!modal || !openButton) {
+        return;
+    }
+
+    var closeButtons = modal.querySelectorAll('[data-owner-report-close]');
+    var form = modal.querySelector('[data-owner-report-form]');
+    var firstField = modal.querySelector('input[name="periode_laporan"]');
+    var periodInputs = modal.querySelectorAll('input[name="periode_laporan"]');
+    var startInput = modal.querySelector('[data-owner-report-start]');
+    var endInput = modal.querySelector('[data-owner-report-end]');
+    var note = modal.querySelector('[data-owner-report-note]');
+    var defaultNote = note ? note.querySelector('span').textContent : '';
+    var reportBaseDate = new Date(2025, 5, 30);
+    var monthNames = [
+        'Januari',
+        'Februari',
+        'Maret',
+        'April',
+        'Mei',
+        'Juni',
+        'Juli',
+        'Agustus',
+        'September',
+        'Oktober',
+        'November',
+        'Desember'
+    ];
+    var monthLookup = {
+        jan: 0,
+        januari: 0,
+        feb: 1,
+        februari: 1,
+        mar: 2,
+        maret: 2,
+        apr: 3,
+        april: 3,
+        mei: 4,
+        may: 4,
+        jun: 5,
+        juni: 5,
+        jul: 6,
+        juli: 6,
+        agu: 7,
+        agus: 7,
+        agustus: 7,
+        aug: 7,
+        sep: 8,
+        september: 8,
+        okt: 9,
+        oktober: 9,
+        oct: 9,
+        nov: 10,
+        november: 10,
+        des: 11,
+        desember: 11,
+        dec: 11
+    };
+
+    function cloneDate(date) {
+        return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    }
+
+    function addDays(date, days) {
+        var nextDate = cloneDate(date);
+        nextDate.setDate(nextDate.getDate() + days);
+
+        return nextDate;
+    }
+
+    function formatReportDate(date) {
+        var day = String(date.getDate()).padStart(2, '0');
+
+        return day + ' ' + monthNames[date.getMonth()] + ' ' + date.getFullYear();
+    }
+
+    function parseReportDate(value) {
+        var normalized = String(value || '').trim().toLowerCase().replace(/[,.]/g, ' ').replace(/\s+/g, ' ');
+        var isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        var textMatch;
+        var date;
+        var day;
+        var month;
+        var year;
+
+        if (isoMatch) {
+            year = Number(isoMatch[1]);
+            month = Number(isoMatch[2]) - 1;
+            day = Number(isoMatch[3]);
+        } else {
+            textMatch = normalized.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
+
+            if (!textMatch || typeof monthLookup[textMatch[2]] === 'undefined') {
+                return null;
+            }
+
+            day = Number(textMatch[1]);
+            month = monthLookup[textMatch[2]];
+            year = Number(textMatch[3]);
+        }
+
+        date = new Date(year, month, day);
+
+        if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+            return null;
+        }
+
+        return date;
+    }
+
+    function setNote(message, isError) {
+        if (!note) {
+            return;
+        }
+
+        note.classList.toggle('is-error', !!isError);
+        note.querySelector('span').textContent = message || defaultNote;
+    }
+
+    function setDateRange(startDate, endDate) {
+        if (startInput) {
+            startInput.value = formatReportDate(startDate);
+        }
+
+        if (endInput) {
+            endInput.value = formatReportDate(endDate);
+        }
+
+        setNote(defaultNote, false);
+    }
+
+    function setRangeFromPeriod(period) {
+        var startDate = cloneDate(reportBaseDate);
+        var endDate = cloneDate(reportBaseDate);
+
+        if (period === 'kustom') {
+            return;
+        }
+
+        if (period === 'kemarin') {
+            startDate = addDays(reportBaseDate, -1);
+            endDate = cloneDate(startDate);
+        } else if (period === '7_hari') {
+            startDate = addDays(reportBaseDate, -6);
+        } else if (period === '30_hari') {
+            startDate = addDays(reportBaseDate, -29);
+        } else if (period === 'bulan_ini') {
+            startDate = new Date(reportBaseDate.getFullYear(), reportBaseDate.getMonth(), 1);
+            endDate = new Date(reportBaseDate.getFullYear(), reportBaseDate.getMonth() + 1, 0);
+        }
+
+        setDateRange(startDate, endDate);
+    }
+
+    function chooseCustomPeriod() {
+        var customInput = modal.querySelector('input[name="periode_laporan"][value="kustom"]');
+
+        if (customInput) {
+            customInput.checked = true;
+        }
+    }
+
+    function openModal() {
+        modal.hidden = false;
+        document.body.classList.add('owner-report-modal-open');
+        openButton.setAttribute('aria-expanded', 'true');
+
+        window.setTimeout(function () {
+            if (firstField) {
+                firstField.focus();
+            }
+        }, 0);
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        document.body.classList.remove('owner-report-modal-open');
+        openButton.setAttribute('aria-expanded', 'false');
+        openButton.focus();
+    }
+
+    openButton.addEventListener('click', openModal);
+
+    Array.prototype.forEach.call(closeButtons, function (button) {
+        button.addEventListener('click', closeModal);
+    });
+
+    Array.prototype.forEach.call(periodInputs, function (input) {
+        input.addEventListener('change', function () {
+            if (input.checked) {
+                setRangeFromPeriod(input.value);
+            }
+        });
+    });
+
+    [startInput, endInput].forEach(function (input) {
+        if (!input) {
+            return;
+        }
+
+        input.addEventListener('focus', chooseCustomPeriod);
+        input.addEventListener('input', function () {
+            chooseCustomPeriod();
+            setNote(defaultNote, false);
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeModal();
+        }
+    });
+
+    if (form) {
+        form.addEventListener('submit', function (event) {
+            var startDate = parseReportDate(startInput ? startInput.value : '');
+            var endDate = parseReportDate(endInput ? endInput.value : '');
+
+            if (!startDate || !endDate) {
+                event.preventDefault();
+                setNote('Tanggal harus ditulis seperti 01 Juni 2025.', true);
+                return;
+            }
+
+            if (startDate > endDate) {
+                event.preventDefault();
+                setNote('Tanggal mulai tidak boleh melewati tanggal selesai.', true);
+                return;
+            }
+
+            setNote('Laporan sedang disiapkan untuk diunduh...', false);
+
+            window.setTimeout(function () {
+                if (!modal.hidden) {
+                    closeModal();
+                }
+            }, 450);
+        });
+    }
+})();
+</script>
