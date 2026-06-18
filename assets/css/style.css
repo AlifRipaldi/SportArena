@@ -11991,6 +11991,34 @@ body.admin-mode {
 .admin-table-responsive {
     width: 100%;
     overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(180, 206, 236, 0.42) rgba(5, 17, 30, 0.72);
+}
+
+.admin-table-responsive::-webkit-scrollbar {
+    height: 12px;
+}
+
+.admin-table-responsive::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(5, 17, 30, 0.72);
+}
+
+.admin-table-responsive::-webkit-scrollbar-thumb {
+    border: 3px solid rgba(5, 17, 30, 0.72);
+    border-radius: 999px;
+    background: rgba(180, 206, 236, 0.42);
+}
+
+.admin-table-responsive::-webkit-scrollbar-thumb:hover {
+    background: rgba(143, 227, 50, 0.62);
+}
+
+.admin-table-responsive::-webkit-scrollbar-button,
+.admin-table-responsive::-webkit-scrollbar-corner {
+    display: none;
+    width: 0;
+    height: 0;
 }
 
 .admin-table {
@@ -15337,6 +15365,29 @@ body.owner-report-modal-open {
 
 .owner-report-submit:hover {
     background: linear-gradient(135deg, #83dc3e, #45a928);
+}
+
+.owner-report-submit:disabled,
+.owner-report-submit.is-loading {
+    cursor: wait;
+    opacity: 0.74;
+    box-shadow: none;
+}
+
+.owner-report-submit.is-loading i {
+    animation: ownerReportSubmitPulse 0.82s ease-in-out infinite alternate;
+}
+
+@keyframes ownerReportSubmitPulse {
+    from {
+        opacity: 0.46;
+        transform: translateY(-1px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(1px);
+    }
 }
 
 .owner-report-note {

@@ -333,7 +333,7 @@ $linePoints = implode(' ', $linePoints);
 
                 <div class="owner-report-actions">
                     <button class="owner-report-cancel" type="button" data-owner-report-close>Batal</button>
-                    <button class="owner-report-submit" type="submit">
+                    <button class="owner-report-submit" type="submit" data-owner-report-submit>
                         <i class="fa-solid fa-download"></i>
                         <span>Download Laporan</span>
                     </button>
@@ -364,6 +364,9 @@ $linePoints = implode(' ', $linePoints);
     var startInput = modal.querySelector('[data-owner-report-start]');
     var endInput = modal.querySelector('[data-owner-report-end]');
     var note = modal.querySelector('[data-owner-report-note]');
+    var submitButton = modal.querySelector('[data-owner-report-submit]');
+    var submitLabel = submitButton ? submitButton.querySelector('span') : null;
+    var submitDefaultLabel = submitLabel ? submitLabel.textContent : '';
     var defaultNote = note ? note.querySelector('span').textContent : '';
     var reportBaseDate = new Date(2025, 5, 30);
     var monthNames = [
@@ -471,6 +474,19 @@ $linePoints = implode(' ', $linePoints);
         note.querySelector('span').textContent = message || defaultNote;
     }
 
+    function setSubmitting(isSubmitting) {
+        if (!submitButton) {
+            return;
+        }
+
+        submitButton.disabled = isSubmitting;
+        submitButton.classList.toggle('is-loading', isSubmitting);
+
+        if (submitLabel) {
+            submitLabel.textContent = isSubmitting ? 'Menyiapkan...' : submitDefaultLabel;
+        }
+    }
+
     function setDateRange(startDate, endDate) {
         if (startInput) {
             startInput.value = formatReportDate(startDate);
@@ -518,6 +534,7 @@ $linePoints = implode(' ', $linePoints);
         modal.hidden = false;
         document.body.classList.add('owner-report-modal-open');
         openButton.setAttribute('aria-expanded', 'true');
+        setSubmitting(false);
 
         window.setTimeout(function () {
             if (firstField) {
@@ -530,6 +547,7 @@ $linePoints = implode(' ', $linePoints);
         modal.hidden = true;
         document.body.classList.remove('owner-report-modal-open');
         openButton.setAttribute('aria-expanded', 'false');
+        setSubmitting(false);
         openButton.focus();
     }
 
@@ -573,15 +591,18 @@ $linePoints = implode(' ', $linePoints);
             if (!startDate || !endDate) {
                 event.preventDefault();
                 setNote('Tanggal harus ditulis seperti 01 Juni 2025.', true);
+                setSubmitting(false);
                 return;
             }
 
             if (startDate > endDate) {
                 event.preventDefault();
                 setNote('Tanggal mulai tidak boleh melewati tanggal selesai.', true);
+                setSubmitting(false);
                 return;
             }
 
+            setSubmitting(true);
             setNote('Laporan sedang disiapkan untuk diunduh...', false);
 
             window.setTimeout(function () {

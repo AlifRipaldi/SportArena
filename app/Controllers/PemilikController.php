@@ -708,7 +708,13 @@ class PemilikController extends Controller
         }
 
         if (empty($rows)) {
-            $rows[] = array('Tidak ada data pada periode ini');
+            $emptyRow = array('Tidak ada data pada periode ini');
+
+            while (count($emptyRow) < count($headersMap[$type])) {
+                $emptyRow[] = '';
+            }
+
+            $rows[] = $emptyRow;
         }
 
         return array(
@@ -842,11 +848,22 @@ class PemilikController extends Controller
 
     protected function ownerReportSpreadsheetRows(array $report)
     {
+        $summaryLabels = array();
+        $summaryValues = array();
+
+        foreach ($report['summary'] as $item) {
+            $summaryLabels[] = $item[0];
+            $summaryValues[] = $item[1];
+        }
+
         $rows = array(
+            array('ARENA SPORT'),
             array($report['title']),
-            array('Pemilik', $report['ownerName']),
-            array('Periode', $report['period']),
-            array('Dibuat', $report['generatedAt']),
+            array('Pemilik', $report['ownerName'], 'Periode', $report['period'], 'Dibuat', $report['generatedAt']),
+            array(''),
+            array('Ringkasan Laporan'),
+            $summaryLabels,
+            $summaryValues,
             array(''),
             $report['headers'],
         );
@@ -856,13 +873,14 @@ class PemilikController extends Controller
         }
 
         $rows[] = array('');
-        $rows[] = array('Ringkasan');
-
-        foreach ($report['summary'] as $item) {
-            $rows[] = $item;
-        }
+        $rows[] = array('Catatan', 'Laporan ini dibuat otomatis oleh Arena Sport sesuai filter periode dan tipe laporan yang dipilih.');
 
         return $rows;
+    }
+
+    protected function ownerReportColumnCount(array $report)
+    {
+        return max(7, count($report['headers']), count($report['summary']));
     }
 
     protected function sendOwnerCsvReport(array $report, $filename)
@@ -892,15 +910,24 @@ class PemilikController extends Controller
             $this->sendOwnerCsvReport($report, preg_replace('/\.xlsx$/', '.csv', $filename));
         }
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'arena-report-');
+        $tempFile = @tempnam($this->ownerReportTempDirectory(), 'arena-report-');
+
+        if (!$tempFile) {
+            $tempFile = @tempnam(sys_get_temp_dir(), 'arena-report-');
+        }
+
         $zip = new \ZipArchive();
-        $zip->open($tempFile, \ZipArchive::OVERWRITE);
+
+        if (!$tempFile || $zip->open($tempFile, \ZipArchive::OVERWRITE) !== true) {
+            $this->sendOwnerCsvReport($report, preg_replace('/\.xlsx$/', '.csv', $filename));
+        }
+
         $zip->addFromString('[Content_Types].xml', $this->ownerXlsxContentTypesXml());
         $zip->addFromString('_rels/.rels', $this->ownerXlsxRootRelsXml());
         $zip->addFromString('xl/workbook.xml', $this->ownerXlsxWorkbookXml());
         $zip->addFromString('xl/_rels/workbook.xml.rels', $this->ownerXlsxWorkbookRelsXml());
         $zip->addFromString('xl/styles.xml', $this->ownerXlsxStylesXml());
-        $zip->addFromString('xl/worksheets/sheet1.xml', $this->ownerXlsxSheetXml($this->ownerReportSpreadsheetRows($report)));
+        $zip->addFromString('xl/worksheets/sheet1.xml', $this->ownerXlsxSheetXml($report));
         $zip->close();
 
         $this->clearOwnerReportOutputBuffer();
@@ -912,29 +939,20 @@ class PemilikController extends Controller
         exit;
     }
 
+    protected function ownerReportTempDirectory()
+    {
+        $directory = __DIR__ . '/../../storage/logs';
+
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0775, true);
+        }
+
+        return is_dir($directory) && is_writable($directory) ? $directory : sys_get_temp_dir();
+    }
+
     protected function sendOwnerPdfReport(array $report, $filename)
     {
-        $lines = array(
-            $report['title'],
-            'Pemilik: ' . $report['ownerName'],
-            'Periode: ' . $report['period'],
-            'Dibuat: ' . $report['generatedAt'],
-            '',
-            implode(' | ', $report['headers']),
-        );
-
-        foreach ($report['rows'] as $row) {
-            $lines[] = implode(' | ', $row);
-        }
-
-        $lines[] = '';
-        $lines[] = 'Ringkasan';
-
-        foreach ($report['summary'] as $item) {
-            $lines[] = $item[0] . ': ' . $item[1];
-        }
-
-        $content = $this->ownerBuildSimplePdf($lines);
+        $content = $this->ownerBuildDesignedPdf($report);
         $this->clearOwnerReportOutputBuffer();
         header('Content-Type: application/pdf');
         header('Content-Disposition: attachment; filename="' . $this->sanitizeOwnerReportFilename($filename) . '"');
@@ -984,27 +1002,84 @@ class PemilikController extends Controller
     {
         return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-            . '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
-            . '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
-            . '<borders count="1"><border/></borders>'
+            . '<fonts count="7">'
+            . '<font><sz val="11"/><color rgb="FF1F2937"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="22"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="15"/><color rgb="FFB7FF4D"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="10"/><color rgb="FF486070"/><name val="Calibri"/></font>'
+            . '<font><b/><sz val="14"/><color rgb="FF0F2410"/><name val="Calibri"/></font>'
+            . '<font><i/><sz val="10"/><color rgb="FF64748B"/><name val="Calibri"/></font>'
+            . '</fonts>'
+            . '<fills count="8">'
+            . '<fill><patternFill patternType="none"/></fill>'
+            . '<fill><patternFill patternType="gray125"/></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF07121F"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF64D82F"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFEAF8DD"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FF102033"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFF6FAF2"/><bgColor indexed="64"/></patternFill></fill>'
+            . '<fill><patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor indexed="64"/></patternFill></fill>'
+            . '</fills>'
+            . '<borders count="2">'
+            . '<border/>'
+            . '<border><left style="thin"><color rgb="FFD8E1EA"/></left><right style="thin"><color rgb="FFD8E1EA"/></right><top style="thin"><color rgb="FFD8E1EA"/></top><bottom style="thin"><color rgb="FFD8E1EA"/></bottom></border>'
+            . '</borders>'
             . '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-            . '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+            . '<cellXfs count="11">'
+            . '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            . '<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="2" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="3" fillId="3" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1"><alignment horizontal="left" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="4" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="5" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>'
+            . '<xf numFmtId="0" fontId="3" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="7" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="0" fillId="6" borderId="1" xfId="0" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '<xf numFmtId="0" fontId="6" fillId="0" borderId="0" xfId="0" applyFont="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf>'
+            . '</cellXfs>'
+            . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+            . '<dxfs count="0"/>'
+            . '<tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>'
             . '</styleSheet>';
     }
 
-    protected function ownerXlsxSheetXml(array $rows)
+    protected function ownerXlsxSheetXml(array $report)
     {
+        $rows = $this->ownerReportSpreadsheetRows($report);
+        $columnCount = $this->ownerReportColumnCount($report);
+        $lastColumn = $this->ownerXlsxColumnName($columnCount);
+        $tableHeaderRow = 9;
+        $tableFirstRow = $tableHeaderRow + 1;
+        $tableLastRow = $tableHeaderRow + count($report['rows']);
+        $noteRow = $tableLastRow + 2;
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            . '<sheetViews><sheetView workbookViewId="0"><pane ySplit="9" topLeftCell="A10" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'
+            . '<sheetFormatPr defaultRowHeight="18"/>'
+            . '<cols>'
+            . '<col min="1" max="1" width="16" customWidth="1"/>'
+            . '<col min="2" max="2" width="24" customWidth="1"/>'
+            . '<col min="3" max="3" width="22" customWidth="1"/>'
+            . '<col min="4" max="4" width="20" customWidth="1"/>'
+            . '<col min="5" max="5" width="20" customWidth="1"/>'
+            . '<col min="6" max="6" width="22" customWidth="1"/>'
+            . '<col min="7" max="7" width="16" customWidth="1"/>'
+            . '</cols>'
             . '<sheetData>';
 
         foreach ($rows as $rowIndex => $row) {
             $rowNumber = $rowIndex + 1;
-            $xml .= '<row r="' . $rowNumber . '">';
+            $style = $this->ownerXlsxRowStyle($rowNumber, $tableFirstRow, $tableLastRow, $noteRow);
+            $height = $this->ownerXlsxRowHeight($rowNumber);
+            $xml .= '<row r="' . $rowNumber . '"' . ($height ? ' ht="' . $height . '" customHeight="1"' : '') . '>';
+            $cellsToRender = in_array($rowNumber, array(1, 2, 5, $noteRow), true) ? 1 : max($columnCount, count($row));
 
-            foreach ($row as $columnIndex => $value) {
+            for ($columnIndex = 0; $columnIndex < $cellsToRender; $columnIndex++) {
+                $value = isset($row[$columnIndex]) ? $row[$columnIndex] : '';
                 $cell = $this->ownerXlsxColumnName($columnIndex + 1) . $rowNumber;
-                $xml .= '<c r="' . $cell . '" t="inlineStr"><is><t>'
+                $xml .= '<c r="' . $cell . '"' . ($style ? ' s="' . $style . '"' : '') . ' t="inlineStr"><is><t xml:space="preserve">'
                     . htmlspecialchars((string) $value, ENT_XML1 | ENT_COMPAT, 'UTF-8')
                     . '</t></is></c>';
             }
@@ -1012,45 +1087,100 @@ class PemilikController extends Controller
             $xml .= '</row>';
         }
 
-        return $xml . '</sheetData></worksheet>';
+        $xml .= '</sheetData>'
+            . '<autoFilter ref="A' . $tableHeaderRow . ':' . $lastColumn . $tableLastRow . '"/>'
+            . '<mergeCells count="4">'
+            . '<mergeCell ref="A1:' . $lastColumn . '1"/>'
+            . '<mergeCell ref="A2:' . $lastColumn . '2"/>'
+            . '<mergeCell ref="A5:' . $lastColumn . '5"/>'
+            . '<mergeCell ref="A' . $noteRow . ':' . $lastColumn . $noteRow . '"/>'
+            . '</mergeCells>'
+            . '<pageMargins left="0.4" right="0.4" top="0.6" bottom="0.6" header="0.3" footer="0.3"/>'
+            . '</worksheet>';
+
+        return $xml;
     }
 
-    protected function ownerXlsxColumnName($number)
+    protected function ownerXlsxRowStyle($rowNumber, $tableFirstRow, $tableLastRow, $noteRow)
     {
-        $name = '';
-
-        while ($number > 0) {
-            $number--;
-            $name = chr(65 + ($number % 26)) . $name;
-            $number = (int) floor($number / 26);
+        if ($rowNumber === 1) {
+            return 1;
         }
 
-        return $name;
+        if ($rowNumber === 2) {
+            return 2;
+        }
+
+        if ($rowNumber === 3) {
+            return 3;
+        }
+
+        if ($rowNumber === 5) {
+            return 4;
+        }
+
+        if ($rowNumber === 6) {
+            return 5;
+        }
+
+        if ($rowNumber === 7) {
+            return 6;
+        }
+
+        if ($rowNumber === 9) {
+            return 7;
+        }
+
+        if ($rowNumber >= $tableFirstRow && $rowNumber <= $tableLastRow) {
+            return $rowNumber % 2 === 0 ? 8 : 9;
+        }
+
+        if ($rowNumber === $noteRow) {
+            return 10;
+        }
+
+        return 0;
     }
 
-    protected function ownerBuildSimplePdf(array $lines)
+    protected function ownerXlsxRowHeight($rowNumber)
     {
-        $commands = array();
-        $y = 552;
+        $heights = array(
+            1 => 30,
+            2 => 24,
+            3 => 26,
+            5 => 24,
+            6 => 28,
+            7 => 32,
+            9 => 28,
+        );
 
-        foreach ($lines as $index => $line) {
-            if ($y < 38) {
-                break;
-            }
+        return isset($heights[$rowNumber]) ? $heights[$rowNumber] : 0;
+    }
 
-            $fontSize = $index === 0 ? 16 : 9;
-            $commands[] = 'BT /F1 ' . $fontSize . ' Tf 40 ' . $y . ' Td (' . $this->ownerPdfEscape($this->ownerPdfText($line)) . ') Tj ET';
-            $y -= $index === 0 ? 24 : 17;
-        }
-
-        $stream = implode("\n", $commands);
+    protected function ownerBuildDesignedPdf(array $report)
+    {
+        $rowChunks = $this->ownerPdfReportRowChunks($report['rows']);
+        $pageCount = count($rowChunks);
+        $fontRegularObjectNumber = 3 + ($pageCount * 2);
+        $fontBoldObjectNumber = $fontRegularObjectNumber + 1;
         $objects = array(
             '<< /Type /Catalog /Pages 2 0 R >>',
-            '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-            '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
-            '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-            "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream",
+            '__PAGES__',
         );
+        $pageReferences = array();
+
+        foreach ($rowChunks as $pageIndex => $rows) {
+            $pageObjectNumber = count($objects) + 1;
+            $contentObjectNumber = $pageObjectNumber + 1;
+            $pageReferences[] = $pageObjectNumber . ' 0 R';
+            $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 ' . $fontRegularObjectNumber . ' 0 R /F2 ' . $fontBoldObjectNumber . ' 0 R >> >> /Contents ' . $contentObjectNumber . ' 0 R >>';
+            $objects[] = $this->ownerPdfReportPageStream($report, $rows, $pageIndex + 1, $pageCount);
+        }
+
+        $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+        $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+        $objects[1] = '<< /Type /Pages /Kids [' . implode(' ', $pageReferences) . '] /Count ' . $pageCount . ' >>';
+
         $pdf = "%PDF-1.4\n";
         $offsets = array(0);
 
@@ -1071,6 +1201,293 @@ class PemilikController extends Controller
         $pdf .= "startxref\n" . $xrefOffset . "\n%%EOF";
 
         return $pdf;
+    }
+
+    protected function ownerPdfReportRowChunks(array $rows)
+    {
+        $chunks = array();
+        $remaining = $rows;
+        $chunks[] = array_splice($remaining, 0, 10);
+
+        while (!empty($remaining)) {
+            $chunks[] = array_splice($remaining, 0, 16);
+        }
+
+        return $chunks;
+    }
+
+    protected function ownerPdfReportPageStream(array $report, array $rows, $pageNumber, $pageCount)
+    {
+        $commands = array();
+        $isFirstPage = $pageNumber === 1;
+        $tableTop = $isFirstPage ? 360 : 468;
+
+        $commands[] = $this->ownerPdfRectCommand(0, 0, 842, 595, 'F7FAF2');
+        $commands[] = $this->ownerPdfRectCommand(0, 506, 842, 89, '07121F');
+        $commands[] = $this->ownerPdfRectCommand(0, 506, 842, 6, '64D82F');
+        $commands[] = $this->ownerPdfTextCommand('ARENA SPORT', 40, 555, 19, 'F2', 'FFFFFF');
+        $commands[] = $this->ownerPdfTextCommand($report['title'], 40, 531, 13, 'F2', 'B7FF4D');
+        $commands[] = $this->ownerPdfTextCommand('Pemilik', 596, 562, 8, 'F1', 'A8B6C5');
+        $commands[] = $this->ownerPdfTextCommand($this->ownerPdfFitText($report['ownerName'], 34), 596, 548, 10, 'F2', 'FFFFFF');
+        $commands[] = $this->ownerPdfTextCommand('Periode', 596, 531, 8, 'F1', 'A8B6C5');
+        $commands[] = $this->ownerPdfTextCommand($this->ownerPdfFitText($report['period'], 34), 596, 517, 9, 'F2', 'FFFFFF');
+
+        if ($isFirstPage) {
+            $commands[] = $this->ownerPdfTextCommand('Ringkasan Laporan', 40, 480, 12, 'F2', '102033');
+            $commands = array_merge($commands, $this->ownerPdfSummaryCardCommands($report['summary']));
+        } else {
+            $commands[] = $this->ownerPdfTextCommand('Lanjutan Data Laporan', 40, 486, 12, 'F2', '102033');
+        }
+
+        $commands = array_merge($commands, $this->ownerPdfTableCommands($report['headers'], $rows, $tableTop));
+        $commands[] = $this->ownerPdfRectCommand(40, 42, 762, 1.2, 'D7E6C8');
+        $commands[] = $this->ownerPdfTextCommand('Dibuat otomatis oleh Arena Sport pada ' . $report['generatedAt'], 40, 24, 8, 'F1', '64748B');
+        $commands[] = $this->ownerPdfTextCommand('Hal. ' . $pageNumber . '/' . $pageCount, 748, 24, 8, 'F2', '64748B');
+        $stream = implode("\n", $commands);
+
+        return "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
+    }
+
+    protected function ownerPdfSummaryCardCommands(array $summary)
+    {
+        $commands = array();
+        $x = 40;
+        $y = 414;
+        $width = 178;
+        $height = 52;
+        $gap = 13;
+
+        foreach ($summary as $index => $item) {
+            $cardX = $x + (($width + $gap) * $index);
+            $commands[] = $this->ownerPdfRectCommand($cardX, $y, $width, $height, 'FFFFFF', 'DCE8D1');
+            $commands[] = $this->ownerPdfRectCommand($cardX, $y + $height - 5, $width, 5, $index === 2 ? 'F35E6B' : '64D82F');
+            $commands[] = $this->ownerPdfTextCommand($item[0], $cardX + 12, $y + 31, 8, 'F2', '526372');
+            $commands[] = $this->ownerPdfTextCommand($item[1], $cardX + 12, $y + 13, 13, 'F2', $index === 2 ? 'D83A48' : '173915');
+        }
+
+        return $commands;
+    }
+
+    protected function ownerPdfTableCommands(array $headers, array $rows, $top)
+    {
+        $commands = array();
+        $x = 40;
+        $headerHeight = 27;
+        $rowHeight = 24;
+        $widths = $this->ownerPdfReportColumnWidths(count($headers));
+        $tableWidth = array_sum($widths);
+        $commands[] = $this->ownerPdfRectCommand($x, $top - $headerHeight, $tableWidth, $headerHeight, '102033');
+        $currentX = $x;
+
+        foreach ($headers as $index => $header) {
+            $commands[] = $this->ownerPdfTextCommand($this->ownerPdfFitText($header, $this->ownerPdfMaxCharsForWidth($widths[$index])), $currentX + 6, $top - 17, 8, 'F2', 'FFFFFF');
+            $currentX += $widths[$index];
+        }
+
+        foreach ($rows as $rowIndex => $row) {
+            $rowTop = $top - $headerHeight - ($rowHeight * $rowIndex);
+            $fill = $rowIndex % 2 === 0 ? 'FFFFFF' : 'F0F7EA';
+            $commands[] = $this->ownerPdfRectCommand($x, $rowTop - $rowHeight, $tableWidth, $rowHeight, $fill, 'DDE8D6');
+            $currentX = $x;
+
+            foreach ($headers as $columnIndex => $header) {
+                $value = isset($row[$columnIndex]) ? $row[$columnIndex] : '';
+                $textColor = stripos($header, 'potongan') !== false ? 'C84650' : (stripos($header, 'bersih') !== false ? '247A25' : '1F2937');
+                $commands[] = $this->ownerPdfTextCommand($this->ownerPdfFitText($value, $this->ownerPdfMaxCharsForWidth($widths[$columnIndex])), $currentX + 6, $rowTop - 16, 8, $columnIndex >= 3 ? 'F2' : 'F1', $textColor);
+                $currentX += $widths[$columnIndex];
+            }
+        }
+
+        return $commands;
+    }
+
+    protected function ownerPdfReportColumnWidths($headerCount)
+    {
+        if ($headerCount === 7) {
+            return array(82, 145, 115, 96, 102, 118, 82);
+        }
+
+        if ($headerCount === 6) {
+            return array(88, 145, 145, 132, 115, 95);
+        }
+
+        if ($headerCount === 5) {
+            return array(92, 190, 148, 150, 150);
+        }
+
+        $width = (int) floor(740 / max(1, $headerCount));
+
+        return array_fill(0, max(1, $headerCount), $width);
+    }
+
+    protected function ownerPdfMaxCharsForWidth($width)
+    {
+        return max(8, (int) floor($width / 5.4));
+    }
+
+    protected function ownerPdfFitText($text, $maxLength)
+    {
+        $text = $this->ownerPdfText($text);
+
+        if (strlen($text) <= $maxLength) {
+            return $text;
+        }
+
+        return substr($text, 0, max(1, $maxLength - 3)) . '...';
+    }
+
+    protected function ownerPdfRectCommand($x, $y, $width, $height, $fillHex, $strokeHex = '', $strokeWidth = 0.6)
+    {
+        $fill = $this->ownerPdfHexColor($fillHex) . ' rg';
+
+        if ($strokeHex !== '') {
+            return $fill . ' ' . $this->ownerPdfHexColor($strokeHex) . ' RG ' . $strokeWidth . ' w ' . $x . ' ' . $y . ' ' . $width . ' ' . $height . ' re B';
+        }
+
+        return $fill . ' ' . $x . ' ' . $y . ' ' . $width . ' ' . $height . ' re f';
+    }
+
+    protected function ownerPdfTextCommand($text, $x, $y, $fontSize, $fontName, $hexColor)
+    {
+        return $this->ownerPdfHexColor($hexColor) . ' rg BT /' . $fontName . ' ' . $fontSize . ' Tf ' . $x . ' ' . $y . ' Td (' . $this->ownerPdfEscape($this->ownerPdfText($text)) . ') Tj ET';
+    }
+
+    protected function ownerPdfHexColor($hex)
+    {
+        $hex = ltrim((string) $hex, '#');
+
+        if (strlen($hex) !== 6) {
+            $hex = '000000';
+        }
+
+        $red = hexdec(substr($hex, 0, 2)) / 255;
+        $green = hexdec(substr($hex, 2, 2)) / 255;
+        $blue = hexdec(substr($hex, 4, 2)) / 255;
+
+        return sprintf('%.3F %.3F %.3F', $red, $green, $blue);
+    }
+
+    protected function ownerXlsxColumnName($number)
+    {
+        $name = '';
+
+        while ($number > 0) {
+            $number--;
+            $name = chr(65 + ($number % 26)) . $name;
+            $number = (int) floor($number / 26);
+        }
+
+        return $name;
+    }
+
+    protected function ownerBuildSimplePdf(array $lines)
+    {
+        $pages = array();
+        $currentPage = array();
+        $currentLineCount = 0;
+
+        foreach ($lines as $index => $line) {
+            $wrappedLines = $this->ownerPdfWrapLine($line, $index === 0 ? 86 : 118);
+
+            foreach ($wrappedLines as $wrappedLineIndex => $wrappedLine) {
+                $lineHeight = $index === 0 && $wrappedLineIndex === 0 ? 2 : 1;
+
+                if ($currentLineCount + $lineHeight > 30) {
+                    $pages[] = $currentPage;
+                    $currentPage = array();
+                    $currentLineCount = 0;
+                }
+
+                $currentPage[] = array(
+                    'text' => $wrappedLine,
+                    'title' => $index === 0 && $wrappedLineIndex === 0,
+                );
+                $currentLineCount += $lineHeight;
+            }
+        }
+
+        if (!empty($currentPage)) {
+            $pages[] = $currentPage;
+        }
+
+        if (empty($pages)) {
+            $pages[] = array(array('text' => 'Laporan tidak berisi data.', 'title' => false));
+        }
+
+        $objects = array();
+        $pageReferences = array();
+        $fontObjectNumber = 3 + (count($pages) * 2);
+
+        $objects[] = '<< /Type /Catalog /Pages 2 0 R >>';
+        $objects[] = '__PAGES__';
+
+        foreach ($pages as $pageIndex => $pageLines) {
+            $pageObjectNumber = count($objects) + 1;
+            $contentObjectNumber = $pageObjectNumber + 1;
+            $pageReferences[] = $pageObjectNumber . ' 0 R';
+            $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 ' . $fontObjectNumber . ' 0 R >> >> /Contents ' . $contentObjectNumber . ' 0 R >>';
+            $objects[] = $this->ownerPdfPageStream($pageLines, $pageIndex + 1, count($pages));
+        }
+
+        $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+        $objects[1] = '<< /Type /Pages /Kids [' . implode(' ', $pageReferences) . '] /Count ' . count($pages) . ' >>';
+
+        $pdf = "%PDF-1.4\n";
+        $offsets = array(0);
+
+        foreach ($objects as $index => $object) {
+            $offsets[] = strlen($pdf);
+            $pdf .= ($index + 1) . " 0 obj\n" . $object . "\nendobj\n";
+        }
+
+        $xrefOffset = strlen($pdf);
+        $pdf .= "xref\n0 " . (count($objects) + 1) . "\n";
+        $pdf .= "0000000000 65535 f \n";
+
+        for ($index = 1; $index < count($offsets); $index++) {
+            $pdf .= sprintf("%010d 00000 n \n", $offsets[$index]);
+        }
+
+        $pdf .= "trailer << /Size " . (count($objects) + 1) . " /Root 1 0 R >>\n";
+        $pdf .= "startxref\n" . $xrefOffset . "\n%%EOF";
+
+        return $pdf;
+    }
+
+    protected function ownerPdfPageStream(array $pageLines, $pageNumber, $totalPages)
+    {
+        $commands = array();
+        $y = 552;
+
+        foreach ($pageLines as $line) {
+            $fontSize = !empty($line['title']) ? 16 : 9;
+            $commands[] = 'BT /F1 ' . $fontSize . ' Tf 40 ' . $y . ' Td (' . $this->ownerPdfEscape($this->ownerPdfText($line['text'])) . ') Tj ET';
+            $y -= !empty($line['title']) ? 24 : 17;
+        }
+
+        $commands[] = 'BT /F1 8 Tf 760 24 Td (' . $this->ownerPdfEscape('Hal. ' . $pageNumber . '/' . $totalPages) . ') Tj ET';
+        $stream = implode("\n", $commands);
+
+        return "<< /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream";
+    }
+
+    protected function ownerPdfWrapLine($line, $maxLength)
+    {
+        $line = trim((string) $line);
+
+        if ($line === '') {
+            return array('');
+        }
+
+        $wrapped = wordwrap($line, $maxLength, "\n", true);
+        $lines = explode("\n", $wrapped);
+        $result = array();
+
+        foreach ($lines as $wrappedLine) {
+            $result[] = $wrappedLine;
+        }
+
+        return $result;
     }
 
     protected function ownerPdfText($text)
