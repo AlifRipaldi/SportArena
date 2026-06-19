@@ -1,73 +1,21 @@
 <?php
-$users = array(
-    array(
-        'name' => 'Ahmad Fauzi',
-        'email' => 'ahmad@email.com',
-        'phone' => '081234567890',
-        'role' => 'User',
-        'roleClass' => 'success',
-        'status' => 'Aktif',
-        'statusClass' => 'success',
-        'registered' => '15 Mei 2024',
-    ),
-    array(
-        'name' => 'Siti Aminah',
-        'email' => 'siti@email.com',
-        'phone' => '082345678901',
-        'role' => 'Pemilik',
-        'roleClass' => 'info',
-        'status' => 'Aktif',
-        'statusClass' => 'success',
-        'registered' => '10 April 2024',
-    ),
-    array(
-        'name' => 'Budi Santoso',
-        'email' => 'budi@email.com',
-        'phone' => '083456789012',
-        'role' => 'User',
-        'roleClass' => 'success',
-        'status' => 'Aktif',
-        'statusClass' => 'success',
-        'registered' => '05 Mei 2024',
-    ),
-    array(
-        'name' => 'Dinda Putri',
-        'email' => 'dinda@email.com',
-        'phone' => '084567890123',
-        'role' => 'User',
-        'roleClass' => 'success',
-        'status' => 'Nonaktif',
-        'statusClass' => 'warning',
-        'registered' => '20 Maret 2024',
-    ),
+$users = isset($users) && is_array($users) ? $users : array();
+$defaultUserStats = array(
+    'total' => count($users),
+    'active' => 0,
+    'owners' => 0,
+    'inactive' => 0,
 );
-
-$activeUsers = 0;
-$ownerUsers = 0;
-$inactiveUsers = 0;
-
-foreach ($users as $user) {
-    if ($user['status'] === 'Aktif') {
-        $activeUsers++;
-    }
-
-    if ($user['role'] === 'Pemilik') {
-        $ownerUsers++;
-    }
-
-    if ($user['status'] === 'Nonaktif') {
-        $inactiveUsers++;
-    }
-}
+$userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUserStats, $userStats) : $defaultUserStats;
 ?>
 
 <section class="admin-hero">
     <div>
-        <h1>Manajemen User</h1>
-        <p>Kelola semua pengguna dalam sistem Arena Sport</p>
+        <h1>Kelola Customer</h1>
+        <p>Kelola semua customer dan pemilik lapangan dalam sistem Arena Sport</p>
     </div>
     <div class="admin-hero-actions">
-        <button class="btn-primary" type="button"><i class="fa-solid fa-plus"></i> Tambah User</button>
+        <button class="btn-primary" type="button"><i class="fa-solid fa-plus"></i> Tambah Customer</button>
     </div>
 </section>
 
@@ -75,29 +23,29 @@ foreach ($users as $user) {
     <article class="admin-mini-stat">
         <span class="admin-mini-stat-icon lime"><i class="fa-solid fa-users"></i></span>
         <div>
-            <p>Total User</p>
-            <strong><?php echo count($users); ?></strong>
+            <p>Total Customer</p>
+            <strong><?php echo e($userStats['total']); ?></strong>
         </div>
     </article>
     <article class="admin-mini-stat">
         <span class="admin-mini-stat-icon green"><i class="fa-solid fa-user-check"></i></span>
         <div>
-            <p>User Aktif</p>
-            <strong><?php echo $activeUsers; ?></strong>
+            <p>Customer Aktif</p>
+            <strong><?php echo e($userStats['active']); ?></strong>
         </div>
     </article>
     <article class="admin-mini-stat">
         <span class="admin-mini-stat-icon blue"><i class="fa-solid fa-building-user"></i></span>
         <div>
             <p>Pemilik</p>
-            <strong><?php echo $ownerUsers; ?></strong>
+            <strong><?php echo e($userStats['owners']); ?></strong>
         </div>
     </article>
     <article class="admin-mini-stat">
         <span class="admin-mini-stat-icon gold"><i class="fa-solid fa-user-slash"></i></span>
         <div>
             <p>Nonaktif</p>
-            <strong><?php echo $inactiveUsers; ?></strong>
+            <strong><?php echo e($userStats['inactive']); ?></strong>
         </div>
     </article>
 </section>
@@ -106,16 +54,15 @@ foreach ($users as $user) {
     <div class="admin-filter-bar">
         <label class="admin-filter-search">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="search" placeholder="Cari user..." class="admin-search-input" aria-label="Cari user">
+            <input type="search" placeholder="Cari customer..." class="admin-search-input" aria-label="Cari customer">
         </label>
-        <select class="admin-filter-select" aria-label="Filter role user">
-            <option>Role: Semua</option>
-            <option>Admin</option>
+        <select class="admin-filter-select" aria-label="Filter role customer">
+            <option>Semua</option>
             <option>Pemilik</option>
-            <option>User</option>
+            <option>Customer</option>
         </select>
         <select class="admin-filter-select" aria-label="Filter status user">
-            <option>Status: Semua</option>
+            <option></option>
             <option>Aktif</option>
             <option>Nonaktif</option>
         </select>
@@ -136,6 +83,12 @@ foreach ($users as $user) {
                     </tr>
                 </thead>
                 <tbody>
+                    <?php if (empty($users)): ?>
+                        <tr>
+                            <td colspan="7">Belum ada data customer di database.</td>
+                        </tr>
+                    <?php endif; ?>
+
                     <?php foreach ($users as $user): ?>
                         <tr>
                             <td>
@@ -167,7 +120,7 @@ foreach ($users as $user) {
 
         <div class="admin-pagination">
             <button class="admin-pagination-btn" type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
-            <span>Halaman 1 dari 10</span>
+            <span>Menampilkan <?php echo e(count($users)); ?> data</span>
             <button class="admin-pagination-btn" type="button" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </article>

@@ -101,7 +101,7 @@ $linePoints = implode(' ', $linePoints);
                 <thead>
                     <tr>
                         <th>Kode Booking</th>
-                        <th>User</th>
+                        <th>Customer</th>
                         <th>Lapangan</th>
                         <th>Tanggal</th>
                         <th>Waktu</th>

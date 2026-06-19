@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Core\Database;
 
 class AdminController extends Controller
 {
@@ -49,7 +50,7 @@ class AdminController extends Controller
     {
         return array(
             array(
-                'label' => 'Total User',
+                'label' => 'Total Customer',
                 'value' => '1.245',
                 'trend' => '12.5%',
                 'note' => 'dari bulan lalu',
@@ -217,11 +218,14 @@ class AdminController extends Controller
         }
 
         $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+        $customers = $this->adminCustomers();
 
         return $this->view('Admin/users', array(
-            'title' => 'Manajemen User | Arena Sport',
+            'title' => 'Kelola Customer | Arena Sport',
             'activeMenu' => 'user',
             'userName' => $userName,
+            'users' => $customers,
+            'userStats' => $this->adminCustomerStats($customers),
         ), 'layouts/admin');
     }
 
@@ -243,14 +247,236 @@ class AdminController extends Controller
             exit;
         }
 
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+        header('Location: ' . app_url('admin/users'));
+        exit;
+    }
 
-        return $this->view('Admin/pemilik_lapangan', array(
-            'title' => 'Kelola Pemilik Lapangan | Arena Sport',
-            'activeMenu' => 'pemilik-lapangan',
-            'userName' => $userName,
-            'userRole' => $role,
-        ), 'layouts/admin');
+    protected function adminCustomers()
+    {
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return array();
+        }
+
+        $table = $this->adminUserTable($connection);
+        if ($table === '') {
+            return array();
+        }
+
+        $columns = $this->adminTableColumns($connection, $table);
+        if (empty($columns)) {
+            return array();
+        }
+
+        $idColumn = $this->firstAvailableColumn($columns, array('ID_User', 'id', 'user_id'));
+        $nameColumn = $this->firstAvailableColumn($columns, array('Nama', 'name', 'nama'));
+        $emailColumn = $this->firstAvailableColumn($columns, array('Email', 'email'));
+        $phoneColumn = $this->firstAvailableColumn($columns, array('Nomor_telepon', 'No_Telepon', 'phone', 'telepon'));
+        $roleColumn = $this->firstAvailableColumn($columns, array('Role', 'role', 'role_user'));
+        $statusColumn = $this->firstAvailableColumn($columns, array('Status', 'status', 'status_user'));
+        $registeredColumn = $this->firstAvailableColumn($columns, array('created_at', 'Created_at', 'tanggal_daftar', 'Tanggal_daftar', 'registered_at'));
+
+        if ($nameColumn === '' || $emailColumn === '') {
+            return array();
+        }
+
+        $select = array(
+            $idColumn !== '' ? 'u.`' . $idColumn . '` AS id' : "'' AS id",
+            'u.`' . $nameColumn . '` AS name',
+            'u.`' . $emailColumn . '` AS email',
+            $phoneColumn !== '' ? 'u.`' . $phoneColumn . '` AS phone' : "'' AS phone",
+            $roleColumn !== '' ? 'u.`' . $roleColumn . '` AS role' : "'Customer' AS role",
+            $statusColumn !== '' ? 'u.`' . $statusColumn . '` AS status' : "'Aktif' AS status",
+            $registeredColumn !== '' ? 'u.`' . $registeredColumn . '` AS registered' : 'NULL AS registered',
+        );
+
+        $ownerJoin = '';
+        if ($idColumn !== '' && $this->adminTableExists($connection, 'pemilik_lapangan')) {
+            $select[] = 'p.`ID_Pemilik` AS owner_id';
+            $ownerJoin = ' LEFT JOIN `pemilik_lapangan` p ON p.`ID_User` = u.`' . $idColumn . '`';
+        } else {
+            $select[] = 'NULL AS owner_id';
+        }
+
+        $orderColumn = $registeredColumn !== '' ? $registeredColumn : $nameColumn;
+        $sql = 'SELECT ' . implode(', ', $select) . ' FROM `' . $table . '` u' . $ownerJoin . ' ORDER BY u.`' . $orderColumn . '` ASC';
+        $result = mysqli_query($connection, $sql);
+
+        if (!$result) {
+            return array();
+        }
+
+        $users = array();
+        while ($row = mysqli_fetch_assoc($result)) {
+            $role = $this->adminDisplayRole(isset($row['role']) ? $row['role'] : '', !empty($row['owner_id']));
+            $status = $this->adminDisplayStatus(isset($row['status']) ? $row['status'] : '');
+
+            $users[] = array(
+                'id' => isset($row['id']) ? $row['id'] : '',
+                'name' => isset($row['name']) && trim((string) $row['name']) !== '' ? $row['name'] : 'Tanpa Nama',
+                'email' => isset($row['email']) ? $row['email'] : '',
+                'phone' => isset($row['phone']) && trim((string) $row['phone']) !== '' ? $row['phone'] : '-',
+                'role' => $role,
+                'roleClass' => $this->adminRoleClass($role),
+                'status' => $status,
+                'statusClass' => $this->adminStatusClass($status),
+                'registered' => $this->adminFormatDate(isset($row['registered']) ? $row['registered'] : ''),
+            );
+        }
+
+        return $users;
+    }
+
+    protected function adminCustomerStats(array $users)
+    {
+        $stats = array(
+            'total' => count($users),
+            'active' => 0,
+            'owners' => 0,
+            'inactive' => 0,
+        );
+
+        foreach ($users as $user) {
+            if (isset($user['status']) && $user['status'] === 'Aktif') {
+                $stats['active']++;
+            }
+
+            if (isset($user['role']) && $user['role'] === 'Pemilik') {
+                $stats['owners']++;
+            }
+
+            if (isset($user['status']) && $user['status'] !== 'Aktif') {
+                $stats['inactive']++;
+            }
+        }
+
+        return $stats;
+    }
+
+    protected function adminUserTable($connection)
+    {
+        if ($this->adminTableExists($connection, 'users')) {
+            return 'users';
+        }
+
+        if ($this->adminTableExists($connection, 'user')) {
+            return 'user';
+        }
+
+        return '';
+    }
+
+    protected function adminTableExists($connection, $table)
+    {
+        $safeTable = mysqli_real_escape_string($connection, $table);
+        $result = mysqli_query($connection, "SHOW TABLES LIKE '$safeTable'");
+
+        return $result && mysqli_num_rows($result) > 0;
+    }
+
+    protected function adminTableColumns($connection, $table)
+    {
+        $columns = array();
+        $result = mysqli_query($connection, 'SHOW COLUMNS FROM `' . $table . '`');
+
+        if (!$result) {
+            return $columns;
+        }
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            if (isset($row['Field'])) {
+                $columns[] = $row['Field'];
+            }
+        }
+
+        return $columns;
+    }
+
+    protected function firstAvailableColumn(array $columns, array $candidates)
+    {
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate, $columns, true)) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    protected function adminDisplayRole($role, $isOwner)
+    {
+        $normalized = strtolower(trim((string) $role));
+
+        if ($isOwner || in_array($normalized, array('pemilik', 'pemilik lapangan', 'owner', 'mitra'), true)) {
+            return 'Pemilik';
+        }
+
+        if (in_array($normalized, array('admin', 'administrator', 'superadmin'), true)) {
+            return 'Admin';
+        }
+
+        return 'Customer';
+    }
+
+    protected function adminDisplayStatus($status)
+    {
+        $normalized = strtolower(trim((string) $status));
+
+        if ($normalized === '' || in_array($normalized, array('aktif', 'active', '1', 'verified'), true)) {
+            return 'Aktif';
+        }
+
+        return 'Nonaktif';
+    }
+
+    protected function adminRoleClass($role)
+    {
+        if ($role === 'Pemilik') {
+            return 'info';
+        }
+
+        if ($role === 'Admin') {
+            return 'blue';
+        }
+
+        return 'success';
+    }
+
+    protected function adminStatusClass($status)
+    {
+        return $status === 'Aktif' ? 'success' : 'warning';
+    }
+
+    protected function adminFormatDate($value)
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return '-';
+        }
+
+        $timestamp = strtotime($value);
+        if (!$timestamp) {
+            return $value;
+        }
+
+        $months = array(
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        );
+
+        return date('j', $timestamp) . ' ' . $months[(int) date('n', $timestamp)] . ' ' . date('Y', $timestamp);
     }
 
     public function ulasan()
@@ -872,9 +1098,8 @@ class AdminController extends Controller
             'Kelola Transaksi',
             'Kelola Booking',
             'Kelola Laporan',
-            'Kelola User',
+            'Kelola Customer',
             'Pengaturan Sistem',
-            'Kelola Pemilik Lapangan',
             'Manajemen Admin',
             'Kelola Ulasan & Rating',
         );

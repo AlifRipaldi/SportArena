@@ -37,7 +37,7 @@
                     <tr>
                         <th><input type="checkbox" class="admin-checkbox-all"></th>
                         <th>Kode Booking</th>
-                        <th>User</th>
+                        <th>Customer</th>
                         <th>Lapangan</th>
                         <th>Tanggal</th>
                         <th>Waktu</th>
