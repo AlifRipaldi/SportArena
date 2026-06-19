@@ -16498,7 +16498,7 @@ body.owner-report-modal-open {
     line-height: 1.2;
 }
 
-.owner-transaksi-field button,
+.owner-transaksi-date-picker summary,
 .owner-transaksi-field select,
 .owner-transaksi-search,
 .owner-transaksi-export,
@@ -16511,7 +16511,7 @@ body.owner-report-modal-open {
     font-size: 14px;
 }
 
-.owner-transaksi-field button,
+.owner-transaksi-date-picker summary,
 .owner-transaksi-export {
     display: inline-flex;
     align-items: center;
@@ -16520,10 +16520,91 @@ body.owner-report-modal-open {
     cursor: pointer;
 }
 
-.owner-transaksi-date-field button {
+.owner-transaksi-date-picker {
+    position: relative;
+}
+
+.owner-transaksi-date-picker summary {
     justify-content: space-between;
     padding: 0 14px;
     white-space: nowrap;
+    list-style: none;
+}
+
+.owner-transaksi-date-picker summary::-webkit-details-marker {
+    display: none;
+}
+
+.owner-transaksi-date-picker[open] summary {
+    border-color: rgba(143, 227, 50, 0.38);
+    background: rgba(143, 227, 50, 0.09);
+}
+
+.owner-transaksi-date-panel {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 8px);
+    z-index: 25;
+    width: min(330px, 82vw);
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid rgba(180, 206, 236, 0.14);
+    border-radius: 8px;
+    background: #101827;
+    box-shadow: 0 22px 42px rgba(0, 0, 0, 0.36);
+}
+
+.owner-transaksi-date-panel label {
+    display: grid;
+    gap: 7px;
+}
+
+.owner-transaksi-date-panel label > span {
+    color: rgba(247, 251, 255, 0.7);
+    font-size: 12px;
+}
+
+.owner-transaksi-date-panel input {
+    min-height: 42px;
+    padding: 0 12px;
+    border: 1px solid rgba(180, 206, 236, 0.14);
+    border-radius: 7px;
+    outline: 0;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+}
+
+.owner-transaksi-date-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding-top: 2px;
+}
+
+.owner-transaksi-date-actions a,
+.owner-transaksi-date-actions button {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.owner-transaksi-date-actions a {
+    padding: 0 12px;
+    color: rgba(247, 251, 255, 0.68);
+}
+
+.owner-transaksi-date-actions button {
+    padding: 0 16px;
+    border: 0;
+    background: linear-gradient(135deg, #9bea25, #4f9d22);
+    color: #0d1a13;
 }
 
 .owner-transaksi-field select,
@@ -16560,7 +16641,7 @@ body.owner-report-modal-open {
     color: rgba(247, 251, 255, 0.44);
 }
 
-.owner-transaksi-field button:hover,
+.owner-transaksi-date-picker summary:hover,
 .owner-transaksi-field select:focus,
 .owner-transaksi-search:focus-within {
     border-color: rgba(143, 227, 50, 0.34);
@@ -16660,7 +16741,7 @@ body.owner-report-modal-open {
 }
 
 .owner-transaksi-table {
-    min-width: 1320px;
+    min-width: 1460px;
 }
 
 .owner-transaksi-table th,
@@ -16676,7 +16757,8 @@ body.owner-report-modal-open {
 }
 
 .owner-transaksi-table td:nth-child(2),
-.owner-transaksi-table td:nth-child(5),
+.owner-transaksi-table td:nth-child(3),
+.owner-transaksi-table td:nth-child(6),
 .owner-transaksi-table .owner-transaksi-amount {
     color: #ffffff;
     font-weight: 600;
@@ -16783,6 +16865,26 @@ body.owner-report-modal-open {
     color: #b7ff4d;
 }
 
+.owner-transaksi-empty {
+    min-height: 190px;
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    padding: 34px 18px;
+    text-align: center;
+    color: rgba(247, 251, 255, 0.66);
+}
+
+.owner-transaksi-empty i {
+    color: rgba(143, 227, 50, 0.76);
+    font-size: 28px;
+}
+
+.owner-transaksi-empty strong {
+    color: #ffffff;
+    font-size: 16px;
+}
+
 .owner-transaksi-footer {
     min-height: 68px;
     display: grid;
@@ -16805,7 +16907,7 @@ body.owner-report-modal-open {
     gap: 8px;
 }
 
-.owner-transaksi-pagination button,
+.owner-transaksi-pagination a,
 .owner-transaksi-pagination span {
     width: 36px;
     height: 36px;
@@ -16817,21 +16919,137 @@ body.owner-report-modal-open {
     color: rgba(247, 251, 255, 0.82);
     font-size: 13px;
     line-height: 1;
+    text-decoration: none;
 }
 
-.owner-transaksi-pagination button {
-    cursor: pointer;
-}
-
-.owner-transaksi-pagination button:hover,
-.owner-transaksi-pagination button.active {
+.owner-transaksi-pagination a:hover,
+.owner-transaksi-pagination span.active {
     border-color: rgba(143, 227, 50, 0.46);
     background: linear-gradient(135deg, rgba(133, 219, 57, 0.72), rgba(49, 125, 32, 0.78));
     color: #ffffff;
 }
 
+.owner-transaksi-pagination span.disabled {
+    opacity: 0.42;
+}
+
 .owner-transaksi-page-size {
     display: block;
+}
+
+.owner-transaction-modal[hidden] {
+    display: none;
+}
+
+.owner-transaction-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+}
+
+.owner-transaction-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 8, 14, 0.72);
+    backdrop-filter: blur(8px);
+}
+
+.owner-transaction-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(620px, 100%);
+    max-height: min(720px, calc(100vh - 40px));
+    overflow: auto;
+    border: 1px solid rgba(180, 206, 236, 0.14);
+    border-radius: 8px;
+    background: #101827;
+    box-shadow: 0 32px 70px rgba(0, 0, 0, 0.48);
+}
+
+.owner-transaction-dialog-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 20px 22px;
+    border-bottom: 1px solid rgba(180, 206, 236, 0.1);
+}
+
+.owner-transaction-dialog-head h2 {
+    margin: 0 0 5px;
+    color: #ffffff;
+    font-size: 20px;
+}
+
+.owner-transaction-dialog-head p {
+    margin: 0;
+    color: #9bea25;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.owner-transaction-dialog-head button {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(180, 206, 236, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+    cursor: pointer;
+}
+
+.owner-transaction-detail-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    padding: 8px 22px 22px;
+}
+
+.owner-transaction-detail-list div {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+    padding: 14px 0;
+    border-bottom: 1px solid rgba(180, 206, 236, 0.08);
+}
+
+.owner-transaction-detail-list div:nth-child(odd) {
+    padding-right: 16px;
+}
+
+.owner-transaction-detail-list div:nth-child(even) {
+    padding-left: 16px;
+}
+
+.owner-transaction-detail-list dt {
+    color: rgba(247, 251, 255, 0.56);
+    font-size: 12px;
+}
+
+.owner-transaction-detail-list dd {
+    margin: 0;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.owner-transaction-detail-list dd small {
+    display: block;
+    margin-top: 3px;
+    color: rgba(247, 251, 255, 0.66);
+    font-size: 12px;
+    font-weight: 500;
+}
+
+body.owner-transaction-modal-open {
+    overflow: hidden;
 }
 
 @media (max-width: 1440px) {
@@ -16891,8 +17109,22 @@ body.owner-report-modal-open {
         grid-template-columns: 1fr;
     }
 
-    .owner-transaksi-date-field button {
+    .owner-transaksi-date-picker summary {
         white-space: normal;
+    }
+
+    .owner-transaksi-date-panel {
+        width: min(330px, calc(100vw - 40px));
+    }
+
+    .owner-transaction-detail-list {
+        grid-template-columns: 1fr;
+    }
+
+    .owner-transaction-detail-list div:nth-child(odd),
+    .owner-transaction-detail-list div:nth-child(even) {
+        padding-left: 0;
+        padding-right: 0;
     }
 
     .owner-transaksi-stat-card {
