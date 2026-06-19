@@ -125,11 +125,6 @@
                         <input type="text" name="location" value="<?php echo e($profile['location']); ?>">
                     </label>
 
-                    <label class="owner-profil-full">
-                        <span>Tentang Saya</span>
-                        <textarea name="bio" rows="4"><?php echo e($profile['bio']); ?></textarea>
-                    </label>
-
                     <div class="owner-profil-upload owner-profil-full">
                         <span>Foto Profil</span>
                         <div class="owner-profil-upload-row">

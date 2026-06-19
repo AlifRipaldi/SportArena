@@ -32,6 +32,7 @@ $router->get('/pemilik/jadwal', [PemilikController::class, 'jadwal']);
 $router->get('/pemilik/pendapatan', [PemilikController::class, 'pendapatan']);
 $router->get('/pemilik/pendapatan/download', [PemilikController::class, 'downloadPendapatan']);
 $router->get('/pemilik/transaksi', [PemilikController::class, 'transaksi']);
+$router->get('/pemilik/transaksi/export', [PemilikController::class, 'downloadTransaksi']);
 $router->get('/pemilik/ulasan', [PemilikController::class, 'ulasan']);
 $router->get('/pemilik/profil', [PemilikController::class, 'profil']);
 $router->post('/pemilik/profil', [PemilikController::class, 'updateProfil']);
