@@ -1,9 +1,20 @@
 <?php
 // Owner - Lapangan Saya
 $fieldPayloads = array();
+$facilityOptions = array(
+    array('name' => 'Parkir', 'icon' => 'fa-square-parking'),
+    array('name' => 'Toilet', 'icon' => 'fa-restroom'),
+    array('name' => 'Musholla', 'icon' => 'fa-mosque'),
+    array('name' => 'WiFi', 'icon' => 'fa-wifi'),
+    array('name' => 'Kantin', 'icon' => 'fa-store'),
+    array('name' => 'CCTV', 'icon' => 'fa-video'),
+    array('name' => 'Loker', 'icon' => 'fa-lock'),
+    array('name' => 'Ruang Tunggu', 'icon' => 'fa-couch'),
+);
 
 foreach ($lapangan as $field) {
     $priceNumber = isset($field['priceNumber']) ? (int) $field['priceNumber'] : (int) preg_replace('/[^0-9]/', '', isset($field['price']) ? $field['price'] : '0');
+    $photos = isset($field['photos']) && is_array($field['photos']) ? $field['photos'] : array();
 
     $fieldPayloads[$field['id']] = array(
         'id' => isset($field['id']) ? $field['id'] : '',
@@ -20,6 +31,7 @@ foreach ($lapangan as $field) {
         'description' => isset($field['description']) ? $field['description'] : 'Arena olahraga dengan fasilitas lengkap untuk permainan yang nyaman.',
         'hours' => isset($field['hours']) ? $field['hours'] : '06:00 - 23:00 Setiap Hari',
         'facilities' => isset($field['facilities']) ? $field['facilities'] : array('Parkir', 'Toilet', 'Musholla', 'WiFi', 'Kantin', 'CCTV'),
+        'photos' => $photos,
         'rules' => isset($field['rules']) ? $field['rules'] : array('Jaga kebersihan area lapangan', 'Gunakan perlengkapan olahraga yang sesuai'),
     );
 }
@@ -42,9 +54,14 @@ foreach ($lapangan as $field) {
             <?php
             $cardStatus = isset($field['cardStatus']) ? $field['cardStatus'] : $field['status'];
             $cardStatusClass = strtolower($cardStatus) === 'aktif' ? 'success' : 'warning';
+            $fieldPhotos = isset($field['photos']) && is_array($field['photos']) ? $field['photos'] : array();
+            $cardPhotoUrl = isset($fieldPhotos[0]['url']) ? $fieldPhotos[0]['url'] : '';
             ?>
             <article class="owner-lapangan-card" data-owner-field-card="<?php echo e($field['id']); ?>">
-                <div class="owner-lapangan-visual <?php echo e($field['visual']); ?>">
+                <div class="owner-lapangan-visual <?php echo e($field['visual']); ?> <?php echo $cardPhotoUrl !== '' ? 'has-photo' : ''; ?>">
+                    <?php if ($cardPhotoUrl !== ''): ?>
+                        <img class="owner-lapangan-photo" src="<?php echo e($cardPhotoUrl); ?>" alt="Foto <?php echo e($field['name']); ?>" loading="lazy">
+                    <?php endif; ?>
                     <span class="admin-badge <?php echo e($cardStatusClass); ?>" data-owner-field-status><?php echo e($cardStatus); ?></span>
                     <button class="btn-icon owner-field-like" type="button" aria-label="Favorit <?php echo e($field['name']); ?>">
                         <i class="fa-regular fa-heart"></i>
@@ -74,6 +91,14 @@ foreach ($lapangan as $field) {
                 </div>
             </article>
         <?php endforeach; ?>
+
+        <?php if (empty($lapangan)): ?>
+            <article class="owner-lapangan-empty">
+                <i class="fa-regular fa-futbol"></i>
+                <strong>Belum ada lapangan</strong>
+                <span>Tambahkan lapangan pertama untuk mulai mengisi database.</span>
+            </article>
+        <?php endif; ?>
     </div>
 
     <article class="admin-panel owner-lapangan-table-panel">
@@ -94,29 +119,35 @@ foreach ($lapangan as $field) {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($lapangan as $index => $field): ?>
-                        <?php $statusClass = strtolower($field['status']) === 'aktif' ? 'success' : 'warning'; ?>
-                        <tr data-owner-field-row="<?php echo e($field['id']); ?>">
-                            <td><?php echo e($index + 1); ?></td>
-                            <td data-owner-field-name><?php echo e($field['name']); ?></td>
-                            <td><?php echo e($field['type']); ?></td>
-                            <td data-owner-field-price><?php echo e($field['price']); ?></td>
-                            <td><span class="admin-badge <?php echo e($statusClass); ?>" data-owner-field-status><?php echo e($field['status']); ?></span></td>
-                            <td>
-                                <div class="owner-table-actions">
-                                    <button class="btn-icon owner-table-edit" type="button" aria-label="Edit <?php echo e($field['name']); ?>" data-owner-field-manage-open data-owner-field-mode="edit" data-owner-field-id="<?php echo e($field['id']); ?>">
-                                        <i class="fa-solid fa-pen-to-square"></i>
-                                    </button>
-                                    <button class="btn-icon owner-table-detail" type="button" aria-label="Detail <?php echo e($field['name']); ?>" data-owner-field-manage-open data-owner-field-mode="detail" data-owner-field-id="<?php echo e($field['id']); ?>">
-                                        <i class="fa-regular fa-eye"></i>
-                                    </button>
-                                    <button class="btn-icon owner-table-delete" type="button" aria-label="Hapus <?php echo e($field['name']); ?>">
-                                        <i class="fa-regular fa-trash-can"></i>
-                                    </button>
-                                </div>
-                            </td>
+                    <?php if (empty($lapangan)): ?>
+                        <tr>
+                            <td colspan="6" class="owner-lapangan-empty-cell">Belum ada data lapangan.</td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($lapangan as $index => $field): ?>
+                            <?php $statusClass = strtolower($field['status']) === 'aktif' ? 'success' : 'warning'; ?>
+                            <tr data-owner-field-row="<?php echo e($field['id']); ?>">
+                                <td><?php echo e($index + 1); ?></td>
+                                <td data-owner-field-name><?php echo e($field['name']); ?></td>
+                                <td><?php echo e($field['type']); ?></td>
+                                <td data-owner-field-price><?php echo e($field['price']); ?></td>
+                                <td><span class="admin-badge <?php echo e($statusClass); ?>" data-owner-field-status><?php echo e($field['status']); ?></span></td>
+                                <td>
+                                    <div class="owner-table-actions">
+                                        <button class="btn-icon owner-table-edit" type="button" aria-label="Edit <?php echo e($field['name']); ?>" data-owner-field-manage-open data-owner-field-mode="edit" data-owner-field-id="<?php echo e($field['id']); ?>">
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button class="btn-icon owner-table-detail" type="button" aria-label="Detail <?php echo e($field['name']); ?>" data-owner-field-manage-open data-owner-field-mode="detail" data-owner-field-id="<?php echo e($field['id']); ?>">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </button>
+                                        <button class="btn-icon owner-table-delete" type="button" aria-label="Hapus <?php echo e($field['name']); ?>" data-owner-field-delete data-owner-field-id="<?php echo e($field['id']); ?>">
+                                            <i class="fa-regular fa-trash-can"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
@@ -141,20 +172,23 @@ foreach ($lapangan as $field) {
 
             <div class="owner-field-court-preview" data-owner-manage-visual></div>
 
-            <form class="owner-field-edit-form" data-owner-field-edit-form>
+            <form class="owner-field-edit-form" action="<?php echo e(app_url('pemilik/lapangan/update')); ?>" method="post" enctype="multipart/form-data" autocomplete="off" data-owner-field-edit-form>
+                <input type="hidden" name="id_lapangan" value="">
+                <input type="hidden" name="type" value="">
+
                 <section class="owner-field-edit-section">
                     <h3>Informasi Arena</h3>
 
                     <label>
                         <span>Nama Arena</span>
-                        <input type="text" name="name" required>
+                        <input type="text" name="name" autocomplete="off" required>
                     </label>
 
                     <label>
                         <span>Lokasi</span>
                         <span class="owner-field-inline-input">
                             <i class="fa-solid fa-location-dot"></i>
-                            <input type="text" name="location" required>
+                            <input type="text" name="location" autocomplete="off" required>
                         </span>
                     </label>
 
@@ -170,6 +204,40 @@ foreach ($lapangan as $field) {
                         <span>Deskripsi</span>
                         <textarea name="description" rows="4"></textarea>
                     </label>
+                </section>
+
+                <section class="owner-field-edit-section owner-field-photo-edit-section">
+                    <h3>Foto Lapangan</h3>
+                    <div class="owner-field-edit-photo-list" data-owner-edit-photos></div>
+                    <div data-owner-edit-deleted-photos></div>
+
+                    <label class="owner-field-upload-drop" for="ownerEditFieldPhoto">
+                        <input id="ownerEditFieldPhoto" type="file" name="foto_lapangan[]" accept="image/png,image/jpeg" multiple data-owner-edit-photo>
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>
+                            <strong>Tambah Foto</strong>
+                            <small>PNG, JPG maksimal 5MB per foto. Total maksimal 5 foto</small>
+                        </span>
+                    </label>
+                    <div class="owner-field-edit-new-photo-list" data-owner-edit-new-photos></div>
+                </section>
+
+                <section class="owner-field-edit-section">
+                    <fieldset class="owner-field-facility-checks owner-field-edit-facility-checks">
+                        <legend>Fasilitas</legend>
+
+                        <div class="owner-field-facility-check-grid">
+                            <?php foreach ($facilityOptions as $facility): ?>
+                                <label class="owner-field-facility-check">
+                                    <input type="checkbox" name="facilities[]" value="<?php echo e($facility['name']); ?>" data-owner-edit-facility>
+                                    <span>
+                                        <i class="fa-solid <?php echo e($facility['icon']); ?>"></i>
+                                        <strong><?php echo e($facility['name']); ?></strong>
+                                    </span>
+                                </label>
+                            <?php endforeach; ?>
+                        </div>
+                    </fieldset>
                 </section>
 
                 <section class="owner-field-edit-section owner-field-status-section">
@@ -271,8 +339,9 @@ foreach ($lapangan as $field) {
         }
 
         var ownerFieldData = <?php echo json_encode($fieldPayloads, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
-        var storageKey = 'sportarena_owner_lapangan_edits';
+        var deleteAction = <?php echo json_encode(app_url('pemilik/lapangan/hapus'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
         var closeButtons = modal.querySelectorAll('[data-owner-field-manage-close]');
+        var deleteButtons = document.querySelectorAll('[data-owner-field-delete]');
         var editPanel = modal.querySelector('.owner-field-edit-panel');
         var detailPanel = modal.querySelector('.owner-field-detail-panel');
         var editForm = modal.querySelector('[data-owner-field-edit-form]');
@@ -281,6 +350,11 @@ foreach ($lapangan as $field) {
         var editStatusLabel = modal.querySelector('[data-owner-manage-status-label]');
         var editStatusToggle = modal.querySelector('.owner-field-status-toggle');
         var editVisual = modal.querySelector('[data-owner-manage-visual]');
+        var editFacilityInputs = editForm ? editForm.querySelectorAll('[data-owner-edit-facility]') : [];
+        var editPhotoList = modal.querySelector('[data-owner-edit-photos]');
+        var editDeletedPhotos = modal.querySelector('[data-owner-edit-deleted-photos]');
+        var editPhotoInput = modal.querySelector('[data-owner-edit-photo]');
+        var editNewPhotoList = modal.querySelector('[data-owner-edit-new-photos]');
         var detailTitle = modal.querySelector('[data-owner-manage-detail-title]');
         var detailVisual = modal.querySelector('[data-owner-manage-detail-visual]');
         var detailName = modal.querySelector('[data-owner-manage-detail-name]');
@@ -295,11 +369,9 @@ foreach ($lapangan as $field) {
         var detailRules = modal.querySelector('[data-owner-manage-detail-rules]');
         var focusEditButton = modal.querySelector('[data-owner-field-focus-edit]');
         var detailCloseButton = modal.querySelector('.owner-field-detail-panel [data-owner-field-manage-close]');
-        var saveButton = editForm ? editForm.querySelector('.owner-field-save-btn') : null;
-        var saveButtonHtml = saveButton ? saveButton.innerHTML : '';
         var currentFieldId = null;
         var lastTrigger = null;
-        var savedTimer = null;
+        var removedPhotoPaths = [];
 
         var facilityIcons = {
             Parkir: 'fa-square-parking',
@@ -311,28 +383,6 @@ foreach ($lapangan as $field) {
             Loker: 'fa-lock',
             'Ruang Tunggu': 'fa-couch'
         };
-
-        function loadSavedFields() {
-            try {
-                var savedFields = JSON.parse(localStorage.getItem(storageKey) || '{}');
-
-                Object.keys(savedFields).forEach(function (fieldId) {
-                    if (ownerFieldData[fieldId]) {
-                        ownerFieldData[fieldId] = Object.assign({}, ownerFieldData[fieldId], savedFields[fieldId]);
-                    }
-                });
-            } catch (error) {
-                localStorage.removeItem(storageKey);
-            }
-        }
-
-        function saveFields() {
-            try {
-                localStorage.setItem(storageKey, JSON.stringify(ownerFieldData));
-            } catch (error) {
-                // Ignore quota errors; the visible page is already updated.
-            }
-        }
 
         function setText(element, value) {
             if (element) {
@@ -359,6 +409,26 @@ foreach ($lapangan as $field) {
             return String(visual || 'futsal').replace(/[^a-z0-9_-]/gi, '') || 'futsal';
         }
 
+        function normalizeFacilities(facilities) {
+            if (!Array.isArray(facilities)) {
+                return [];
+            }
+
+            return facilities.map(function (facility) {
+                return String(facility || '').trim();
+            }).filter(Boolean);
+        }
+
+        function normalizePhotos(photos) {
+            if (!Array.isArray(photos)) {
+                return [];
+            }
+
+            return photos.filter(function (photo) {
+                return photo && photo.url && photo.path;
+            });
+        }
+
         function setStatusClass(element, status) {
             if (!element) {
                 return;
@@ -383,10 +453,195 @@ foreach ($lapangan as $field) {
             element.classList.toggle('is-inactive', !isActiveStatus(status));
         }
 
-        function setCourtVisual(element, visual) {
-            if (element) {
-                element.className = 'owner-field-court-preview ' + safeVisual(visual);
+        function setCourtVisual(element, visual, photos) {
+            var normalizedPhotos = normalizePhotos(photos);
+
+            if (!element) {
+                return;
             }
+
+            element.className = 'owner-field-court-preview ' + safeVisual(visual);
+            element.innerHTML = '';
+            element.onpointerdown = null;
+            element.onpointerup = null;
+
+            if (normalizedPhotos.length) {
+                var image = document.createElement('img');
+                var currentIndex = parseInt(element.dataset.ownerPhotoIndex || '0', 10);
+
+                element.classList.add('has-photo');
+                currentIndex = Number.isNaN(currentIndex) ? 0 : currentIndex;
+
+                if (currentIndex < 0 || currentIndex >= normalizedPhotos.length) {
+                    currentIndex = 0;
+                }
+
+                element.dataset.ownerPhotoIndex = currentIndex;
+                image.className = 'owner-field-preview-photo';
+                image.src = normalizedPhotos[currentIndex].url;
+                image.alt = 'Foto lapangan ' + (currentIndex + 1);
+                element.appendChild(image);
+
+                if (normalizedPhotos.length > 1) {
+                    var prevButton = document.createElement('button');
+                    var nextButton = document.createElement('button');
+                    var dots = document.createElement('div');
+                    var startX = null;
+
+                    function goToPhoto(index) {
+                        element.dataset.ownerPhotoIndex = (index + normalizedPhotos.length) % normalizedPhotos.length;
+                        setCourtVisual(element, visual, normalizedPhotos);
+                    }
+
+                    prevButton.type = 'button';
+                    prevButton.className = 'owner-field-court-photo-nav prev';
+                    prevButton.setAttribute('aria-label', 'Foto sebelumnya');
+                    prevButton.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+                    prevButton.addEventListener('click', function () {
+                        goToPhoto(currentIndex - 1);
+                    });
+
+                    nextButton.type = 'button';
+                    nextButton.className = 'owner-field-court-photo-nav next';
+                    nextButton.setAttribute('aria-label', 'Foto berikutnya');
+                    nextButton.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+                    nextButton.addEventListener('click', function () {
+                        goToPhoto(currentIndex + 1);
+                    });
+
+                    dots.className = 'owner-field-court-photo-dots';
+                    normalizedPhotos.forEach(function (photo, index) {
+                        var dot = document.createElement('button');
+                        dot.type = 'button';
+                        dot.className = index === currentIndex ? 'active' : '';
+                        dot.setAttribute('aria-label', 'Lihat foto ' + (index + 1));
+                        dot.addEventListener('click', function () {
+                            goToPhoto(index);
+                        });
+                        dots.appendChild(dot);
+                    });
+
+                    element.onpointerdown = function (event) {
+                        if (event.target.closest('button')) {
+                            return;
+                        }
+
+                        startX = event.clientX;
+                    };
+
+                    element.onpointerup = function (event) {
+                        if (startX === null || event.target.closest('button')) {
+                            startX = null;
+                            return;
+                        }
+
+                        var deltaX = event.clientX - startX;
+                        startX = null;
+
+                        if (Math.abs(deltaX) < 36) {
+                            return;
+                        }
+
+                        goToPhoto(deltaX < 0 ? currentIndex + 1 : currentIndex - 1);
+                    };
+
+                    element.appendChild(prevButton);
+                    element.appendChild(nextButton);
+                    element.appendChild(dots);
+                }
+            }
+        }
+
+        function draftPhotos(baseField) {
+            return normalizePhotos(baseField.photos).filter(function (photo) {
+                return removedPhotoPaths.indexOf(photo.path) === -1;
+            });
+        }
+
+        function addDeletedPhotoInput(path) {
+            if (!editDeletedPhotos) {
+                return;
+            }
+
+            var input = document.createElement('input');
+
+            input.type = 'hidden';
+            input.name = 'delete_photos[]';
+            input.value = path;
+            editDeletedPhotos.appendChild(input);
+        }
+
+        function renderEditPhotos(field) {
+            if (!editPhotoList || !editDeletedPhotos) {
+                return;
+            }
+
+            removedPhotoPaths = [];
+            editPhotoList.innerHTML = '';
+            editDeletedPhotos.innerHTML = '';
+
+            var photos = normalizePhotos(field.photos);
+
+            if (!photos.length) {
+                var empty = document.createElement('p');
+                empty.className = 'owner-field-edit-photo-empty';
+                empty.textContent = 'Belum ada foto tersimpan.';
+                editPhotoList.appendChild(empty);
+                return;
+            }
+
+            photos.forEach(function (photo, index) {
+                var item = document.createElement('div');
+                var image = document.createElement('img');
+                var button = document.createElement('button');
+
+                item.className = 'owner-field-edit-photo-item';
+                image.src = photo.url;
+                image.alt = 'Foto lapangan ' + (index + 1);
+                button.type = 'button';
+                button.innerHTML = '<i class="fa-regular fa-trash-can"></i><span>Hapus</span>';
+                button.addEventListener('click', function () {
+                    if (removedPhotoPaths.indexOf(photo.path) === -1) {
+                        removedPhotoPaths.push(photo.path);
+                        addDeletedPhotoInput(photo.path);
+                    }
+
+                    item.remove();
+
+                    if (!editPhotoList.querySelector('.owner-field-edit-photo-item')) {
+                        var empty = document.createElement('p');
+                        empty.className = 'owner-field-edit-photo-empty';
+                        empty.textContent = 'Semua foto lama akan dihapus setelah disimpan.';
+                        editPhotoList.appendChild(empty);
+                    }
+
+                    renderDetail(getDraftField());
+                    setCourtVisual(editVisual, field.visual, getDraftField().photos);
+                });
+
+                item.appendChild(image);
+                item.appendChild(button);
+                editPhotoList.appendChild(item);
+            });
+        }
+
+        function renderEditNewPhotos() {
+            if (!editNewPhotoList || !editPhotoInput) {
+                return;
+            }
+
+            var files = Array.prototype.slice.call(editPhotoInput.files || []);
+            editNewPhotoList.innerHTML = '';
+
+            if (!files.length) {
+                return;
+            }
+
+            files.slice(0, 5).forEach(function (file) {
+                var item = document.createElement('span');
+                item.textContent = file.name;
+                editNewPhotoList.appendChild(item);
+            });
         }
 
         function iconForFacility(name) {
@@ -400,7 +655,17 @@ foreach ($lapangan as $field) {
 
             detailFacilities.innerHTML = '';
 
-            (field.facilities || []).forEach(function (facility) {
+            var facilities = normalizeFacilities(field.facilities);
+
+            if (!facilities.length) {
+                var empty = document.createElement('p');
+                empty.className = 'owner-field-facility-empty';
+                empty.textContent = 'Belum ada fasilitas dipilih.';
+                detailFacilities.appendChild(empty);
+                return;
+            }
+
+            facilities.forEach(function (facility) {
                 var item = document.createElement('span');
                 var icon = document.createElement('i');
                 var label = document.createElement('span');
@@ -440,7 +705,7 @@ foreach ($lapangan as $field) {
             var status = field.status || 'Aktif';
 
             setText(detailTitle, 'Detail ' + (field.name || 'Arena'));
-            setCourtVisual(detailVisual, field.visual);
+            setCourtVisual(detailVisual, field.visual, field.photos);
             setText(detailName, field.name || 'Arena');
             setPlainStatus(detailStatus, status);
             setText(detailLocation, field.location || '-');
@@ -464,19 +729,49 @@ foreach ($lapangan as $field) {
             }
         }
 
+        function fillFacilityChecks(facilities) {
+            var selectedFacilities = normalizeFacilities(facilities);
+
+            editFacilityInputs.forEach(function (input) {
+                input.checked = selectedFacilities.indexOf(input.value) !== -1;
+            });
+        }
+
+        function getSelectedFacilities() {
+            var facilities = [];
+
+            editFacilityInputs.forEach(function (input) {
+                if (input.checked) {
+                    facilities.push(input.value);
+                }
+            });
+
+            return facilities;
+        }
+
         function fillEditForm(field) {
             if (!editForm) {
                 return;
             }
 
+            editForm.elements.id_lapangan.value = field.id || '';
+            editForm.elements.type.value = field.type || '';
             editForm.elements.name.value = field.name || '';
             editForm.elements.location.value = field.location || '';
             editForm.elements.price.value = priceNumber(field.priceNumber || field.price);
             editForm.elements.description.value = field.description || '';
             editForm.elements.active.checked = isActiveStatus(field.status);
+            if (editPhotoInput) {
+                editPhotoInput.value = '';
+            }
+            if (editNewPhotoList) {
+                editNewPhotoList.innerHTML = '';
+            }
+            renderEditPhotos(field);
+            fillFacilityChecks(field.facilities);
             setText(editTitle, 'Edit ' + (field.name || 'Arena'));
             setEditStatus(field.status || 'Aktif');
-            setCourtVisual(editVisual, field.visual);
+            setCourtVisual(editVisual, field.visual, field.photos);
         }
 
         function getDraftField() {
@@ -491,7 +786,9 @@ foreach ($lapangan as $field) {
                 priceNumber: draftPrice,
                 status: draftStatus,
                 cardStatus: draftStatus,
-                description: editForm.elements.description.value.trim() || 'Belum ada deskripsi.'
+                description: editForm.elements.description.value.trim() || 'Belum ada deskripsi.',
+                facilities: getSelectedFacilities(),
+                photos: draftPhotos(baseField)
             });
         }
 
@@ -500,45 +797,31 @@ foreach ($lapangan as $field) {
             renderDetail(field);
         }
 
-        function updateListItem(field) {
-            var card = document.querySelector('[data-owner-field-card="' + field.id + '"]');
-            var row = document.querySelector('[data-owner-field-row="' + field.id + '"]');
+        function deleteField(fieldId) {
+            fieldId = String(fieldId || '');
 
-            if (card) {
-                setText(card.querySelector('[data-owner-field-name]'), field.name);
-                setText(card.querySelector('[data-owner-field-location]'), field.location);
-                setText(card.querySelector('[data-owner-field-price]'), field.price);
-                setStatusClass(card.querySelector('[data-owner-field-status]'), field.status);
+            var field = ownerFieldData[fieldId];
+            var fieldName = field && field.name ? field.name : 'lapangan ini';
 
-                card.querySelectorAll('[data-owner-field-manage-open]').forEach(function (button) {
-                    button.setAttribute('aria-label', button.dataset.ownerFieldMode === 'detail' ? 'Detail ' + field.name : 'Edit ' + field.name);
-                });
-            }
-
-            if (row) {
-                setText(row.querySelector('[data-owner-field-name]'), field.name);
-                setText(row.querySelector('[data-owner-field-price]'), field.price);
-                setStatusClass(row.querySelector('[data-owner-field-status]'), field.status);
-
-                row.querySelectorAll('[data-owner-field-manage-open]').forEach(function (button) {
-                    button.setAttribute('aria-label', button.dataset.ownerFieldMode === 'detail' ? 'Detail ' + field.name : 'Edit ' + field.name);
-                });
-            }
-        }
-
-        function showSavedState() {
-            if (!saveButton) {
+            if (!field) {
                 return;
             }
 
-            window.clearTimeout(savedTimer);
-            saveButton.classList.add('is-saved');
-            saveButton.innerHTML = '<i class="fa-solid fa-check"></i><span>Tersimpan</span>';
+            if (!window.confirm('Hapus ' + fieldName + ' dari daftar lapangan?')) {
+                return;
+            }
 
-            savedTimer = window.setTimeout(function () {
-                saveButton.classList.remove('is-saved');
-                saveButton.innerHTML = saveButtonHtml;
-            }, 1500);
+            var form = document.createElement('form');
+            var input = document.createElement('input');
+
+            form.method = 'post';
+            form.action = deleteAction;
+            input.type = 'hidden';
+            input.name = 'id_lapangan';
+            input.value = fieldId;
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
         }
 
         function setManageMode(mode) {
@@ -586,15 +869,10 @@ foreach ($lapangan as $field) {
             modal.hidden = true;
             document.body.classList.remove('owner-field-modal-open');
 
-            if (lastTrigger) {
+            if (lastTrigger && lastTrigger.isConnected) {
                 lastTrigger.focus();
             }
         }
-
-        loadSavedFields();
-        Object.keys(ownerFieldData).forEach(function (fieldId) {
-            updateListItem(ownerFieldData[fieldId]);
-        });
 
         openButtons.forEach(function (button) {
             button.addEventListener('click', function () {
@@ -604,6 +882,12 @@ foreach ($lapangan as $field) {
 
         closeButtons.forEach(function (button) {
             button.addEventListener('click', closeManage);
+        });
+
+        deleteButtons.forEach(function (button) {
+            button.addEventListener('click', function () {
+                deleteField(button.dataset.ownerFieldId);
+            });
         });
 
         if (editForm) {
@@ -627,18 +911,25 @@ foreach ($lapangan as $field) {
                 renderDetail(draftField);
             });
 
-            editForm.addEventListener('submit', function (event) {
-                event.preventDefault();
+            editFacilityInputs.forEach(function (input) {
+                input.addEventListener('change', function () {
+                    if (!currentFieldId) {
+                        return;
+                    }
 
+                    renderDetail(getDraftField());
+                });
+            });
+
+            if (editPhotoInput) {
+                editPhotoInput.addEventListener('change', renderEditNewPhotos);
+            }
+
+            editForm.addEventListener('submit', function (event) {
                 if (!currentFieldId) {
+                    event.preventDefault();
                     return;
                 }
-
-                ownerFieldData[currentFieldId] = getDraftField();
-                saveFields();
-                renderPanels(ownerFieldData[currentFieldId]);
-                updateListItem(ownerFieldData[currentFieldId]);
-                showSavedState();
             });
         }
 
@@ -673,12 +964,12 @@ foreach ($lapangan as $field) {
             </button>
         </header>
 
-        <form class="owner-field-form" action="#" method="post" enctype="multipart/form-data">
+        <form class="owner-field-form" action="<?php echo e(app_url('pemilik/lapangan/tambah')); ?>" method="post" enctype="multipart/form-data" autocomplete="off">
             <div class="owner-field-form-grid">
                 <div class="owner-field-form-column">
                     <label class="owner-field-form-group">
                         <span>Nama Lapangan <em>*</em></span>
-                        <input type="text" name="nama_lapangan" placeholder="Contoh: Arena Futsal C" required>
+                        <input type="text" name="nama_lapangan" placeholder="Contoh: Arena Futsal C" autocomplete="off" required>
                     </label>
 
                     <label class="owner-field-form-group">
@@ -694,6 +985,11 @@ foreach ($lapangan as $field) {
                             </select>
                             <i class="fa-solid fa-chevron-down"></i>
                         </span>
+                    </label>
+
+                    <label class="owner-field-form-group">
+                        <span>Lokasi <em>*</em></span>
+                        <input type="text" name="lokasi" placeholder="Contoh: Parepare" autocomplete="off" required>
                     </label>
 
                     <label class="owner-field-form-group">
@@ -749,59 +1045,21 @@ foreach ($lapangan as $field) {
                 <legend>Fasilitas</legend>
 
                 <div class="owner-field-facility-check-grid">
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="Parkir">
-                        <span>
-                            <i class="fa-solid fa-square-parking"></i>
-                            <strong>Parkir</strong>
-                        </span>
-                    </label>
-
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="Toilet">
-                        <span>
-                            <i class="fa-solid fa-restroom"></i>
-                            <strong>Toilet</strong>
-                        </span>
-                    </label>
-
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="Musholla">
-                        <span>
-                            <i class="fa-solid fa-mosque"></i>
-                            <strong>Musholla</strong>
-                        </span>
-                    </label>
-
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="WiFi">
-                        <span>
-                            <i class="fa-solid fa-wifi"></i>
-                            <strong>WiFi</strong>
-                        </span>
-                    </label>
-
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="Kantin">
-                        <span>
-                            <i class="fa-solid fa-store"></i>
-                            <strong>Kantin</strong>
-                        </span>
-                    </label>
-
-                    <label class="owner-field-facility-check">
-                        <input type="checkbox" name="fasilitas[]" value="CCTV">
-                        <span>
-                            <i class="fa-solid fa-video"></i>
-                            <strong>CCTV</strong>
-                        </span>
-                    </label>
+                    <?php foreach ($facilityOptions as $facility): ?>
+                        <label class="owner-field-facility-check">
+                            <input type="checkbox" name="fasilitas[]" value="<?php echo e($facility['name']); ?>">
+                            <span>
+                                <i class="fa-solid <?php echo e($facility['icon']); ?>"></i>
+                                <strong><?php echo e($facility['name']); ?></strong>
+                            </span>
+                        </label>
+                    <?php endforeach; ?>
                 </div>
             </fieldset>
 
             <div class="owner-field-modal-actions">
                 <button class="owner-field-cancel-btn" type="button" data-owner-field-modal-close>Batal</button>
-                <button class="owner-field-save-btn" type="button">Simpan Lapangan</button>
+                <button class="owner-field-save-btn" type="submit">Simpan Lapangan</button>
             </div>
         </form>
     </section>

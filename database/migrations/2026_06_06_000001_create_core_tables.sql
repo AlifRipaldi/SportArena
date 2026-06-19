@@ -9,13 +9,28 @@ CREATE TABLE IF NOT EXISTS `user` (
     UNIQUE KEY `user_email_unique` (`Email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `pemilik_lapangan` (
+    `ID_Pemilik` varchar(50) NOT NULL,
+    `ID_User` varchar(50) NOT NULL,
+    `nama_usaha` varchar(255) NOT NULL,
+    `alamat` varchar(255) NOT NULL,
+    PRIMARY KEY (`ID_Pemilik`),
+    KEY `pemilik_lapangan_user_index` (`ID_User`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `lapangan` (
-    `ID_Lapangan` varchar(20) NOT NULL,
+    `ID_Lapangan` varchar(50) NOT NULL,
     `Nama_lapangan` varchar(160) NOT NULL,
-    `Jenis_olahraga` varchar(80) NOT NULL,
     `Lokasi` varchar(180) NOT NULL,
+    `Jenis_olahraga` varchar(80) NOT NULL,
+    `Fasilitas` text NOT NULL,
+    `ID_Pemilik` varchar(50) NOT NULL,
     `Harga` int NOT NULL DEFAULT 0,
-    PRIMARY KEY (`ID_Lapangan`)
+    `Status` varchar(30) NOT NULL DEFAULT 'Aktif',
+    `Deskripsi` text NULL,
+    `Foto` text NULL,
+    PRIMARY KEY (`ID_Lapangan`),
+    KEY `lapangan_pemilik_index` (`ID_Pemilik`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS `jadwal` (

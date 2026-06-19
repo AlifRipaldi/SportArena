@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
+use App\Models\Lapangan;
 
 class PemilikController extends Controller
 {
@@ -28,14 +29,83 @@ class PemilikController extends Controller
     public function lapangan()
     {
         $owner = $this->requireOwner();
+        $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
 
         return $this->view('Owner/lapangan', array(
             'title' => 'Kelola Lapangan | Arena Sport',
             'activeMenu' => 'lapangan',
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
-            'lapangan' => $this->getAllLapangan(),
+            'lapangan' => $fieldOwnerId !== '' ? $this->getAllLapangan($fieldOwnerId) : array(),
         ), 'layouts/owner');
+    }
+
+    public function storeLapangan()
+    {
+        $owner = $this->requireOwner();
+        $data = $this->lapanganPostData('Aktif');
+        $data['photos'] = $this->storeLapanganPhotos();
+        $fieldOwnerId = $this->ownerLapanganPemilikId($owner, true, $data['location']);
+
+        if ($fieldOwnerId !== '') {
+            $saved = (new Lapangan())->createForOwner($fieldOwnerId, $data);
+
+            if (!$saved) {
+                $this->deleteLapanganPhotoFiles($data['photos']);
+            }
+        } else {
+            $this->deleteLapanganPhotoFiles($data['photos']);
+        }
+
+        $this->redirect('pemilik/lapangan');
+    }
+
+    public function updateLapangan()
+    {
+        $owner = $this->requireOwner();
+        $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
+        $fieldId = isset($_POST['id_lapangan']) ? trim((string) $_POST['id_lapangan']) : '';
+
+        if ($fieldId !== '' && $fieldOwnerId !== '') {
+            $model = new Lapangan();
+            $current = $model->findForOwner($fieldId, $fieldOwnerId);
+            $data = $this->lapanganPostData('Nonaktif');
+            $currentPhotos = $this->decodeLapanganPhotos($current && isset($current['Foto']) ? $current['Foto'] : '');
+            $deletedPhotos = $this->cleanLapanganPhotos(isset($_POST['delete_photos']) && is_array($_POST['delete_photos']) ? $_POST['delete_photos'] : array());
+            $remainingPhotos = array_values(array_filter($currentPhotos, function ($photo) use ($deletedPhotos) {
+                return !in_array($photo, $deletedPhotos, true);
+            }));
+            $newPhotos = $this->storeLapanganPhotos(max(0, 5 - count($remainingPhotos)));
+
+            $data['photos'] = array_slice(array_merge($remainingPhotos, $newPhotos), 0, 5);
+
+            if ($model->updateForOwner($fieldId, $fieldOwnerId, $data)) {
+                $this->deleteLapanganPhotoFiles($deletedPhotos);
+            } else {
+                $this->deleteLapanganPhotoFiles($newPhotos);
+            }
+        }
+
+        $this->redirect('pemilik/lapangan');
+    }
+
+    public function deleteLapangan()
+    {
+        $owner = $this->requireOwner();
+        $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
+        $fieldId = isset($_POST['id_lapangan']) ? trim((string) $_POST['id_lapangan']) : '';
+
+        if ($fieldId !== '' && $fieldOwnerId !== '') {
+            $model = new Lapangan();
+            $current = $model->findForOwner($fieldId, $fieldOwnerId);
+            $photos = $this->decodeLapanganPhotos($current && isset($current['Foto']) ? $current['Foto'] : '');
+
+            if ($model->deleteForOwner($fieldId, $fieldOwnerId)) {
+                $this->deleteLapanganPhotoFiles($photos);
+            }
+        }
+
+        $this->redirect('pemilik/lapangan');
     }
 
     public function booking()
@@ -327,61 +397,326 @@ class PemilikController extends Controller
         );
     }
 
-    protected function getAllLapangan()
+    protected function getAllLapangan($ownerId)
     {
-        return array(
-            array(
-                'id' => '1',
-                'name' => 'Arena Futsal A',
-                'type' => 'Futsal',
-                'location' => 'Parepare',
-                'price' => 'Rp80.000',
-                'priceNumber' => 80000,
-                'status' => 'Aktif',
-                'cardStatus' => 'Aktif',
-                'rating' => '4.8',
-                'reviews' => '120',
-                'visual' => 'futsal',
-                'description' => 'Arena futsal dengan lapangan berkualitas dan fasilitas lengkap untuk permainan yang nyaman.',
+        $rows = (new Lapangan())->allByOwner($ownerId);
+        $fields = array();
+
+        foreach ($rows as $row) {
+            $priceNumber = isset($row['Harga']) ? (int) $row['Harga'] : 0;
+            $type = isset($row['Jenis_olahraga']) ? $row['Jenis_olahraga'] : '';
+            $status = isset($row['Status']) && trim((string) $row['Status']) !== '' ? $row['Status'] : 'Aktif';
+
+            $fields[] = array(
+                'id' => isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '',
+                'name' => isset($row['Nama_lapangan']) ? $row['Nama_lapangan'] : '',
+                'type' => $type,
+                'location' => isset($row['Lokasi']) ? $row['Lokasi'] : '',
+                'price' => $this->formatRupiah($priceNumber),
+                'priceNumber' => $priceNumber,
+                'status' => $status,
+                'cardStatus' => $status,
+                'rating' => '0',
+                'reviews' => '0',
+                'visual' => $this->lapanganVisual($type),
+                'description' => isset($row['Deskripsi']) && trim((string) $row['Deskripsi']) !== '' ? $row['Deskripsi'] : 'Belum ada deskripsi.',
                 'hours' => '06:00 - 23:00 Setiap Hari',
-                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'WiFi', 'Kantin', 'CCTV'),
-                'rules' => array('Dilarang merokok di dalam area arena', 'Gunakan sepatu khusus futsal', 'Jagalah kebersihan dan buang sampah pada tempatnya', 'Kerusakan fasilitas menjadi tanggung jawab penyewa'),
-            ),
-            array(
-                'id' => '2',
-                'name' => 'Arena Badminton 1',
-                'type' => 'Badminton',
-                'location' => 'Parepare',
-                'price' => 'Rp60.000',
-                'priceNumber' => 60000,
-                'status' => 'Aktif',
-                'cardStatus' => 'Aktif',
-                'rating' => '4.7',
-                'reviews' => '85',
-                'visual' => 'badminton',
-                'description' => 'Lapangan badminton indoor dengan lantai nyaman, pencahayaan terang, dan net yang terawat.',
-                'hours' => '07:00 - 22:00 Setiap Hari',
-                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'Kantin', 'Loker', 'CCTV'),
-                'rules' => array('Gunakan sepatu non-marking', 'Tidak membawa makanan ke area lapangan', 'Datang 10 menit sebelum jadwal', 'Jaga perlengkapan arena tetap rapi'),
-            ),
-            array(
-                'id' => '3',
-                'name' => 'Arena Futsal B',
-                'type' => 'Futsal',
-                'location' => 'Parepare',
-                'price' => 'Rp75.000',
-                'priceNumber' => 75000,
-                'status' => 'Nonaktif',
-                'cardStatus' => 'Aktif',
-                'rating' => '4.5',
-                'reviews' => '60',
-                'visual' => 'futsal-alt',
-                'description' => 'Arena futsal alternatif untuk latihan tim, sparing, dan sesi bermain santai.',
-                'hours' => '08:00 - 21:00 Setiap Hari',
-                'facilities' => array('Parkir', 'Toilet', 'Musholla', 'Kantin', 'Ruang Tunggu', 'CCTV'),
-                'rules' => array('Booking mengikuti jadwal yang sudah dipilih', 'Gunakan perlengkapan olahraga yang aman', 'Jaga kebersihan area lapangan', 'Pembatalan mengikuti ketentuan pengelola'),
-            ),
+                'facilities' => $this->decodeLapanganFacilities(isset($row['Fasilitas']) ? $row['Fasilitas'] : ''),
+                'photos' => $this->lapanganPhotoPayload(isset($row['Foto']) ? $row['Foto'] : ''),
+                'rules' => array('Jaga kebersihan area lapangan', 'Gunakan perlengkapan olahraga yang sesuai'),
+            );
+        }
+
+        return $fields;
+    }
+
+    protected function lapanganPostData($defaultStatus)
+    {
+        $facilities = array();
+
+        if (isset($_POST['facilities']) && is_array($_POST['facilities'])) {
+            $facilities = $_POST['facilities'];
+        } elseif (isset($_POST['fasilitas']) && is_array($_POST['fasilitas'])) {
+            $facilities = $_POST['fasilitas'];
+        }
+
+        $status = isset($_POST['status']) ? trim((string) $_POST['status']) : $defaultStatus;
+
+        if (isset($_POST['active'])) {
+            $status = 'Aktif';
+        } elseif ($defaultStatus === 'Nonaktif') {
+            $status = 'Nonaktif';
+        }
+
+        return array(
+            'name' => $this->postText(array('name', 'nama_lapangan')),
+            'location' => $this->postText(array('location', 'lokasi')),
+            'type' => $this->postText(array('type', 'jenis_lapangan')),
+            'price' => $this->postNumber(array('price', 'harga_per_jam')),
+            'status' => $status,
+            'description' => $this->postText(array('description', 'deskripsi')),
+            'facilities' => $this->cleanLapanganFacilities($facilities),
         );
+    }
+
+    protected function ownerLapanganPemilikId(array $owner, $createIfMissing = false, $address = '')
+    {
+        $ownerUserId = isset($owner['id']) ? trim((string) $owner['id']) : '';
+
+        if ($ownerUserId === '') {
+            return '';
+        }
+
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return '';
+        }
+
+        $statement = mysqli_prepare($connection, 'SELECT ID_Pemilik FROM pemilik_lapangan WHERE ID_User = ? LIMIT 1');
+
+        if ($statement) {
+            mysqli_stmt_bind_param($statement, 's', $ownerUserId);
+            mysqli_stmt_execute($statement);
+            $result = mysqli_stmt_get_result($statement);
+            $row = $result ? mysqli_fetch_assoc($result) : null;
+            mysqli_stmt_close($statement);
+
+            if ($row && !empty($row['ID_Pemilik'])) {
+                return $row['ID_Pemilik'];
+            }
+        }
+
+        if (!$createIfMissing) {
+            return '';
+        }
+
+        $fieldOwnerId = $this->generateOwnerFieldId($ownerUserId);
+        $businessName = isset($owner['name']) && trim((string) $owner['name']) !== '' ? $owner['name'] : 'Pemilik Lapangan';
+        $businessAddress = trim((string) $address) !== '' ? trim((string) $address) : 'Belum diisi';
+        $insert = mysqli_prepare(
+            $connection,
+            'INSERT INTO pemilik_lapangan (ID_Pemilik, ID_User, nama_usaha, alamat) VALUES (?, ?, ?, ?)'
+        );
+
+        if (!$insert) {
+            return '';
+        }
+
+        mysqli_stmt_bind_param($insert, 'ssss', $fieldOwnerId, $ownerUserId, $businessName, $businessAddress);
+        $saved = mysqli_stmt_execute($insert);
+        mysqli_stmt_close($insert);
+
+        return $saved ? $fieldOwnerId : '';
+    }
+
+    protected function generateOwnerFieldId($ownerUserId)
+    {
+        $cleanOwnerId = preg_replace('/[^A-Za-z0-9]/', '', (string) $ownerUserId);
+
+        if ($cleanOwnerId === '') {
+            $cleanOwnerId = date('ymdHis');
+        }
+
+        return substr('PML' . $cleanOwnerId, 0, 50);
+    }
+
+    protected function postText(array $keys)
+    {
+        foreach ($keys as $key) {
+            if (isset($_POST[$key])) {
+                return trim((string) $_POST[$key]);
+            }
+        }
+
+        return '';
+    }
+
+    protected function postNumber(array $keys)
+    {
+        foreach ($keys as $key) {
+            if (isset($_POST[$key])) {
+                return max(0, (int) preg_replace('/[^0-9]/', '', (string) $_POST[$key]));
+            }
+        }
+
+        return 0;
+    }
+
+    protected function cleanLapanganFacilities(array $facilities)
+    {
+        $clean = array();
+
+        foreach ($facilities as $facility) {
+            $facility = trim((string) $facility);
+
+            if ($facility !== '' && !in_array($facility, $clean, true)) {
+                $clean[] = $facility;
+            }
+        }
+
+        return $clean;
+    }
+
+    protected function decodeLapanganFacilities($value)
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return array();
+        }
+
+        $decoded = json_decode($value, true);
+
+        if (is_array($decoded)) {
+            return $this->cleanLapanganFacilities($decoded);
+        }
+
+        return $this->cleanLapanganFacilities(explode(',', $value));
+    }
+
+    protected function lapanganPhotoPayload($value)
+    {
+        $photos = array();
+
+        foreach ($this->decodeLapanganPhotos($value) as $path) {
+            $photos[] = array(
+                'path' => $path,
+                'url' => app_url($path),
+            );
+        }
+
+        return $photos;
+    }
+
+    protected function decodeLapanganPhotos($value)
+    {
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return array();
+        }
+
+        $decoded = json_decode($value, true);
+
+        if (is_array($decoded)) {
+            return $this->cleanLapanganPhotos($decoded);
+        }
+
+        return $this->cleanLapanganPhotos(explode(',', $value));
+    }
+
+    protected function cleanLapanganPhotos(array $photos)
+    {
+        $clean = array();
+
+        foreach ($photos as $photo) {
+            $photo = str_replace('\\', '/', trim((string) $photo));
+
+            if ($photo !== '' && strpos($photo, '..') === false && strpos($photo, 'storage/uploads/lapangan/') === 0 && !in_array($photo, $clean, true)) {
+                $clean[] = $photo;
+            }
+        }
+
+        return $clean;
+    }
+
+    protected function storeLapanganPhotos($maxFiles = 5)
+    {
+        $storedPaths = array();
+        $maxFiles = max(0, min(5, (int) $maxFiles));
+
+        if ($maxFiles < 1 || empty($_FILES['foto_lapangan']) || !isset($_FILES['foto_lapangan']['name'])) {
+            return $storedPaths;
+        }
+
+        $uploadDir = $this->lapanganUploadDirectory();
+
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0775, true);
+        }
+
+        $names = is_array($_FILES['foto_lapangan']['name']) ? $_FILES['foto_lapangan']['name'] : array($_FILES['foto_lapangan']['name']);
+        $tmpNames = is_array($_FILES['foto_lapangan']['tmp_name']) ? $_FILES['foto_lapangan']['tmp_name'] : array($_FILES['foto_lapangan']['tmp_name']);
+        $errors = is_array($_FILES['foto_lapangan']['error']) ? $_FILES['foto_lapangan']['error'] : array($_FILES['foto_lapangan']['error']);
+        $sizes = is_array($_FILES['foto_lapangan']['size']) ? $_FILES['foto_lapangan']['size'] : array($_FILES['foto_lapangan']['size']);
+        $totalFiles = count($names);
+
+        for ($index = 0; $index < $totalFiles && count($storedPaths) < $maxFiles; $index++) {
+            if (!isset($errors[$index]) || (int) $errors[$index] === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            if ((int) $errors[$index] !== UPLOAD_ERR_OK || empty($tmpNames[$index]) || !is_uploaded_file($tmpNames[$index])) {
+                continue;
+            }
+
+            if (isset($sizes[$index]) && (int) $sizes[$index] > 5 * 1024 * 1024) {
+                continue;
+            }
+
+            $imageInfo = @getimagesize($tmpNames[$index]);
+            $allowedTypes = array(
+                IMAGETYPE_JPEG => 'jpg',
+                IMAGETYPE_PNG => 'png',
+            );
+
+            if (!$imageInfo || !isset($allowedTypes[$imageInfo[2]])) {
+                continue;
+            }
+
+            $filename = 'lapangan-' . date('YmdHis') . '-' . bin2hex(random_bytes(4)) . '.' . $allowedTypes[$imageInfo[2]];
+            $destination = $uploadDir . DIRECTORY_SEPARATOR . $filename;
+
+            if (move_uploaded_file($tmpNames[$index], $destination)) {
+                $storedPaths[] = 'storage/uploads/lapangan/' . $filename;
+            }
+        }
+
+        return $storedPaths;
+    }
+
+    protected function deleteLapanganPhotoFiles(array $photos)
+    {
+        $uploadDir = realpath($this->lapanganUploadDirectory());
+
+        if (!$uploadDir) {
+            return;
+        }
+
+        foreach ($this->cleanLapanganPhotos($photos) as $photo) {
+            $filename = basename($photo);
+            $path = realpath($this->lapanganUploadDirectory() . DIRECTORY_SEPARATOR . $filename);
+
+            if ($path && strpos($path, $uploadDir) === 0 && is_file($path)) {
+                @unlink($path);
+            }
+        }
+    }
+
+    protected function lapanganUploadDirectory()
+    {
+        return dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'lapangan';
+    }
+
+    protected function formatRupiah($value)
+    {
+        return 'Rp' . number_format(max(0, (int) $value), 0, ',', '.');
+    }
+
+    protected function lapanganVisual($type)
+    {
+        $type = $this->normalizeRole($type);
+
+        if (strpos($type, 'badminton') !== false) {
+            return 'badminton';
+        }
+
+        if (strpos($type, 'futsal') !== false) {
+            return 'futsal';
+        }
+
+        return 'futsal-alt';
     }
 
     protected function getOwnerBookings()
