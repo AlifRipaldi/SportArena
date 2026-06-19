@@ -2532,7 +2532,6 @@ class PemilikController extends Controller
             'email' => $email,
             'phone' => $phone,
             'location' => isset($extras['location']) && trim((string) $extras['location']) !== '' ? $extras['location'] : 'Parepare, Sulawesi Selatan',
-            'bio' => isset($extras['bio']) && trim((string) $extras['bio']) !== '' ? $extras['bio'] : 'Pemilik beberapa lapangan olahraga di Parepare. Berkomitmen memberikan fasilitas terbaik untuk pelanggan.',
             'joined' => '12 Maret 2024',
             'totalFields' => '3 Lapangan',
             'lastLogin' => '16 Juni 2025, 21:15',
@@ -2547,8 +2546,6 @@ class PemilikController extends Controller
         $email = $this->cleanProfileValue(isset($_POST['email']) ? $_POST['email'] : '', 160);
         $phone = $this->cleanProfileValue(isset($_POST['phone']) ? $_POST['phone'] : '', 30);
         $location = $this->cleanProfileValue(isset($_POST['location']) ? $_POST['location'] : '', 180);
-        $bio = $this->cleanProfileTextarea(isset($_POST['bio']) ? $_POST['bio'] : '', 700);
-
         if ($name === '' || $email === '') {
             $this->setOwnerProfileFlash('error', 'Nama lengkap dan email wajib diisi.');
             return;
@@ -2582,7 +2579,6 @@ class PemilikController extends Controller
             'email' => $email,
             'phone' => $phone,
             'location' => $location,
-            'bio' => $bio,
             'avatar' => $avatar,
             'updated_at' => date('Y-m-d H:i:s'),
         ));
@@ -2940,19 +2936,6 @@ class PemilikController extends Controller
     {
         $value = trim((string) $value);
         $value = preg_replace('/\s+/', ' ', $value);
-
-        if (function_exists('mb_substr')) {
-            return mb_substr($value, 0, $maxLength, 'UTF-8');
-        }
-
-        return substr($value, 0, $maxLength);
-    }
-
-    protected function cleanProfileTextarea($value, $maxLength)
-    {
-        $value = trim((string) $value);
-        $value = preg_replace("/[ \t]+/", ' ', $value);
-        $value = preg_replace("/\r\n|\r/", "\n", $value);
 
         if (function_exists('mb_substr')) {
             return mb_substr($value, 0, $maxLength, 'UTF-8');
