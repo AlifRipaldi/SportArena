@@ -7497,7 +7497,7 @@ body.dashboard-body {
 }
 
 .settings-outline-button,
-.settings-security-row button,
+.settings-security-row a,
 .settings-password-button {
     min-height: 38px;
     display: inline-flex;
@@ -7510,6 +7510,7 @@ body.dashboard-body {
     color: #91e13c;
     font-size: 13px;
     font-weight: 700;
+    text-decoration: none;
     cursor: pointer;
 }
 
@@ -7901,7 +7902,7 @@ body.dashboard-body {
     }
 
     .settings-line-field strong,
-    .settings-security-row button,
+    .settings-security-row a,
     .settings-outline-button,
     .settings-danger-row button,
     .settings-save-button {
@@ -7910,6 +7911,710 @@ body.dashboard-body {
 
     .settings-save-row {
         justify-content: stretch;
+    }
+}
+
+/* --- USER LIGHT THEME --- */
+body.dashboard-body.light {
+    background:
+        radial-gradient(circle at top left, rgba(111, 211, 64, 0.18), transparent 32%),
+        linear-gradient(135deg, #eef5fb 0%, #f8fbff 48%, #e8f1f8 100%);
+    color: #142033;
+}
+
+body.dashboard-body.light .dashboard-sidebar,
+body.dashboard-body.light .dashboard-main,
+body.dashboard-body.light .settings-panel {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.12);
+}
+
+body.dashboard-body.light .dashboard-brand strong,
+body.dashboard-body.light .profile-page-head h1,
+body.dashboard-body.light .settings-panel-title h2,
+body.dashboard-body.light .settings-security-row strong,
+body.dashboard-body.light .settings-danger-row h3 {
+    color: #111827;
+}
+
+body.dashboard-body.light .profile-page-head p,
+body.dashboard-body.light .settings-line-field,
+body.dashboard-body.light .settings-security-row,
+body.dashboard-body.light .settings-choice-list p,
+body.dashboard-body.light .settings-select-field > span,
+body.dashboard-body.light .settings-radio-row,
+body.dashboard-body.light .settings-switch-row,
+body.dashboard-body.light .settings-preference-list label {
+    color: #334155;
+}
+
+body.dashboard-body.light .dashboard-menu a,
+body.dashboard-body.light .dashboard-logout {
+    color: #42526a;
+}
+
+body.dashboard-body.light .dashboard-menu a span,
+body.dashboard-body.light .dashboard-logout span {
+    color: #64748b;
+}
+
+body.dashboard-body.light .dashboard-menu a:hover,
+body.dashboard-body.light .dashboard-logout:hover,
+body.dashboard-body.light .settings-dashboard .dashboard-menu a.active {
+    background: rgba(109, 211, 47, 0.16);
+    color: #132238;
+}
+
+body.dashboard-body.light .dashboard-menu a.active {
+    background: linear-gradient(135deg, rgba(145, 225, 60, 0.28), rgba(98, 200, 41, 0.38));
+    color: #132238;
+}
+
+body.dashboard-body.light .settings-line-field input,
+body.dashboard-body.light .settings-select-field select,
+body.dashboard-body.light .settings-preference-list select {
+    color: #111827;
+}
+
+body.dashboard-body.light .settings-select-field select,
+body.dashboard-body.light .settings-preference-list select {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f7fafc;
+}
+
+body.dashboard-body.light .settings-radio-row span {
+    border-color: #64748b;
+}
+
+body.dashboard-body.light .settings-radio-row input:checked + span {
+    box-shadow: inset 0 0 0 5px #ffffff;
+}
+
+body.dashboard-body.light .settings-payment-list {
+    border-color: rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .settings-payment-list a {
+    border-bottom-color: rgba(37, 60, 86, 0.08);
+    color: #1f2937;
+}
+
+body.dashboard-body.light .settings-switch-row i {
+    background: #d4dde8;
+}
+
+body.dashboard-body.light .settings-switch-row input:checked + i {
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+}
+
+body.dashboard-body.light .toggle-item {
+    background: rgba(37, 60, 86, 0.06);
+    border-color: rgba(37, 60, 86, 0.12);
+    color: #334155;
+}
+
+body.dashboard-body.light .toggle-item span:first-child {
+    color: #475569;
+}
+
+body.dashboard-body.light .toggle-switch {
+    background: #e2e8f0;
+}
+
+body.dashboard-body.light .toggle-switch::after {
+    background: #ffffff;
+}
+
+body.dashboard-body.light .toggle-item input:checked + .toggle-switch {
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+}
+
+body.dashboard-body.light .settings-danger-panel {
+    border-color: rgba(229, 62, 62, 0.22);
+    background: linear-gradient(135deg, rgba(255, 241, 242, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+body.dashboard-body.light .settings-danger-row {
+    border-bottom-color: rgba(229, 62, 62, 0.14);
+}
+
+body.dashboard-body.light .settings-danger-row p {
+    color: #7f5057;
+}
+
+body.dashboard-body.light .profile-dashboard,
+body.dashboard-body.light .profile-dashboard .dashboard-main.profile-main {
+    background: #f4f8fc;
+}
+
+body.dashboard-body.light .profile-dashboard .dashboard-sidebar {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+}
+
+body.dashboard-body.light .profile-dashboard .dashboard-brand strong,
+body.dashboard-body.light .home-topbar h1,
+body.dashboard-body.light .home-section-head h2,
+body.dashboard-body.light .home-next-booking h3,
+body.dashboard-body.light .profile-name-row h2,
+body.dashboard-body.light .profile-quick-stat strong,
+body.dashboard-body.light .profile-panel-header h2,
+body.dashboard-body.light .profile-preference-list strong,
+body.dashboard-body.light .profile-social-list strong,
+body.dashboard-body.light .profile-achievement strong,
+body.dashboard-body.light .profile-activity-list strong,
+body.dashboard-body.light .favorite-summary-panel h2,
+body.dashboard-body.light .favorite-match-content h2,
+body.dashboard-body.light .favorite-price-panel strong,
+body.dashboard-body.light .booking-info-banner h2,
+body.dashboard-body.light .booking-match-content h2,
+body.dashboard-body.light .booking-payment-panel strong,
+body.dashboard-body.light .history-match-content h2,
+body.dashboard-body.light .history-payment-panel strong,
+body.dashboard-body.light .field-results-head h2,
+body.dashboard-body.light .field-result-content h2,
+body.dashboard-body.light .field-result-price strong,
+body.dashboard-body.light .review-summary-card strong,
+body.dashboard-body.light .review-match-content h2,
+body.dashboard-body.light .review-booking-meta strong,
+body.dashboard-body.light .settings-password-hero h1,
+body.dashboard-body.light .settings-password-form label > span {
+    color: #111827;
+}
+
+body.dashboard-body.light .home-topbar p,
+body.dashboard-body.light .home-stat-card p,
+body.dashboard-body.light .home-venue-body p,
+body.dashboard-body.light .home-venue-rating,
+body.dashboard-body.light .home-next-booking p,
+body.dashboard-body.light .profile-contact-list li,
+body.dashboard-body.light .profile-details-list dt,
+body.dashboard-body.light .profile-details-list dd,
+body.dashboard-body.light .profile-stat-list span,
+body.dashboard-body.light .profile-preference-list span,
+body.dashboard-body.light .profile-social-list span,
+body.dashboard-body.light .profile-achievement small,
+body.dashboard-body.light .profile-achievement em,
+body.dashboard-body.light .profile-activity-list small,
+body.dashboard-body.light .favorite-summary-panel p,
+body.dashboard-body.light .favorite-location,
+body.dashboard-body.light .favorite-rating,
+body.dashboard-body.light .favorite-price-panel small,
+body.dashboard-body.light .favorite-price-panel span,
+body.dashboard-body.light .booking-info-banner p,
+body.dashboard-body.light .booking-location,
+body.dashboard-body.light .booking-match-meta,
+body.dashboard-body.light .booking-payment-panel small,
+body.dashboard-body.light .booking-footnote,
+body.dashboard-body.light .history-match-location,
+body.dashboard-body.light .history-match-meta,
+body.dashboard-body.light .history-payment-panel small,
+body.dashboard-body.light .history-info-banner p,
+body.dashboard-body.light .history-empty-note,
+body.dashboard-body.light .field-search-control,
+body.dashboard-body.light .field-active-filters > span,
+body.dashboard-body.light .field-results-head p,
+body.dashboard-body.light .field-result-location,
+body.dashboard-body.light .field-result-rating,
+body.dashboard-body.light .field-result-price small,
+body.dashboard-body.light .review-location,
+body.dashboard-body.light .review-comment,
+body.dashboard-body.light .review-booking-meta span,
+body.dashboard-body.light .review-footnote,
+body.dashboard-body.light .settings-password-hero p,
+body.dashboard-body.light .settings-password-form small,
+body.dashboard-body.light .settings-password-help {
+    color: #475569;
+}
+
+body.dashboard-body.light .home-stat-card strong {
+    color: #111827;
+}
+
+body.dashboard-body.light .home-stat-card.green .home-stat-icon {
+    background: #5fb818;
+    color: #ffffff;
+}
+
+body.dashboard-body.light .home-stat-card.blue .home-stat-icon {
+    background: #2b7fe0;
+    color: #ffffff;
+}
+
+body.dashboard-body.light .home-stat-card.purple .home-stat-icon {
+    background: #7d5ce1;
+    color: #ffffff;
+}
+
+body.dashboard-body.light .home-stat-card.orange .home-stat-icon {
+    background: #f08530;
+    color: #ffffff;
+}
+
+body.dashboard-body.light .home-stat-card.green a {
+    color: #239a31;
+}
+
+body.dashboard-body.light .home-stat-card.blue a {
+    color: #0b5cdd;
+}
+
+body.dashboard-body.light .home-stat-card.purple a {
+    color: #6d40d7;
+}
+
+body.dashboard-body.light .home-stat-card.orange a {
+    color: #e8761e;
+}
+
+body.dashboard-body.light .home-stat-card,
+body.dashboard-body.light .home-venue-card,
+body.dashboard-body.light .home-next-booking,
+body.dashboard-body.light .profile-overview,
+body.dashboard-body.light .profile-tabs,
+body.dashboard-body.light .profile-panel,
+body.dashboard-body.light .favorite-toolbar,
+body.dashboard-body.light .favorite-summary-panel,
+body.dashboard-body.light .favorite-match-card,
+body.dashboard-body.light .booking-toolbar,
+body.dashboard-body.light .booking-info-banner,
+body.dashboard-body.light .booking-match-card,
+body.dashboard-body.light .history-toolbar,
+body.dashboard-body.light .history-info-banner,
+body.dashboard-body.light .history-match-card,
+body.dashboard-body.light .field-search-panel,
+body.dashboard-body.light .field-result-card,
+body.dashboard-body.light .review-toolbar,
+body.dashboard-body.light .review-summary-card,
+body.dashboard-body.light .review-match-card,
+body.dashboard-body.light .settings-password-card {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .home-search-box,
+body.dashboard-body.light .home-search-box input,
+body.dashboard-body.light .field-search-control div,
+body.dashboard-body.light .field-search-control select,
+body.dashboard-body.light .field-search-control input,
+body.dashboard-body.light .field-sort-control select,
+body.dashboard-body.light .favorite-sort-control select,
+body.dashboard-body.light .booking-sort-control select,
+body.dashboard-body.light .history-sort-control select,
+body.dashboard-body.light .review-sort select,
+body.dashboard-body.light .settings-password-input {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f8fbff;
+    color: #111827;
+}
+
+body.dashboard-body.light .home-search-box input::placeholder,
+body.dashboard-body.light .field-search-control input::placeholder,
+body.dashboard-body.light .settings-password-input input::placeholder {
+    color: #8795a8;
+}
+
+body.dashboard-body.light .settings-password-page {
+    background:
+        radial-gradient(circle at 50% 12%, rgba(111, 211, 64, 0.18), transparent 34%),
+        linear-gradient(180deg, #f8fbff 0%, #eef5fb 100%);
+}
+
+body.dashboard-body.light .settings-password-input input {
+    color: #111827;
+}
+
+body.dashboard-body.light .settings-password-back,
+body.dashboard-body.light .settings-password-topbar time,
+body.dashboard-body.light .settings-password-input i,
+body.dashboard-body.light .settings-password-input button {
+    color: #1f2937;
+}
+
+body.dashboard-body.light .settings-password-tips {
+    border-color: rgba(74, 184, 55, 0.28);
+    background: linear-gradient(135deg, rgba(232, 249, 224, 0.98), rgba(242, 251, 238, 0.98));
+}
+
+body.dashboard-body.light .settings-password-tips p {
+    color: #2f4734;
+}
+
+body.dashboard-body.light .home-filter-button,
+body.dashboard-body.light .field-filter-button,
+body.dashboard-body.light .favorite-book-button,
+body.dashboard-body.light .booking-primary-button,
+body.dashboard-body.light .field-result-price a.primary,
+body.dashboard-body.light .history-payment-panel a,
+body.dashboard-body.light .settings-save-button,
+body.dashboard-body.light .settings-password-submit,
+body.dashboard-body.light .dashboard-promo a {
+    border-color: transparent;
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(47, 185, 58, 0.18);
+}
+
+body.dashboard-body.light .home-next-actions a,
+body.dashboard-body.light .profile-btn,
+body.dashboard-body.light .profile-panel-action,
+body.dashboard-body.light .favorite-detail-button,
+body.dashboard-body.light .booking-detail-button,
+body.dashboard-body.light .booking-info-banner a,
+body.dashboard-body.light .field-result-price a,
+body.dashboard-body.light .review-card-actions a,
+body.dashboard-body.light .settings-outline-button,
+body.dashboard-body.light .settings-security-row a,
+body.dashboard-body.light .settings-password-button {
+    border-color: rgba(47, 185, 58, 0.26);
+    background: rgba(47, 185, 58, 0.06);
+    color: #1f8f2e;
+}
+
+body.dashboard-body.light .favorite-clear-button,
+body.dashboard-body.light .settings-danger-row button {
+    border-color: rgba(225, 64, 64, 0.28);
+    background: rgba(225, 64, 64, 0.06);
+    color: #d43232;
+}
+
+body.dashboard-body.light .favorite-filter-tabs a,
+body.dashboard-body.light .booking-filter-tabs a,
+body.dashboard-body.light .history-filter-tabs a,
+body.dashboard-body.light .review-tabs a {
+    color: #64748b;
+}
+
+body.dashboard-body.light .favorite-filter-tabs a.active,
+body.dashboard-body.light .booking-filter-tabs a.active,
+body.dashboard-body.light .history-filter-tabs a.active,
+body.dashboard-body.light .review-tabs a.active,
+body.dashboard-body.light .profile-tabs a.active,
+body.dashboard-body.light .home-section-head a,
+body.dashboard-body.light .home-stat-card a,
+body.dashboard-body.light .booking-footnote a,
+body.dashboard-body.light .history-empty-note a,
+body.dashboard-body.light .review-footnote a,
+body.dashboard-body.light .settings-password-help a {
+    color: #239a31;
+}
+
+body.dashboard-body.light .field-active-filters button,
+body.dashboard-body.light .field-active-filters a {
+    color: #239a31;
+}
+
+body.dashboard-body.light .field-search-control option,
+body.dashboard-body.light .field-sort-control option,
+body.dashboard-body.light .favorite-sort-control option,
+body.dashboard-body.light .booking-sort-control option,
+body.dashboard-body.light .history-sort-control option,
+body.dashboard-body.light .review-sort option {
+    background: #ffffff;
+    color: #111827;
+}
+
+body.dashboard-body.light .favorite-tags span,
+body.dashboard-body.light .field-result-tags span,
+body.dashboard-body.light .home-next-actions span,
+body.dashboard-body.light .profile-label-success,
+body.dashboard-body.light .booking-status-pill,
+body.dashboard-body.light .history-status-pill,
+body.dashboard-body.light .settings-line-field strong {
+    background: rgba(47, 185, 58, 0.12);
+    color: #218f2d;
+}
+
+body.dashboard-body.light .booking-code-row,
+body.dashboard-body.light .history-code-row,
+body.dashboard-body.light .profile-quick-stats,
+body.dashboard-body.light .profile-details-list div,
+body.dashboard-body.light .profile-stat-list div,
+body.dashboard-body.light .profile-preference-list div,
+body.dashboard-body.light .profile-social-list a,
+body.dashboard-body.light .profile-activity-list a {
+    border-color: rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .profile-notification,
+body.dashboard-body.light .profile-account-menu span,
+body.dashboard-body.light .favorite-heart-button,
+body.dashboard-body.light .favorite-menu-button,
+body.dashboard-body.light .review-card-actions button,
+body.dashboard-body.light .booking-code-row button,
+body.dashboard-body.light .history-code-row button {
+    color: #1f2937;
+}
+
+/* --- USER CHANGE PASSWORD PAGE --- */
+.settings-password-page {
+    min-height: 100vh;
+    padding: 30px 24px 42px;
+    background:
+        radial-gradient(circle at 50% 12%, rgba(20, 45, 82, 0.34), transparent 34%),
+        linear-gradient(180deg, #081226 0%, #071021 100%);
+    color: #f7fbff;
+}
+
+.settings-password-topbar {
+    position: relative;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: min(100%, 1220px);
+    margin: 0 auto 34px;
+}
+
+.settings-password-topbar time {
+    color: #f6f8fb;
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.settings-password-back {
+    position: absolute;
+    left: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.settings-password-back span {
+    font-size: 30px;
+    line-height: 1;
+}
+
+.settings-password-hero {
+    display: grid;
+    justify-items: center;
+    margin-bottom: 34px;
+    text-align: center;
+}
+
+.settings-password-shield {
+    width: 88px;
+    height: 100px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+    background: linear-gradient(145deg, #2db344, #13782f);
+    clip-path: polygon(50% 0, 90% 17%, 87% 63%, 50% 100%, 13% 63%, 10% 17%);
+    box-shadow: 0 16px 34px rgba(34, 179, 67, 0.28);
+}
+
+.settings-password-shield span {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #279f3b;
+    font-size: 26px;
+}
+
+.settings-password-hero h1 {
+    margin: 0 0 8px;
+    color: #ffffff;
+    font-size: 34px;
+    line-height: 1.15;
+}
+
+.settings-password-hero p {
+    margin: 0;
+    color: #aab5c6;
+    font-size: 16px;
+}
+
+.settings-password-card {
+    width: min(100%, 690px);
+    margin: 0 auto;
+    padding: 28px;
+    border: 1px solid rgba(190, 215, 238, 0.12);
+    border-radius: 8px;
+    background: linear-gradient(150deg, rgba(18, 31, 51, 0.98), rgba(12, 22, 38, 0.98));
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.26);
+}
+
+.settings-password-alert {
+    margin-bottom: 18px;
+}
+
+.settings-password-form {
+    display: grid;
+    gap: 23px;
+}
+
+.settings-password-form label {
+    display: grid;
+    gap: 12px;
+}
+
+.settings-password-form label > span {
+    color: #f4f7fb;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.settings-password-input {
+    min-height: 58px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 38px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    border: 1px solid rgba(190, 215, 238, 0.16);
+    border-radius: 8px;
+    background: #071023;
+}
+
+.settings-password-input i {
+    color: #d9e2ec;
+    font-size: 23px;
+    font-style: normal;
+    text-align: center;
+}
+
+.settings-password-input input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+    font-size: 16px;
+}
+
+.settings-password-input input::placeholder {
+    color: #6e798d;
+}
+
+.settings-password-input button {
+    width: 38px;
+    height: 38px;
+    border: 0;
+    background: transparent;
+    color: #d9e2ec;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.settings-password-form small {
+    margin-top: -4px;
+    color: #b5bfce;
+    font-size: 14px;
+}
+
+.settings-password-tips {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+    padding: 18px 20px;
+    border: 1px solid rgba(89, 211, 79, 0.24);
+    border-radius: 7px;
+    background: linear-gradient(135deg, rgba(25, 82, 60, 0.72), rgba(20, 57, 57, 0.82));
+}
+
+.settings-password-tips span,
+.settings-password-tips strong {
+    color: #91e13c;
+}
+
+.settings-password-tips span {
+    font-size: 24px;
+    line-height: 1;
+}
+
+.settings-password-tips strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 16px;
+}
+
+.settings-password-tips p {
+    margin: 0;
+    color: #f0f5f8;
+    font-size: 15px;
+    line-height: 1.45;
+}
+
+.settings-password-submit {
+    min-height: 66px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    border: 0;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #70dd35, #22a928);
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 14px 28px rgba(46, 191, 45, 0.2);
+}
+
+.settings-password-help {
+    margin: 30px 0 0;
+    color: #b8c2d1;
+    font-size: 16px;
+    text-align: center;
+}
+
+.settings-password-help a {
+    color: #58d33b;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+@media (max-width: 720px) {
+    .settings-password-page {
+        padding: 22px 16px 34px;
+    }
+
+    .settings-password-topbar {
+        justify-content: flex-end;
+        margin-bottom: 28px;
+    }
+
+    .settings-password-topbar time {
+        font-size: 14px;
+    }
+
+    .settings-password-back {
+        font-size: 14px;
+    }
+
+    .settings-password-hero h1 {
+        font-size: 28px;
+    }
+
+    .settings-password-card {
+        padding: 20px;
+    }
+
+    .settings-password-input {
+        grid-template-columns: 28px minmax(0, 1fr) 34px;
+        min-height: 54px;
+        padding: 0 12px;
+    }
+
+    .settings-password-input input {
+        font-size: 14px;
+    }
+
+    .settings-password-submit {
+        min-height: 58px;
+        font-size: 17px;
     }
 }
 

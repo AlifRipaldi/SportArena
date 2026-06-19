@@ -7,6 +7,11 @@ use App\Core\Database;
 
 class DashboardController extends Controller
 {
+    protected function dashboardThemeMode()
+    {
+        return isset($_SESSION['theme_mode']) && $_SESSION['theme_mode'] === 'light' ? 'light' : 'dark';
+    }
+
     public function dashboard()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -48,6 +53,7 @@ class DashboardController extends Controller
 
         return $this->view('dashboard/ulasan', array(
             'title' => 'Ulasan Saya | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
             'activeMenu' => 'ulasan',
             'pageHeading' => 'Ulasan Saya',
             'pageSubheading' => 'Lihat dan kelola semua ulasan yang pernah kamu berikan',
@@ -70,6 +76,7 @@ class DashboardController extends Controller
 
         return $this->view('dashboard/profil', array(
             'title' => 'Profil Saya | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
             'activeMenu' => 'profil',
             'pageHeading' => 'Profil Saya',
             'pageSubheading' => 'Kelola informasi profil dan aktivitas Anda.',
@@ -84,6 +91,7 @@ class DashboardController extends Controller
     {
         return $this->view($view, array(
             'title' => $title,
+            'themeMode' => $this->dashboardThemeMode(),
             'activeMenu' => $activeMenu,
             'pageHeading' => $heading,
             'pageSubheading' => $subheading,
@@ -171,6 +179,7 @@ class DashboardController extends Controller
 
         return $this->view('dashboard/riwayat', array(
             'title' => 'Riwayat Booking | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
             'activeMenu' => 'riwayat',
             'pageHeading' => 'Riwayat',
             'pageSubheading' => 'Lihat semua riwayat booking lapangan kamu',
@@ -431,12 +440,12 @@ class DashboardController extends Controller
 
         return $this->view('dashboard/settings', array(
             'title' => 'Pengaturan Akun | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'userEmail' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : 'user@arenasport.id',
             'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
             'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
             'userRole' => isset($_SESSION['role_user']) ? $_SESSION['role_user'] : 'User',
-            'themeMode' => isset($_SESSION['theme_mode']) ? $_SESSION['theme_mode'] : 'dark',
             'language' => isset($_SESSION['language']) ? $_SESSION['language'] : 'id',
             'notifyBooking' => isset($_SESSION['notify_booking']) ? $_SESSION['notify_booking'] : true,
             'notifySchedule' => isset($_SESSION['notify_schedule']) ? $_SESSION['notify_schedule'] : true,
@@ -446,6 +455,134 @@ class DashboardController extends Controller
             'favoriteSport' => isset($_SESSION['favorite_sport']) ? $_SESSION['favorite_sport'] : 'Futsal',
             'searchRadius' => isset($_SESSION['search_radius']) ? $_SESSION['search_radius'] : '10',
         ), 'layouts/dashboard');
+    }
+
+    public function changePassword()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return $this->renderPasswordView();
+    }
+
+    public function updatePassword()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        $currentPassword = isset($_POST['current_password']) ? (string) $_POST['current_password'] : '';
+        $newPassword = isset($_POST['new_password']) ? (string) $_POST['new_password'] : '';
+        $confirmPassword = isset($_POST['confirm_password']) ? (string) $_POST['confirm_password'] : '';
+        $message = '';
+        $errorMessage = '';
+
+        if ($currentPassword === '' || $newPassword === '' || $confirmPassword === '') {
+            $errorMessage = 'Semua kolom password wajib diisi.';
+        } elseif (strlen($newPassword) < 8) {
+            $errorMessage = 'Password baru minimal 8 karakter.';
+        } elseif (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/\d/', $newPassword) || !preg_match('/[^A-Za-z0-9]/', $newPassword)) {
+            $errorMessage = 'Password baru harus berisi huruf besar, huruf kecil, angka, dan simbol.';
+        } elseif ($newPassword !== $confirmPassword) {
+            $errorMessage = 'Konfirmasi password baru belum sama.';
+        } else {
+            $account = $this->findUserAccount((string) $_SESSION['id_user']);
+
+            if (!$account || empty($account['password'])) {
+                $errorMessage = 'Data akun belum bisa dibaca dari database.';
+            } elseif (!password_verify($currentPassword, (string) $account['password']) && !hash_equals((string) $account['password'], $currentPassword)) {
+                $errorMessage = 'Password saat ini tidak sesuai.';
+            } elseif ($this->updateUserPassword((string) $_SESSION['id_user'], password_hash($newPassword, PASSWORD_DEFAULT))) {
+                $message = 'Password berhasil diperbarui.';
+            } else {
+                $errorMessage = 'Password belum bisa diperbarui. Silakan coba lagi.';
+            }
+        }
+
+        return $this->renderPasswordView($message, $errorMessage);
+    }
+
+    protected function renderPasswordView($message = '', $errorMessage = '')
+    {
+        return $this->view('dashboard/change_password', array(
+            'title' => 'Ubah Password | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
+            'displayDate' => $this->indonesianDateTime(),
+            'message' => $message,
+            'errorMessage' => $errorMessage,
+        ), 'layouts/dashboard');
+    }
+
+    protected function indonesianDateTime()
+    {
+        $months = array(
+            '01' => 'Januari',
+            '02' => 'Februari',
+            '03' => 'Maret',
+            '04' => 'April',
+            '05' => 'Mei',
+            '06' => 'Juni',
+            '07' => 'Juli',
+            '08' => 'Agustus',
+            '09' => 'September',
+            '10' => 'Oktober',
+            '11' => 'November',
+            '12' => 'Desember',
+        );
+
+        $month = date('m');
+
+        return date('j') . ' ' . $months[$month] . ' ' . date('Y, H:i');
+    }
+
+    protected function findUserAccount($userId)
+    {
+        $connection = Database::connection();
+        $accountTable = $this->accountTable($connection);
+        $statement = mysqli_prepare($connection, 'SELECT Password FROM `' . $accountTable . '` WHERE ID_User = ? LIMIT 1');
+
+        if (!$statement) {
+            return null;
+        }
+
+        mysqli_stmt_bind_param($statement, 's', $userId);
+        mysqli_stmt_execute($statement);
+        $result = mysqli_stmt_get_result($statement);
+        $row = $result ? mysqli_fetch_assoc($result) : null;
+
+        if (!$row) {
+            return null;
+        }
+
+        return array(
+            'password' => isset($row['Password']) ? $row['Password'] : '',
+        );
+    }
+
+    protected function updateUserPassword($userId, $passwordHash)
+    {
+        $connection = Database::connection();
+        $accountTable = $this->accountTable($connection);
+        $statement = mysqli_prepare($connection, 'UPDATE `' . $accountTable . '` SET Password = ? WHERE ID_User = ?');
+
+        if (!$statement) {
+            return false;
+        }
+
+        mysqli_stmt_bind_param($statement, 'ss', $passwordHash, $userId);
+
+        return mysqli_stmt_execute($statement);
     }
 
     public function updateSettings()
@@ -520,12 +657,12 @@ class DashboardController extends Controller
             'title' => 'Pengaturan Akun | Arena Sport',
             'message' => $message,
             'errorMessage' => $errorMessage,
+            'themeMode' => $themeMode,
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'userEmail' => isset($_SESSION['email_user']) ? $_SESSION['email_user'] : 'user@arenasport.id',
             'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
             'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
             'userRole' => isset($_SESSION['role_user']) ? $_SESSION['role_user'] : 'User',
-            'themeMode' => $themeMode,
             'language' => $language,
             'notifyBooking' => $notifyBooking,
             'notifySchedule' => $notifySchedule,
@@ -535,5 +672,25 @@ class DashboardController extends Controller
             'favoriteSport' => $favoriteSport,
             'searchRadius' => $searchRadius,
         ), 'layouts/dashboard');
+    }
+
+    public function updateTheme()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(array('ok' => false, 'message' => 'Sesi login sudah berakhir.'));
+            return;
+        }
+
+        $themeMode = isset($_POST['theme_mode']) && in_array($_POST['theme_mode'], array('dark', 'light'), true) ? $_POST['theme_mode'] : 'dark';
+        $_SESSION['theme_mode'] = $themeMode;
+
+        header('Content-Type: application/json');
+        echo json_encode(array('ok' => true, 'themeMode' => $themeMode));
     }
 }

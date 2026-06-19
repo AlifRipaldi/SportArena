@@ -56,7 +56,7 @@
             <section class="settings-alert error-message"><?php echo e($errorMessage); ?></section>
         <?php endif; ?>
 
-        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>">
+        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>" data-theme-url="<?php echo e(app_url('settings/theme')); ?>">
             <section class="settings-panel settings-profile-panel">
                 <div class="settings-panel-title">
                     <span>&#9786;</span>
@@ -107,7 +107,7 @@
                         <div class="settings-security-row">
                             <span>Password</span>
                             <strong>************</strong>
-                            <button type="button">Ubah</button>
+                            <a href="<?php echo e(app_url('settings/password')); ?>">Ubah</a>
                         </div>
                         <div class="settings-security-row">
                             <span>Verifikasi Email</span>
@@ -118,7 +118,7 @@
                             <strong class="active"><i>&#10003;</i>Aktif</strong>
                         </div>
                     </div>
-                    <button type="button" class="settings-password-button"><span>&#128274;</span>Ganti Password</button>
+                    <a href="<?php echo e(app_url('settings/password')); ?>" class="settings-password-button"><span>&#128274;</span>Ganti Password</a>
                 </div>
             </section>
 
@@ -132,12 +132,12 @@
                     <div class="settings-choice-list">
                         <p>Tema</p>
                         <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="light" <?php echo $themeMode === 'light' ? 'checked' : ''; ?>>
+                            <input type="radio" name="theme_mode" value="light" <?php echo $themeMode === 'light' ? 'checked' : ''; ?> data-theme-choice>
                             <span></span>
                             Light Mode
                         </label>
                         <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="dark" <?php echo $themeMode !== 'light' ? 'checked' : ''; ?>>
+                            <input type="radio" name="theme_mode" value="dark" <?php echo $themeMode !== 'light' ? 'checked' : ''; ?> data-theme-choice>
                             <span></span>
                             Dark Mode
                         </label>
@@ -264,3 +264,36 @@
         </form>
     </main>
 </div>
+
+<script>
+    (function () {
+        var form = document.querySelector('.settings-match-form');
+        var choices = document.querySelectorAll('[data-theme-choice]');
+
+        if (!form || !choices.length) {
+            return;
+        }
+
+        choices.forEach(function (choice) {
+            choice.addEventListener('change', function () {
+                if (!choice.checked) {
+                    return;
+                }
+
+                document.body.classList.toggle('light', choice.value === 'light');
+                document.body.classList.toggle('dark', choice.value !== 'light');
+
+                var request = new FormData();
+                request.append('theme_mode', choice.value);
+
+                fetch(form.getAttribute('data-theme-url'), {
+                    method: 'POST',
+                    body: request,
+                    credentials: 'same-origin'
+                }).catch(function () {
+                    form.submit();
+                });
+            });
+        });
+    })();
+</script>
