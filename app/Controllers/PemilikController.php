@@ -146,17 +146,35 @@ class PemilikController extends Controller
     public function pendapatan()
     {
         $owner = $this->requireOwner();
+        $selectedPeriod = $this->sanitizeOwnerRevenuePeriod(isset($_GET['periode']) ? $_GET['periode'] : 'bulanan');
+        $range = $this->resolveOwnerRevenueRange(
+            $selectedPeriod,
+            isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '',
+            isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : ''
+        );
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $transactions = $this->filterOwnerRevenueTransactions($range['start'], $range['end']);
+        $previousRange = $this->resolveOwnerPreviousRevenueRange($range['start'], $range['end']);
+        $previousTransactions = $this->filterOwnerRevenueTransactions($previousRange['start'], $previousRange['end']);
+        $transactionResult = $this->paginateSchedule($transactions, $page, 5);
+        $chart = $this->dailyRevenueChart($transactions, $range['start'], $range['end'], $selectedPeriod);
 
         return $this->view('Owner/pendapatan', array(
             'title' => 'Pendapatan | Arena Sport',
             'activeMenu' => 'pendapatan',
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
-            'revenueStats' => $this->revenueStats(),
-            'revenueChart' => $this->dailyRevenueChart(),
-            'revenueSummary' => $this->revenueSummary(),
-            'revenueTransactions' => $this->revenueTransactions(),
-            'selectedPeriod' => 'Juni 2025',
+            'periodTabs' => $this->ownerRevenuePeriodTabs(),
+            'selectedPeriodKey' => $selectedPeriod,
+            'selectedPeriod' => $this->formatOwnerReportPeriod($range['start'], $range['end']),
+            'selectedStartDate' => $range['start']->format('Y-m-d'),
+            'selectedEndDate' => $range['end']->format('Y-m-d'),
+            'revenueStats' => $this->revenueStats($transactions, $previousTransactions, $selectedPeriod),
+            'revenueChart' => $chart['points'],
+            'revenueChartLabels' => $chart['labels'],
+            'revenueSummary' => $this->revenueSummary($transactions),
+            'revenueTransactions' => $transactionResult['items'],
+            'revenuePagination' => $transactionResult['pagination'],
         ), 'layouts/owner');
     }
 
@@ -853,64 +871,259 @@ class PemilikController extends Controller
         return (int) $parts[2] . ' ' . $monthName . ' ' . $parts[0];
     }
 
-    protected function revenueStats()
+    protected function ownerRevenuePeriodTabs()
     {
         return array(
-            array('label' => 'Total Pendapatan', 'value' => 'Rp4.250.000', 'trend' => '18.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-rupiah-sign', 'accent' => 'green'),
-            array('label' => 'Total Transaksi', 'value' => '120', 'trend' => '15.2%', 'note' => 'dari bulan lalu', 'icon' => 'fa-calendar-check', 'accent' => 'cyan'),
-            array('label' => 'Rata-rata per Hari', 'value' => 'Rp141.667', 'trend' => '16.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-chart-column', 'accent' => 'purple'),
-            array('label' => 'Potongan Platform (2%)', 'value' => 'Rp85.000', 'trend' => '18.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-percent', 'accent' => 'gold'),
+            'mingguan' => 'Mingguan',
+            'bulanan' => 'Bulanan',
+            'tahunan' => 'Tahunan',
         );
     }
 
-    protected function dailyRevenueChart()
+    protected function sanitizeOwnerRevenuePeriod($period)
     {
+        $period = strtolower(trim((string) $period));
+        $allowed = array_keys($this->ownerRevenuePeriodTabs());
+
+        return in_array($period, $allowed, true) ? $period : 'bulanan';
+    }
+
+    protected function resolveOwnerRevenueRange($period, $startInput, $endInput)
+    {
+        $baseDate = new \DateTimeImmutable('2025-06-30');
+        $start = null;
+        $end = null;
+
+        if ($startInput !== '' || $endInput !== '') {
+            $start = $this->parseOwnerReportDate($startInput);
+            $end = $this->parseOwnerReportDate($endInput);
+        }
+
+        if (!$start || !$end) {
+            if ($period === 'mingguan') {
+                $start = $baseDate->modify('-6 days');
+                $end = $baseDate;
+            } elseif ($period === 'tahunan') {
+                $start = new \DateTimeImmutable($baseDate->format('Y') . '-01-01');
+                $end = new \DateTimeImmutable($baseDate->format('Y') . '-12-31');
+            } else {
+                $start = $baseDate->modify('first day of this month');
+                $end = $baseDate->modify('last day of this month');
+            }
+        }
+
+        if ($start > $end) {
+            $swap = $start;
+            $start = $end;
+            $end = $swap;
+        }
+
+        return array('start' => $start, 'end' => $end);
+    }
+
+    protected function resolveOwnerPreviousRevenueRange(\DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        $days = $start->diff($end)->days + 1;
+        $previousEnd = $start->modify('-1 day');
+        $previousStart = $previousEnd->modify('-' . ($days - 1) . ' days');
+
+        return array('start' => $previousStart, 'end' => $previousEnd);
+    }
+
+    protected function revenueStats(array $transactions, array $previousTransactions, $period)
+    {
+        $summary = $this->ownerRevenueTotals($transactions);
+        $previousSummary = $this->ownerRevenueTotals($previousTransactions);
+        $days = max(1, count(array_unique(array_map(function ($transaction) {
+            return $transaction['date'];
+        }, $transactions))));
+        $periodNotes = array(
+            'mingguan' => 'dari minggu lalu',
+            'bulanan' => 'dari periode sebelumnya',
+            'tahunan' => 'dari periode sebelumnya',
+        );
+        $note = isset($periodNotes[$period]) ? $periodNotes[$period] : 'dari periode sebelumnya';
+
         return array(
-            array('label' => '1 Jun', 'amount' => 'Rp280.000', 'x' => 0, 'y' => 72),
-            array('label' => '3 Jun', 'amount' => 'Rp370.000', 'x' => 5, 'y' => 64),
-            array('label' => '4 Jun', 'amount' => 'Rp410.000', 'x' => 9, 'y' => 60),
-            array('label' => '5 Jun', 'amount' => 'Rp450.000', 'x' => 13, 'y' => 57),
-            array('label' => '7 Jun', 'amount' => 'Rp600.000', 'x' => 19, 'y' => 45),
-            array('label' => '8 Jun', 'amount' => 'Rp550.000', 'x' => 24, 'y' => 50),
-            array('label' => '9 Jun', 'amount' => 'Rp690.000', 'x' => 28, 'y' => 36),
-            array('label' => '10 Jun', 'amount' => 'Rp810.000', 'x' => 32, 'y' => 24),
-            array('label' => '11 Jun', 'amount' => 'Rp680.000', 'x' => 36, 'y' => 37),
-            array('label' => '13 Jun', 'amount' => 'Rp520.000', 'x' => 41, 'y' => 52),
-            array('label' => '14 Jun', 'amount' => 'Rp540.000', 'x' => 45, 'y' => 50),
-            array('label' => '15 Jun', 'amount' => 'Rp641.200', 'x' => 50, 'y' => 59, 'highlight' => true),
-            array('label' => '17 Jun', 'amount' => 'Rp260.000', 'x' => 56, 'y' => 76),
-            array('label' => '18 Jun', 'amount' => 'Rp390.000', 'x' => 60, 'y' => 66),
-            array('label' => '19 Jun', 'amount' => 'Rp460.000', 'x' => 64, 'y' => 59),
-            array('label' => '21 Jun', 'amount' => 'Rp720.000', 'x' => 69, 'y' => 34),
-            array('label' => '22 Jun', 'amount' => 'Rp660.000', 'x' => 73, 'y' => 39),
-            array('label' => '24 Jun', 'amount' => 'Rp630.000', 'x' => 79, 'y' => 42),
-            array('label' => '26 Jun', 'amount' => 'Rp790.000', 'x' => 85, 'y' => 26),
-            array('label' => '27 Jun', 'amount' => 'Rp960.000', 'x' => 90, 'y' => 9),
-            array('label' => '29 Jun', 'amount' => 'Rp820.000', 'x' => 95, 'y' => 24),
-            array('label' => '30 Jun', 'amount' => 'Rp780.000', 'x' => 100, 'y' => 29),
+            array('label' => 'Total Pendapatan', 'value' => $this->formatOwnerRupiah($summary['gross']), 'trend' => $this->formatOwnerTrend($summary['gross'], $previousSummary['gross']), 'note' => $note, 'icon' => 'fa-rupiah-sign', 'accent' => 'green'),
+            array('label' => 'Total Transaksi', 'value' => (string) $summary['count'], 'trend' => $this->formatOwnerTrend($summary['count'], $previousSummary['count']), 'note' => $note, 'icon' => 'fa-calendar-check', 'accent' => 'cyan'),
+            array('label' => 'Rata-rata per Hari', 'value' => $this->formatOwnerRupiah($summary['count'] > 0 ? (int) round($summary['gross'] / $days) : 0), 'trend' => $this->formatOwnerTrend($summary['average'], $previousSummary['average']), 'note' => $note, 'icon' => 'fa-chart-column', 'accent' => 'purple'),
+            array('label' => 'Potongan Platform (2%)', 'value' => $this->formatOwnerRupiah($summary['fee']), 'trend' => $this->formatOwnerTrend($summary['fee'], $previousSummary['fee']), 'note' => $note, 'icon' => 'fa-percent', 'accent' => 'gold'),
         );
     }
 
-    protected function revenueSummary()
+    protected function dailyRevenueChart(array $transactions, \DateTimeImmutable $start, \DateTimeImmutable $end, $period)
     {
+        $labels = array();
+        $buckets = array();
+        $cursor = $start;
+        $groupByMonth = $period === 'tahunan' || $start->diff($end)->days > 62;
+
+        if ($groupByMonth) {
+            $cursor = new \DateTimeImmutable($start->format('Y-m-01'));
+            $last = new \DateTimeImmutable($end->format('Y-m-01'));
+
+            while ($cursor <= $last) {
+                $key = $cursor->format('Y-m');
+                $labels[$key] = $this->shortOwnerMonthName((int) $cursor->format('n'));
+                $buckets[$key] = 0;
+                $cursor = $cursor->modify('+1 month');
+            }
+        } else {
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y-m-d');
+                $labels[$key] = (int) $cursor->format('j') . ' ' . $this->shortOwnerMonthName((int) $cursor->format('n'));
+                $buckets[$key] = 0;
+                $cursor = $cursor->modify('+1 day');
+            }
+        }
+
+        foreach ($transactions as $transaction) {
+            $date = $this->parseOwnerReportDate($transaction['date']);
+
+            if (!$date) {
+                continue;
+            }
+
+            $key = $groupByMonth ? $date->format('Y-m') : $date->format('Y-m-d');
+
+            if (isset($buckets[$key])) {
+                $buckets[$key] += $this->ownerRupiahToInt($transaction['total']);
+            }
+        }
+
+        $values = array_values($buckets);
+        $max = max(1, max($values));
+        $count = count($values);
+        $points = array();
+        $index = 0;
+        $highlightIndex = 0;
+        $highlightAmount = -1;
+
+        foreach ($buckets as $key => $amount) {
+            if ($amount > $highlightAmount) {
+                $highlightAmount = $amount;
+                $highlightIndex = $index;
+            }
+
+            $points[] = array(
+                'label' => $labels[$key],
+                'amount' => $this->formatOwnerRupiah($amount),
+                'x' => $count > 1 ? round(($index / ($count - 1)) * 100, 2) : 50,
+                'y' => round(92 - (($amount / $max) * 82), 2),
+            );
+            $index++;
+        }
+
+        if (isset($points[$highlightIndex])) {
+            $points[$highlightIndex]['highlight'] = true;
+        }
+
         return array(
-            array('label' => 'Pendapatan Kotor', 'value' => 'Rp4.250.000', 'icon' => 'fa-money-bill-trend-up', 'accent' => 'green', 'tone' => 'positive'),
-            array('label' => 'Potongan Platform (2%)', 'value' => '-Rp85.000', 'icon' => 'fa-percent', 'accent' => 'red', 'tone' => 'negative'),
-            array('label' => 'Pendapatan Bersih', 'value' => 'Rp4.165.000', 'icon' => 'fa-wallet', 'accent' => 'blue', 'tone' => 'positive'),
-            array('label' => 'Dibayarkan ke Rekening', 'value' => 'Rp4.165.000', 'icon' => 'fa-building-columns', 'accent' => 'purple', 'tone' => 'positive'),
+            'points' => $points,
+            'labels' => array_values($labels),
+        );
+    }
+
+    protected function revenueSummary(array $transactions)
+    {
+        $summary = $this->ownerRevenueTotals($transactions);
+
+        return array(
+            array('label' => 'Pendapatan Kotor', 'value' => $this->formatOwnerRupiah($summary['gross']), 'icon' => 'fa-money-bill-trend-up', 'accent' => 'green', 'tone' => 'positive'),
+            array('label' => 'Potongan Platform (2%)', 'value' => '-' . $this->formatOwnerRupiah($summary['fee']), 'icon' => 'fa-percent', 'accent' => 'red', 'tone' => 'negative'),
+            array('label' => 'Pendapatan Bersih', 'value' => $this->formatOwnerRupiah($summary['net']), 'icon' => 'fa-wallet', 'accent' => 'blue', 'tone' => 'positive'),
+            array('label' => 'Dibayarkan ke Rekening', 'value' => $this->formatOwnerRupiah($summary['net']), 'icon' => 'fa-building-columns', 'accent' => 'purple', 'tone' => 'positive'),
             array('label' => 'Saldo Tersedia', 'value' => 'Rp0', 'icon' => 'fa-coins', 'accent' => 'gold', 'tone' => 'neutral'),
         );
     }
 
     protected function revenueTransactions()
     {
-        return array(
-            array('date' => '16 Jun 2025', 'field' => 'Arena Futsal A', 'tenant' => 'Ahmad', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp80.000', 'fee' => 'Rp1.600', 'net' => 'Rp78.400', 'status' => 'Dibayar'),
-            array('date' => '16 Jun 2025', 'field' => 'Arena Badminton 1', 'tenant' => 'Rizal', 'method' => 'E-Wallet (OVO)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'ovo', 'total' => 'Rp60.000', 'fee' => 'Rp1.200', 'net' => 'Rp58.800', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Futsal B', 'tenant' => 'Akbar', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp75.000', 'fee' => 'Rp1.500', 'net' => 'Rp73.500', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Badminton 1', 'tenant' => 'Dewi', 'method' => 'E-Wallet (Dana)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'dana', 'total' => 'Rp60.000', 'fee' => 'Rp1.200', 'net' => 'Rp58.800', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Futsal A', 'tenant' => 'Fajar', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp80.000', 'fee' => 'Rp1.600', 'net' => 'Rp78.400', 'status' => 'Dibayar'),
+        $names = array('Ahmad', 'Rizal', 'Akbar', 'Dewi', 'Fajar', 'Sinta', 'Bima', 'Nadia', 'Raka', 'Putri', 'Gilang', 'Maya');
+        $fields = array('Arena Futsal A', 'Arena Badminton 1', 'Arena Futsal B', 'Arena Basket Indoor');
+        $methods = array(
+            array('method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank'),
+            array('method' => 'E-Wallet (OVO)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'ovo'),
+            array('method' => 'E-Wallet (Dana)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'dana'),
         );
+        $amounts = array(60000, 75000, 80000, 90000, 120000, 150000, 180000);
+        $transactions = array();
+
+        for ($day = 1; $day <= 30; $day++) {
+            $itemsInDay = $day % 5 === 0 ? 4 : (($day % 2) + 2);
+
+            for ($item = 0; $item < $itemsInDay; $item++) {
+                $seed = ($day + $item) % count($names);
+                $amount = $amounts[($day + ($item * 2)) % count($amounts)];
+                $fee = (int) round($amount * 0.02);
+                $method = $methods[($day + $item) % count($methods)];
+
+                $transactions[] = array_merge(array(
+                    'date' => $day . ' Jun 2025',
+                    'field' => $fields[($day + $item) % count($fields)],
+                    'tenant' => $names[$seed],
+                    'total' => $this->formatOwnerRupiah($amount),
+                    'fee' => $this->formatOwnerRupiah($fee),
+                    'net' => $this->formatOwnerRupiah($amount - $fee),
+                    'status' => 'Dibayar',
+                ), $method);
+            }
+        }
+
+        return array_reverse($transactions);
+    }
+
+    protected function ownerRevenueTotals(array $transactions)
+    {
+        $gross = 0;
+        $fee = 0;
+        $net = 0;
+
+        foreach ($transactions as $transaction) {
+            $gross += $this->ownerRupiahToInt($transaction['total']);
+            $fee += $this->ownerRupiahToInt($transaction['fee']);
+            $net += $this->ownerRupiahToInt($transaction['net']);
+        }
+
+        return array(
+            'count' => count($transactions),
+            'gross' => $gross,
+            'fee' => $fee,
+            'net' => $net,
+            'average' => count($transactions) > 0 ? (int) round($gross / count($transactions)) : 0,
+        );
+    }
+
+    protected function formatOwnerTrend($current, $previous)
+    {
+        if ((int) $previous <= 0) {
+            return (int) $current > 0 ? '100%' : '0%';
+        }
+
+        $trend = (($current - $previous) / $previous) * 100;
+
+        return number_format(abs($trend), 1, ',', '.') . '%';
+    }
+
+    protected function shortOwnerMonthName($monthNumber)
+    {
+        $months = array(
+            1 => 'Jan',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Apr',
+            5 => 'Mei',
+            6 => 'Jun',
+            7 => 'Jul',
+            8 => 'Agu',
+            9 => 'Sep',
+            10 => 'Okt',
+            11 => 'Nov',
+            12 => 'Des',
+        );
+
+        return isset($months[$monthNumber]) ? $months[$monthNumber] : '';
     }
 
     protected function sanitizeOwnerReportPeriod($period)

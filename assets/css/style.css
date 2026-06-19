@@ -15251,9 +15251,11 @@ body.admin-mode {
     background: rgba(10, 22, 37, 0.78);
 }
 
-.owner-pendapatan-tabs button {
+.owner-pendapatan-tabs a {
     min-width: 94px;
     min-height: 50px;
+    display: inline-grid;
+    place-items: center;
     border: 0;
     border-right: 1px solid rgba(180, 206, 236, 0.07);
     background: transparent;
@@ -15262,16 +15264,101 @@ body.admin-mode {
     font-size: 14px;
     font-weight: 600;
     line-height: 1;
+    text-decoration: none;
 }
 
-.owner-pendapatan-tabs button:last-child {
+.owner-pendapatan-tabs a:last-child {
     border-right: 0;
 }
 
-.owner-pendapatan-tabs button:hover,
-.owner-pendapatan-tabs button.active {
+.owner-pendapatan-tabs a:hover,
+.owner-pendapatan-tabs a.active {
     background: linear-gradient(135deg, rgba(133, 219, 57, 0.72), rgba(49, 125, 32, 0.78));
     color: #ffffff;
+}
+
+.owner-pendapatan-dropdown {
+    position: relative;
+}
+
+.owner-pendapatan-dropdown summary {
+    list-style: none;
+}
+
+.owner-pendapatan-dropdown summary::-webkit-details-marker {
+    display: none;
+}
+
+.owner-pendapatan-dropdown[open] .owner-pendapatan-filter-btn {
+    border-color: rgba(143, 227, 50, 0.34);
+    background: rgba(143, 227, 50, 0.1);
+    color: #b7ff4d;
+}
+
+.owner-pendapatan-filter-panel {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    z-index: 30;
+    min-width: 320px;
+    display: grid;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid rgba(180, 206, 236, 0.14);
+    border-radius: 8px;
+    background: #0b1625;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.34);
+}
+
+.owner-pendapatan-filter-panel label {
+    display: grid;
+    gap: 8px;
+}
+
+.owner-pendapatan-filter-panel label > span {
+    color: rgba(247, 251, 255, 0.72);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.owner-pendapatan-filter-panel input {
+    min-height: 42px;
+    width: 100%;
+    border: 1px solid rgba(180, 206, 236, 0.14);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+    color: #ffffff;
+    padding: 0 12px;
+}
+
+.owner-pendapatan-filter-panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.owner-pendapatan-filter-panel-actions a,
+.owner-pendapatan-filter-panel-actions button {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.owner-pendapatan-filter-panel-actions a {
+    color: rgba(247, 251, 255, 0.72);
+}
+
+.owner-pendapatan-filter-panel-actions button {
+    border: 0;
+    background: linear-gradient(135deg, #75cc33, #3b961f);
+    color: #ffffff;
+    cursor: pointer;
 }
 
 .owner-pendapatan-filter-btn,
@@ -16191,7 +16278,7 @@ body.owner-report-modal-open {
     background: rgba(5, 14, 25, 0.42);
 }
 
-.owner-pendapatan-pagination button,
+.owner-pendapatan-pagination a,
 .owner-pendapatan-pagination span {
     width: 42px;
     height: 36px;
@@ -16202,15 +16289,39 @@ body.owner-report-modal-open {
     color: rgba(247, 251, 255, 0.82);
     font-size: 13px;
     font-weight: 700;
+    text-decoration: none;
 }
 
-.owner-pendapatan-pagination button {
+.owner-pendapatan-pagination a {
     cursor: pointer;
 }
 
-.owner-pendapatan-pagination button:hover,
-.owner-pendapatan-pagination button.active {
+.owner-pendapatan-pagination a:hover,
+.owner-pendapatan-pagination span.active {
     background: linear-gradient(135deg, rgba(133, 219, 57, 0.72), rgba(49, 125, 32, 0.78));
+    color: #ffffff;
+}
+
+.owner-pendapatan-pagination span.disabled {
+    color: rgba(247, 251, 255, 0.32);
+}
+
+.owner-pendapatan-empty {
+    min-height: 180px;
+    display: grid;
+    place-items: center;
+    gap: 8px;
+    padding: 26px;
+    color: rgba(247, 251, 255, 0.72);
+    text-align: center;
+}
+
+.owner-pendapatan-empty i {
+    color: #8fe332;
+    font-size: 28px;
+}
+
+.owner-pendapatan-empty strong {
     color: #ffffff;
 }
 
@@ -16245,8 +16356,14 @@ body.owner-report-modal-open {
         width: 100%;
     }
 
-    .owner-pendapatan-tabs button {
+    .owner-pendapatan-tabs a {
         flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .owner-pendapatan-filter-panel {
+        left: 0;
+        right: 0;
         min-width: 0;
     }
 
