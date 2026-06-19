@@ -1,6 +1,7 @@
 <?php
 include '../config/connection.php';
 $error = '';
+$styleVersion = is_file(__DIR__ . '/../assets/css/style.css') ? filemtime(__DIR__ . '/../assets/css/style.css') : time();
 
 function register_table_exists($conn, $table)
 {
@@ -45,7 +46,7 @@ if (isset($_POST['register'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=45">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo htmlspecialchars((string) $styleVersion, ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body class="login-auth-page register-auth-page">
     <div class="login-page">

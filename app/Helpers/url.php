@@ -41,6 +41,18 @@ if (!function_exists('app_asset')) {
     }
 }
 
+if (!function_exists('app_asset_versioned')) {
+    function app_asset_versioned($path)
+    {
+        $cleanPath = ltrim($path, '/');
+        $assetPath = __DIR__ . '/../../assets/' . $cleanPath;
+        $separator = strpos($cleanPath, '?') === false ? '?' : '&';
+        $version = is_file($assetPath) ? filemtime($assetPath) : time();
+
+        return app_asset($cleanPath . $separator . 'v=' . $version);
+    }
+}
+
 if (!function_exists('e')) {
     function e($value)
     {

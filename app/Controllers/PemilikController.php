@@ -146,17 +146,35 @@ class PemilikController extends Controller
     public function pendapatan()
     {
         $owner = $this->requireOwner();
+        $selectedPeriod = $this->sanitizeOwnerRevenuePeriod(isset($_GET['periode']) ? $_GET['periode'] : 'bulanan');
+        $range = $this->resolveOwnerRevenueRange(
+            $selectedPeriod,
+            isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '',
+            isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : ''
+        );
+        $page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+        $transactions = $this->filterOwnerRevenueTransactions($range['start'], $range['end']);
+        $previousRange = $this->resolveOwnerPreviousRevenueRange($range['start'], $range['end']);
+        $previousTransactions = $this->filterOwnerRevenueTransactions($previousRange['start'], $previousRange['end']);
+        $transactionResult = $this->paginateSchedule($transactions, $page, 5);
+        $chart = $this->dailyRevenueChart($transactions, $range['start'], $range['end'], $selectedPeriod);
 
         return $this->view('Owner/pendapatan', array(
             'title' => 'Pendapatan | Arena Sport',
             'activeMenu' => 'pendapatan',
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
-            'revenueStats' => $this->revenueStats(),
-            'revenueChart' => $this->dailyRevenueChart(),
-            'revenueSummary' => $this->revenueSummary(),
-            'revenueTransactions' => $this->revenueTransactions(),
-            'selectedPeriod' => 'Juni 2025',
+            'periodTabs' => $this->ownerRevenuePeriodTabs(),
+            'selectedPeriodKey' => $selectedPeriod,
+            'selectedPeriod' => $this->formatOwnerReportPeriod($range['start'], $range['end']),
+            'selectedStartDate' => $range['start']->format('Y-m-d'),
+            'selectedEndDate' => $range['end']->format('Y-m-d'),
+            'revenueStats' => $this->revenueStats($transactions, $previousTransactions, $selectedPeriod),
+            'revenueChart' => $chart['points'],
+            'revenueChartLabels' => $chart['labels'],
+            'revenueSummary' => $this->revenueSummary($transactions),
+            'revenueTransactions' => $transactionResult['items'],
+            'revenuePagination' => $transactionResult['pagination'],
         ), 'layouts/owner');
     }
 
@@ -188,6 +206,10 @@ class PemilikController extends Controller
     public function transaksi()
     {
         $owner = $this->requireOwner();
+        $filters = $this->ownerTransactionFiltersFromRequest();
+        $allTransactions = $this->ownerTransactionRows();
+        $filteredTransactions = $this->filterOwnerTransactions($allTransactions, $filters);
+        $transactionResult = $this->paginateSchedule($filteredTransactions, isset($_GET['page']) ? (int) $_GET['page'] : 1, $filters['perPage']);
 
         return $this->view('Owner/transaksi', array(
             'title' => 'Lihat Semua Transaksi | Arena Sport',
@@ -195,10 +217,26 @@ class PemilikController extends Controller
             'userName' => $owner['name'],
             'userRole' => $owner['role'],
             'ownerTopbarSearchPlaceholder' => 'Cari transaksi...',
-            'transactionStats' => $this->ownerTransactionStats(),
-            'transactions' => $this->ownerTransactionRows(),
-            'transactionTotal' => 152,
+            'transactionStats' => $this->ownerTransactionStats($filteredTransactions),
+            'transactions' => $transactionResult['items'],
+            'transactionPagination' => $transactionResult['pagination'],
+            'transactionTotal' => count($filteredTransactions),
+            'transactionAllTotal' => count($allTransactions),
+            'transactionFilters' => $this->ownerTransactionViewFilters($filters),
+            'transactionTypeOptions' => $this->ownerTransactionTypeOptions(),
+            'transactionMethodOptions' => $this->ownerTransactionMethodOptions(),
+            'transactionStatusOptions' => $this->ownerTransactionStatusOptions(),
         ), 'layouts/owner');
+    }
+
+    public function downloadTransaksi()
+    {
+        $this->requireOwner();
+        $filters = $this->ownerTransactionFiltersFromRequest();
+        $transactions = $this->filterOwnerTransactions($this->ownerTransactionRows(), $filters);
+        $filename = 'arena-sport-transaksi-' . $filters['start']->format('Ymd') . '-' . $filters['end']->format('Ymd') . '.csv';
+
+        $this->sendOwnerTransactionCsv($transactions, $filters, $filename);
     }
 
     public function ulasan()
@@ -853,64 +891,259 @@ class PemilikController extends Controller
         return (int) $parts[2] . ' ' . $monthName . ' ' . $parts[0];
     }
 
-    protected function revenueStats()
+    protected function ownerRevenuePeriodTabs()
     {
         return array(
-            array('label' => 'Total Pendapatan', 'value' => 'Rp4.250.000', 'trend' => '18.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-rupiah-sign', 'accent' => 'green'),
-            array('label' => 'Total Transaksi', 'value' => '120', 'trend' => '15.2%', 'note' => 'dari bulan lalu', 'icon' => 'fa-calendar-check', 'accent' => 'cyan'),
-            array('label' => 'Rata-rata per Hari', 'value' => 'Rp141.667', 'trend' => '16.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-chart-column', 'accent' => 'purple'),
-            array('label' => 'Potongan Platform (2%)', 'value' => 'Rp85.000', 'trend' => '18.6%', 'note' => 'dari bulan lalu', 'icon' => 'fa-percent', 'accent' => 'gold'),
+            'mingguan' => 'Mingguan',
+            'bulanan' => 'Bulanan',
+            'tahunan' => 'Tahunan',
         );
     }
 
-    protected function dailyRevenueChart()
+    protected function sanitizeOwnerRevenuePeriod($period)
     {
+        $period = strtolower(trim((string) $period));
+        $allowed = array_keys($this->ownerRevenuePeriodTabs());
+
+        return in_array($period, $allowed, true) ? $period : 'bulanan';
+    }
+
+    protected function resolveOwnerRevenueRange($period, $startInput, $endInput)
+    {
+        $baseDate = new \DateTimeImmutable('2025-06-30');
+        $start = null;
+        $end = null;
+
+        if ($startInput !== '' || $endInput !== '') {
+            $start = $this->parseOwnerReportDate($startInput);
+            $end = $this->parseOwnerReportDate($endInput);
+        }
+
+        if (!$start || !$end) {
+            if ($period === 'mingguan') {
+                $start = $baseDate->modify('-6 days');
+                $end = $baseDate;
+            } elseif ($period === 'tahunan') {
+                $start = new \DateTimeImmutable($baseDate->format('Y') . '-01-01');
+                $end = new \DateTimeImmutable($baseDate->format('Y') . '-12-31');
+            } else {
+                $start = $baseDate->modify('first day of this month');
+                $end = $baseDate->modify('last day of this month');
+            }
+        }
+
+        if ($start > $end) {
+            $swap = $start;
+            $start = $end;
+            $end = $swap;
+        }
+
+        return array('start' => $start, 'end' => $end);
+    }
+
+    protected function resolveOwnerPreviousRevenueRange(\DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        $days = $start->diff($end)->days + 1;
+        $previousEnd = $start->modify('-1 day');
+        $previousStart = $previousEnd->modify('-' . ($days - 1) . ' days');
+
+        return array('start' => $previousStart, 'end' => $previousEnd);
+    }
+
+    protected function revenueStats(array $transactions, array $previousTransactions, $period)
+    {
+        $summary = $this->ownerRevenueTotals($transactions);
+        $previousSummary = $this->ownerRevenueTotals($previousTransactions);
+        $days = max(1, count(array_unique(array_map(function ($transaction) {
+            return $transaction['date'];
+        }, $transactions))));
+        $periodNotes = array(
+            'mingguan' => 'dari minggu lalu',
+            'bulanan' => 'dari periode sebelumnya',
+            'tahunan' => 'dari periode sebelumnya',
+        );
+        $note = isset($periodNotes[$period]) ? $periodNotes[$period] : 'dari periode sebelumnya';
+
         return array(
-            array('label' => '1 Jun', 'amount' => 'Rp280.000', 'x' => 0, 'y' => 72),
-            array('label' => '3 Jun', 'amount' => 'Rp370.000', 'x' => 5, 'y' => 64),
-            array('label' => '4 Jun', 'amount' => 'Rp410.000', 'x' => 9, 'y' => 60),
-            array('label' => '5 Jun', 'amount' => 'Rp450.000', 'x' => 13, 'y' => 57),
-            array('label' => '7 Jun', 'amount' => 'Rp600.000', 'x' => 19, 'y' => 45),
-            array('label' => '8 Jun', 'amount' => 'Rp550.000', 'x' => 24, 'y' => 50),
-            array('label' => '9 Jun', 'amount' => 'Rp690.000', 'x' => 28, 'y' => 36),
-            array('label' => '10 Jun', 'amount' => 'Rp810.000', 'x' => 32, 'y' => 24),
-            array('label' => '11 Jun', 'amount' => 'Rp680.000', 'x' => 36, 'y' => 37),
-            array('label' => '13 Jun', 'amount' => 'Rp520.000', 'x' => 41, 'y' => 52),
-            array('label' => '14 Jun', 'amount' => 'Rp540.000', 'x' => 45, 'y' => 50),
-            array('label' => '15 Jun', 'amount' => 'Rp641.200', 'x' => 50, 'y' => 59, 'highlight' => true),
-            array('label' => '17 Jun', 'amount' => 'Rp260.000', 'x' => 56, 'y' => 76),
-            array('label' => '18 Jun', 'amount' => 'Rp390.000', 'x' => 60, 'y' => 66),
-            array('label' => '19 Jun', 'amount' => 'Rp460.000', 'x' => 64, 'y' => 59),
-            array('label' => '21 Jun', 'amount' => 'Rp720.000', 'x' => 69, 'y' => 34),
-            array('label' => '22 Jun', 'amount' => 'Rp660.000', 'x' => 73, 'y' => 39),
-            array('label' => '24 Jun', 'amount' => 'Rp630.000', 'x' => 79, 'y' => 42),
-            array('label' => '26 Jun', 'amount' => 'Rp790.000', 'x' => 85, 'y' => 26),
-            array('label' => '27 Jun', 'amount' => 'Rp960.000', 'x' => 90, 'y' => 9),
-            array('label' => '29 Jun', 'amount' => 'Rp820.000', 'x' => 95, 'y' => 24),
-            array('label' => '30 Jun', 'amount' => 'Rp780.000', 'x' => 100, 'y' => 29),
+            array('label' => 'Total Pendapatan', 'value' => $this->formatOwnerRupiah($summary['gross']), 'trend' => $this->formatOwnerTrend($summary['gross'], $previousSummary['gross']), 'note' => $note, 'icon' => 'fa-rupiah-sign', 'accent' => 'green'),
+            array('label' => 'Total Transaksi', 'value' => (string) $summary['count'], 'trend' => $this->formatOwnerTrend($summary['count'], $previousSummary['count']), 'note' => $note, 'icon' => 'fa-calendar-check', 'accent' => 'cyan'),
+            array('label' => 'Rata-rata per Hari', 'value' => $this->formatOwnerRupiah($summary['count'] > 0 ? (int) round($summary['gross'] / $days) : 0), 'trend' => $this->formatOwnerTrend($summary['average'], $previousSummary['average']), 'note' => $note, 'icon' => 'fa-chart-column', 'accent' => 'purple'),
+            array('label' => 'Potongan Platform (2%)', 'value' => $this->formatOwnerRupiah($summary['fee']), 'trend' => $this->formatOwnerTrend($summary['fee'], $previousSummary['fee']), 'note' => $note, 'icon' => 'fa-percent', 'accent' => 'gold'),
         );
     }
 
-    protected function revenueSummary()
+    protected function dailyRevenueChart(array $transactions, \DateTimeImmutable $start, \DateTimeImmutable $end, $period)
     {
+        $labels = array();
+        $buckets = array();
+        $cursor = $start;
+        $groupByMonth = $period === 'tahunan' || $start->diff($end)->days > 62;
+
+        if ($groupByMonth) {
+            $cursor = new \DateTimeImmutable($start->format('Y-m-01'));
+            $last = new \DateTimeImmutable($end->format('Y-m-01'));
+
+            while ($cursor <= $last) {
+                $key = $cursor->format('Y-m');
+                $labels[$key] = $this->shortOwnerMonthName((int) $cursor->format('n'));
+                $buckets[$key] = 0;
+                $cursor = $cursor->modify('+1 month');
+            }
+        } else {
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y-m-d');
+                $labels[$key] = (int) $cursor->format('j') . ' ' . $this->shortOwnerMonthName((int) $cursor->format('n'));
+                $buckets[$key] = 0;
+                $cursor = $cursor->modify('+1 day');
+            }
+        }
+
+        foreach ($transactions as $transaction) {
+            $date = $this->parseOwnerReportDate($transaction['date']);
+
+            if (!$date) {
+                continue;
+            }
+
+            $key = $groupByMonth ? $date->format('Y-m') : $date->format('Y-m-d');
+
+            if (isset($buckets[$key])) {
+                $buckets[$key] += $this->ownerRupiahToInt($transaction['total']);
+            }
+        }
+
+        $values = array_values($buckets);
+        $max = max(1, max($values));
+        $count = count($values);
+        $points = array();
+        $index = 0;
+        $highlightIndex = 0;
+        $highlightAmount = -1;
+
+        foreach ($buckets as $key => $amount) {
+            if ($amount > $highlightAmount) {
+                $highlightAmount = $amount;
+                $highlightIndex = $index;
+            }
+
+            $points[] = array(
+                'label' => $labels[$key],
+                'amount' => $this->formatOwnerRupiah($amount),
+                'x' => $count > 1 ? round(($index / ($count - 1)) * 100, 2) : 50,
+                'y' => round(92 - (($amount / $max) * 82), 2),
+            );
+            $index++;
+        }
+
+        if (isset($points[$highlightIndex])) {
+            $points[$highlightIndex]['highlight'] = true;
+        }
+
         return array(
-            array('label' => 'Pendapatan Kotor', 'value' => 'Rp4.250.000', 'icon' => 'fa-money-bill-trend-up', 'accent' => 'green', 'tone' => 'positive'),
-            array('label' => 'Potongan Platform (2%)', 'value' => '-Rp85.000', 'icon' => 'fa-percent', 'accent' => 'red', 'tone' => 'negative'),
-            array('label' => 'Pendapatan Bersih', 'value' => 'Rp4.165.000', 'icon' => 'fa-wallet', 'accent' => 'blue', 'tone' => 'positive'),
-            array('label' => 'Dibayarkan ke Rekening', 'value' => 'Rp4.165.000', 'icon' => 'fa-building-columns', 'accent' => 'purple', 'tone' => 'positive'),
+            'points' => $points,
+            'labels' => array_values($labels),
+        );
+    }
+
+    protected function revenueSummary(array $transactions)
+    {
+        $summary = $this->ownerRevenueTotals($transactions);
+
+        return array(
+            array('label' => 'Pendapatan Kotor', 'value' => $this->formatOwnerRupiah($summary['gross']), 'icon' => 'fa-money-bill-trend-up', 'accent' => 'green', 'tone' => 'positive'),
+            array('label' => 'Potongan Platform (2%)', 'value' => '-' . $this->formatOwnerRupiah($summary['fee']), 'icon' => 'fa-percent', 'accent' => 'red', 'tone' => 'negative'),
+            array('label' => 'Pendapatan Bersih', 'value' => $this->formatOwnerRupiah($summary['net']), 'icon' => 'fa-wallet', 'accent' => 'blue', 'tone' => 'positive'),
+            array('label' => 'Dibayarkan ke Rekening', 'value' => $this->formatOwnerRupiah($summary['net']), 'icon' => 'fa-building-columns', 'accent' => 'purple', 'tone' => 'positive'),
             array('label' => 'Saldo Tersedia', 'value' => 'Rp0', 'icon' => 'fa-coins', 'accent' => 'gold', 'tone' => 'neutral'),
         );
     }
 
     protected function revenueTransactions()
     {
-        return array(
-            array('date' => '16 Jun 2025', 'field' => 'Arena Futsal A', 'tenant' => 'Ahmad', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp80.000', 'fee' => 'Rp1.600', 'net' => 'Rp78.400', 'status' => 'Dibayar'),
-            array('date' => '16 Jun 2025', 'field' => 'Arena Badminton 1', 'tenant' => 'Rizal', 'method' => 'E-Wallet (OVO)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'ovo', 'total' => 'Rp60.000', 'fee' => 'Rp1.200', 'net' => 'Rp58.800', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Futsal B', 'tenant' => 'Akbar', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp75.000', 'fee' => 'Rp1.500', 'net' => 'Rp73.500', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Badminton 1', 'tenant' => 'Dewi', 'method' => 'E-Wallet (Dana)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'dana', 'total' => 'Rp60.000', 'fee' => 'Rp1.200', 'net' => 'Rp58.800', 'status' => 'Dibayar'),
-            array('date' => '17 Jun 2025', 'field' => 'Arena Futsal A', 'tenant' => 'Fajar', 'method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank', 'total' => 'Rp80.000', 'fee' => 'Rp1.600', 'net' => 'Rp78.400', 'status' => 'Dibayar'),
+        $names = array('Ahmad', 'Rizal', 'Akbar', 'Dewi', 'Fajar', 'Sinta', 'Bima', 'Nadia', 'Raka', 'Putri', 'Gilang', 'Maya');
+        $fields = array('Arena Futsal A', 'Arena Badminton 1', 'Arena Futsal B', 'Arena Basket Indoor');
+        $methods = array(
+            array('method' => 'Transfer Bank', 'methodIcon' => 'fa-building-columns', 'methodClass' => 'bank'),
+            array('method' => 'E-Wallet (OVO)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'ovo'),
+            array('method' => 'E-Wallet (Dana)', 'methodIcon' => 'fa-wallet', 'methodClass' => 'dana'),
         );
+        $amounts = array(60000, 75000, 80000, 90000, 120000, 150000, 180000);
+        $transactions = array();
+
+        for ($day = 1; $day <= 30; $day++) {
+            $itemsInDay = $day % 5 === 0 ? 4 : (($day % 2) + 2);
+
+            for ($item = 0; $item < $itemsInDay; $item++) {
+                $seed = ($day + $item) % count($names);
+                $amount = $amounts[($day + ($item * 2)) % count($amounts)];
+                $fee = (int) round($amount * 0.02);
+                $method = $methods[($day + $item) % count($methods)];
+
+                $transactions[] = array_merge(array(
+                    'date' => $day . ' Jun 2025',
+                    'field' => $fields[($day + $item) % count($fields)],
+                    'tenant' => $names[$seed],
+                    'total' => $this->formatOwnerRupiah($amount),
+                    'fee' => $this->formatOwnerRupiah($fee),
+                    'net' => $this->formatOwnerRupiah($amount - $fee),
+                    'status' => 'Dibayar',
+                ), $method);
+            }
+        }
+
+        return array_reverse($transactions);
+    }
+
+    protected function ownerRevenueTotals(array $transactions)
+    {
+        $gross = 0;
+        $fee = 0;
+        $net = 0;
+
+        foreach ($transactions as $transaction) {
+            $gross += $this->ownerRupiahToInt($transaction['total']);
+            $fee += $this->ownerRupiahToInt($transaction['fee']);
+            $net += $this->ownerRupiahToInt($transaction['net']);
+        }
+
+        return array(
+            'count' => count($transactions),
+            'gross' => $gross,
+            'fee' => $fee,
+            'net' => $net,
+            'average' => count($transactions) > 0 ? (int) round($gross / count($transactions)) : 0,
+        );
+    }
+
+    protected function formatOwnerTrend($current, $previous)
+    {
+        if ((int) $previous <= 0) {
+            return (int) $current > 0 ? '100%' : '0%';
+        }
+
+        $trend = (($current - $previous) / $previous) * 100;
+
+        return number_format(abs($trend), 1, ',', '.') . '%';
+    }
+
+    protected function shortOwnerMonthName($monthNumber)
+    {
+        $months = array(
+            1 => 'Jan',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Apr',
+            5 => 'Mei',
+            6 => 'Jun',
+            7 => 'Jul',
+            8 => 'Agu',
+            9 => 'Sep',
+            10 => 'Okt',
+            11 => 'Nov',
+            12 => 'Des',
+        );
+
+        return isset($months[$monthNumber]) ? $months[$monthNumber] : '';
     }
 
     protected function sanitizeOwnerReportPeriod($period)
@@ -1858,31 +2091,369 @@ class PemilikController extends Controller
         }
     }
 
-    protected function ownerTransactionStats()
+    protected function ownerTransactionFiltersFromRequest()
+    {
+        $start = $this->parseOwnerReportDate(isset($_GET['tanggal_mulai']) ? $_GET['tanggal_mulai'] : '');
+        $end = $this->parseOwnerReportDate(isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : '');
+
+        if (!$start) {
+            $start = new \DateTimeImmutable('2024-05-01');
+        }
+
+        if (!$end) {
+            $end = new \DateTimeImmutable('2024-05-31');
+        }
+
+        if ($start > $end) {
+            $swap = $start;
+            $start = $end;
+            $end = $swap;
+        }
+
+        return array(
+            'start' => $start,
+            'end' => $end,
+            'type' => $this->sanitizeOwnerTransactionOption(isset($_GET['tipe']) ? $_GET['tipe'] : 'semua', $this->ownerTransactionTypeOptions(), 'semua'),
+            'method' => $this->sanitizeOwnerTransactionOption(isset($_GET['metode']) ? $_GET['metode'] : 'semua', $this->ownerTransactionMethodOptions(), 'semua'),
+            'status' => $this->sanitizeOwnerTransactionOption(isset($_GET['status']) ? $_GET['status'] : 'semua', $this->ownerTransactionStatusOptions(), 'semua'),
+            'search' => $this->sanitizeOwnerTransactionSearch(isset($_GET['q']) ? $_GET['q'] : ''),
+            'perPage' => $this->sanitizeOwnerTransactionPerPage(isset($_GET['per_page']) ? $_GET['per_page'] : 10),
+        );
+    }
+
+    protected function ownerTransactionViewFilters(array $filters)
     {
         return array(
-            array('label' => 'Total Transaksi', 'value' => '152', 'note' => 'Transaksi', 'icon' => 'fa-money-check-dollar', 'accent' => 'lime'),
-            array('label' => 'Total Pendapatan', 'value' => 'Rp 12.350.000', 'note' => 'Dari semua transaksi', 'icon' => 'fa-sack-dollar', 'accent' => 'blue'),
-            array('label' => 'Menunggu Pembayaran', 'value' => '8', 'note' => 'Transaksi', 'icon' => 'fa-clock', 'accent' => 'gold'),
-            array('label' => 'Transaksi Selesai', 'value' => '141', 'note' => 'Transaksi', 'icon' => 'fa-check', 'accent' => 'green'),
-            array('label' => 'Transaksi Dibatalkan', 'value' => '3', 'note' => 'Transaksi', 'icon' => 'fa-xmark', 'accent' => 'red'),
+            'startDate' => $filters['start']->format('Y-m-d'),
+            'endDate' => $filters['end']->format('Y-m-d'),
+            'dateLabel' => $this->formatOwnerTransactionDateRange($filters['start'], $filters['end']),
+            'type' => $filters['type'],
+            'method' => $filters['method'],
+            'status' => $filters['status'],
+            'search' => $filters['search'],
+            'perPage' => $filters['perPage'],
+        );
+    }
+
+    protected function formatOwnerTransactionDateRange(\DateTimeImmutable $start, \DateTimeImmutable $end)
+    {
+        $startLabel = $this->formatOwnerTransactionDate($start);
+        $endLabel = $this->formatOwnerTransactionDate($end);
+
+        return $start->format('Y-m-d') === $end->format('Y-m-d') ? $startLabel : $startLabel . ' - ' . $endLabel;
+    }
+
+    protected function formatOwnerTransactionDate(\DateTimeImmutable $date)
+    {
+        $months = array(
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        );
+
+        return sprintf('%02d %s %s', (int) $date->format('j'), $months[(int) $date->format('n')], $date->format('Y'));
+    }
+
+    protected function ownerTransactionTypeOptions()
+    {
+        return array(
+            'semua' => 'Semua Tipe',
+            'booking' => 'Booking Lapangan',
+            'refund' => 'Refund',
+            'pencairan' => 'Pencairan',
+        );
+    }
+
+    protected function ownerTransactionMethodOptions()
+    {
+        return array(
+            'semua' => 'Semua Metode',
+            'qris' => 'QRIS',
+            'dana' => 'DANA',
+            'ovo' => 'OVO',
+            'bank' => 'Transfer Bank',
+        );
+    }
+
+    protected function ownerTransactionStatusOptions()
+    {
+        return array(
+            'semua' => 'Semua Status',
+            'selesai' => 'Selesai',
+            'menunggu' => 'Menunggu',
+            'dibatalkan' => 'Dibatalkan',
+        );
+    }
+
+    protected function sanitizeOwnerTransactionOption($value, array $options, $default)
+    {
+        $normalized = strtolower(trim((string) $value));
+
+        if (isset($options[$normalized])) {
+            return $normalized;
+        }
+
+        foreach ($options as $key => $label) {
+            if ($normalized === strtolower($label)) {
+                return $key;
+            }
+        }
+
+        return $default;
+    }
+
+    protected function sanitizeOwnerTransactionPerPage($value)
+    {
+        $perPage = (int) $value;
+        $allowed = array(10, 25, 50);
+
+        return in_array($perPage, $allowed, true) ? $perPage : 10;
+    }
+
+    protected function sanitizeOwnerTransactionSearch($value)
+    {
+        $search = preg_replace('/\s+/', ' ', trim((string) $value));
+
+        return substr($search, 0, 90);
+    }
+
+    protected function filterOwnerTransactions(array $transactions, array $filters)
+    {
+        $filtered = array();
+        $search = strtolower($filters['search']);
+
+        foreach ($transactions as $transaction) {
+            $date = $this->parseOwnerReportDate(isset($transaction['date']) ? $transaction['date'] : '');
+
+            if (!$date || $date < $filters['start'] || $date > $filters['end']) {
+                continue;
+            }
+
+            if ($filters['type'] !== 'semua' && (!isset($transaction['typeKey']) || $transaction['typeKey'] !== $filters['type'])) {
+                continue;
+            }
+
+            if ($filters['method'] !== 'semua' && (!isset($transaction['methodKey']) || $transaction['methodKey'] !== $filters['method'])) {
+                continue;
+            }
+
+            if ($filters['status'] !== 'semua' && (!isset($transaction['statusKey']) || $transaction['statusKey'] !== $filters['status'])) {
+                continue;
+            }
+
+            if ($search !== '' && strpos($this->ownerTransactionSearchHaystack($transaction), $search) === false) {
+                continue;
+            }
+
+            $filtered[] = $transaction;
+        }
+
+        return $filtered;
+    }
+
+    protected function ownerTransactionSearchHaystack(array $transaction)
+    {
+        $values = array(
+            isset($transaction['orderId']) ? $transaction['orderId'] : '',
+            isset($transaction['type']) ? $transaction['type'] : '',
+            isset($transaction['date']) ? $transaction['date'] : '',
+            isset($transaction['time']) ? $transaction['time'] : '',
+            isset($transaction['customer']) ? $transaction['customer'] : '',
+            isset($transaction['phone']) ? $transaction['phone'] : '',
+            isset($transaction['field']) ? $transaction['field'] : '',
+            isset($transaction['bookingDate']) ? $transaction['bookingDate'] : '',
+            isset($transaction['bookingTime']) ? $transaction['bookingTime'] : '',
+            isset($transaction['method']) ? $transaction['method'] : '',
+            isset($transaction['total']) ? $transaction['total'] : '',
+            isset($transaction['status']) ? $transaction['status'] : '',
+        );
+
+        return strtolower(implode(' ', $values));
+    }
+
+    protected function ownerTransactionStats($transactions = null)
+    {
+        if (!is_array($transactions)) {
+            $transactions = $this->ownerTransactionRows();
+        }
+
+        $totalIncome = 0;
+        $waiting = 0;
+        $completed = 0;
+        $cancelled = 0;
+
+        foreach ($transactions as $transaction) {
+            $statusKey = isset($transaction['statusKey']) ? $transaction['statusKey'] : '';
+            $typeKey = isset($transaction['typeKey']) ? $transaction['typeKey'] : '';
+
+            if ($statusKey === 'menunggu') {
+                $waiting++;
+            } elseif ($statusKey === 'dibatalkan') {
+                $cancelled++;
+            } elseif ($statusKey === 'selesai') {
+                $completed++;
+
+                if ($typeKey === 'booking') {
+                    $totalIncome += $this->ownerRupiahToInt(isset($transaction['total']) ? $transaction['total'] : 0);
+                }
+            }
+        }
+
+        return array(
+            array('label' => 'Total Transaksi', 'value' => (string) count($transactions), 'note' => 'Hasil filter', 'icon' => 'fa-money-check-dollar', 'accent' => 'lime'),
+            array('label' => 'Total Pendapatan', 'value' => $this->formatOwnerRupiah($totalIncome), 'note' => 'Booking selesai', 'icon' => 'fa-sack-dollar', 'accent' => 'blue'),
+            array('label' => 'Menunggu Pembayaran', 'value' => (string) $waiting, 'note' => 'Transaksi', 'icon' => 'fa-clock', 'accent' => 'gold'),
+            array('label' => 'Transaksi Selesai', 'value' => (string) $completed, 'note' => 'Transaksi', 'icon' => 'fa-check', 'accent' => 'green'),
+            array('label' => 'Transaksi Dibatalkan', 'value' => (string) $cancelled, 'note' => 'Transaksi', 'icon' => 'fa-xmark', 'accent' => 'red'),
         );
     }
 
     protected function ownerTransactionRows()
     {
-        return array(
-            array('orderId' => 'ORD-240531-001', 'date' => '31 Mei 2024', 'time' => '21:15 WIB', 'customer' => 'Budi Santoso', 'phone' => '0812-3456-7890', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240531-002', 'date' => '31 Mei 2024', 'time' => '19:48 WIB', 'customer' => 'Rizky Maulana', 'phone' => '0821-1111-2222', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '20:00 - 21:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240531-003', 'date' => '31 Mei 2024', 'time' => '18:30 WIB', 'customer' => 'Ahmad Fauzi', 'phone' => '0813-2222-3333', 'field' => 'Arena Futsal A', 'bookingDate' => '31 Mei 2024', 'bookingTime' => '19:00 - 20:00', 'method' => 'OVO', 'methodClass' => 'ovo', 'methodIcon' => 'fa-circle-dot', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240530-025', 'date' => '30 Mei 2024', 'time' => '22:10 WIB', 'customer' => 'Deni Kurniawan', 'phone' => '0857-7777-8888', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'Transfer Bank', 'methodClass' => 'bank', 'methodIcon' => 'fa-building-columns', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240530-024', 'date' => '30 Mei 2024', 'time' => '20:05 WIB', 'customer' => 'Joko Prasetyo', 'phone' => '0812-9999-0000', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '21:00 - 22:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Menunggu', 'statusClass' => 'warning'),
-            array('orderId' => 'ORD-240530-023', 'date' => '30 Mei 2024', 'time' => '17:50 WIB', 'customer' => 'M. Iqbal', 'phone' => '0823-1234-5678', 'field' => 'Arena Futsal A', 'bookingDate' => '30 Mei 2024', 'bookingTime' => '18:00 - 19:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240529-018', 'date' => '29 Mei 2024', 'time' => '21:33 WIB', 'customer' => 'Andi Setiawan', 'phone' => '0811-2222-3333', 'field' => 'Arena Futsal A', 'bookingDate' => '29 Mei 2024', 'bookingTime' => '22:00 - 23:00', 'method' => 'OVO', 'methodClass' => 'ovo', 'methodIcon' => 'fa-circle-dot', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240529-017', 'date' => '29 Mei 2024', 'time' => '20:12 WIB', 'customer' => 'Farhan Ramadhan', 'phone' => '0856-4444-5555', 'field' => 'Arena Futsal A', 'bookingDate' => '29 Mei 2024', 'bookingTime' => '20:00 - 21:00', 'method' => 'Transfer Bank', 'methodClass' => 'bank', 'methodIcon' => 'fa-building-columns', 'total' => 'Rp 80.000', 'status' => 'Dibatalkan', 'statusClass' => 'danger'),
-            array('orderId' => 'ORD-240528-015', 'date' => '28 Mei 2024', 'time' => '19:18 WIB', 'customer' => 'Rama Saputra', 'phone' => '0821-3333-4444', 'field' => 'Arena Futsal A', 'bookingDate' => '28 Mei 2024', 'bookingTime' => '19:00 - 20:00', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
-            array('orderId' => 'ORD-240528-014', 'date' => '28 Mei 2024', 'time' => '16:45 WIB', 'customer' => 'Kevin Putra', 'phone' => '0812-1234-0000', 'field' => 'Arena Futsal A', 'bookingDate' => '28 Mei 2024', 'bookingTime' => '17:00 - 18:00', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet', 'total' => 'Rp 80.000', 'status' => 'Selesai', 'statusClass' => 'success'),
+        $customers = array(
+            array('name' => 'Budi Santoso', 'phone' => '0812-3456-7890'),
+            array('name' => 'Rizky Maulana', 'phone' => '0821-1111-2222'),
+            array('name' => 'Ahmad Fauzi', 'phone' => '0813-2222-3333'),
+            array('name' => 'Deni Kurniawan', 'phone' => '0857-7777-8888'),
+            array('name' => 'Joko Prasetyo', 'phone' => '0812-9999-0000'),
+            array('name' => 'M. Iqbal', 'phone' => '0823-1234-5678'),
+            array('name' => 'Andi Setiawan', 'phone' => '0811-2222-3333'),
+            array('name' => 'Farhan Ramadhan', 'phone' => '0856-4444-5555'),
+            array('name' => 'Rama Saputra', 'phone' => '0821-3333-4444'),
+            array('name' => 'Kevin Putra', 'phone' => '0812-1234-0000'),
+            array('name' => 'Sinta Lestari', 'phone' => '0813-4444-1111'),
+            array('name' => 'Nadia Putri', 'phone' => '0852-6666-1122'),
         );
+        $fields = array(
+            array('name' => 'Arena Futsal A', 'amount' => 80000),
+            array('name' => 'Arena Futsal B', 'amount' => 75000),
+            array('name' => 'Arena Badminton 1', 'amount' => 60000),
+            array('name' => 'Arena Basket Indoor', 'amount' => 120000),
+        );
+        $methods = array(
+            array('key' => 'qris', 'method' => 'QRIS', 'methodClass' => 'qris', 'methodIcon' => 'fa-qrcode'),
+            array('key' => 'dana', 'method' => 'DANA', 'methodClass' => 'dana', 'methodIcon' => 'fa-wallet'),
+            array('key' => 'ovo', 'method' => 'OVO', 'methodClass' => 'ovo', 'methodIcon' => 'fa-circle-dot'),
+            array('key' => 'bank', 'method' => 'Transfer Bank', 'methodClass' => 'bank', 'methodIcon' => 'fa-building-columns'),
+        );
+        $typeOptions = $this->ownerTransactionTypeOptions();
+        $transactions = array();
+        $sequence = 1;
+
+        for ($day = 31; $day >= 1 && count($transactions) < 152; $day--) {
+            for ($slot = 1; $slot <= 5 && count($transactions) < 152; $slot++) {
+                $customer = $customers[($sequence + $day + $slot) % count($customers)];
+                $field = $fields[($sequence + $slot) % count($fields)];
+                $method = $methods[($sequence + $day) % count($methods)];
+                $typeKey = 'booking';
+                $amount = $field['amount'] + ((($sequence + $slot) % 3) * 10000);
+
+                if ($sequence % 41 === 0) {
+                    $typeKey = 'pencairan';
+                    $method = $methods[3];
+                    $amount = 350000 + (($sequence % 6) * 50000);
+                } elseif ($sequence % 23 === 0) {
+                    $typeKey = 'refund';
+                    $amount = $field['amount'];
+                }
+
+                $status = $this->ownerTransactionStatusPayload($sequence);
+                $transactionHour = 8 + (($sequence + $slot) % 14);
+                $transactionMinute = ($day * 7 + $slot * 11) % 60;
+                $bookingStart = 7 + (($sequence + $day + $slot) % 15);
+                $bookingEnd = $bookingStart + 1;
+
+                $transactions[] = array_merge(array(
+                    'orderId' => sprintf('ORD-2405%02d-%03d', $day, $slot),
+                    'typeKey' => $typeKey,
+                    'type' => isset($typeOptions[$typeKey]) ? $typeOptions[$typeKey] : 'Booking Lapangan',
+                    'date' => $day . ' Mei 2024',
+                    'dateValue' => sprintf('2024-05-%02d', $day),
+                    'time' => sprintf('%02d:%02d WIB', $transactionHour, $transactionMinute),
+                    'customer' => $customer['name'],
+                    'phone' => $customer['phone'],
+                    'field' => $field['name'],
+                    'bookingDate' => $day . ' Mei 2024',
+                    'bookingTime' => sprintf('%02d:00 - %02d:00', $bookingStart, $bookingEnd),
+                    'methodKey' => $method['key'],
+                    'method' => $method['method'],
+                    'methodClass' => $method['methodClass'],
+                    'methodIcon' => $method['methodIcon'],
+                    'total' => $this->formatOwnerRupiah($amount),
+                ), $status);
+
+                $sequence++;
+            }
+        }
+
+        return $transactions;
+    }
+
+    protected function ownerTransactionStatusPayload($sequence)
+    {
+        $cancelledSequences = array(17, 68, 119);
+        $waitingSequences = array(9, 28, 47, 66, 85, 104, 123, 142);
+
+        if (in_array($sequence, $cancelledSequences, true)) {
+            return array('statusKey' => 'dibatalkan', 'status' => 'Dibatalkan', 'statusClass' => 'danger');
+        }
+
+        if (in_array($sequence, $waitingSequences, true)) {
+            return array('statusKey' => 'menunggu', 'status' => 'Menunggu', 'statusClass' => 'warning');
+        }
+
+        return array('statusKey' => 'selesai', 'status' => 'Selesai', 'statusClass' => 'success');
+    }
+
+    protected function sendOwnerTransactionCsv(array $transactions, array $filters, $filename)
+    {
+        $handle = fopen('php://temp', 'r+');
+        fwrite($handle, "\xEF\xBB\xBF");
+        fputcsv($handle, array('ARENA SPORT'));
+        fputcsv($handle, array('Laporan Transaksi'));
+        fputcsv($handle, array('Periode', $this->formatOwnerTransactionDateRange($filters['start'], $filters['end']), 'Dibuat', date('d/m/Y H:i')));
+        fputcsv($handle, array(''));
+        fputcsv($handle, array('Order ID', 'Tipe Transaksi', 'Tanggal', 'Waktu', 'Pelanggan', 'No HP', 'Lapangan', 'Waktu Booking', 'Metode Pembayaran', 'Total', 'Status'));
+
+        if (empty($transactions)) {
+            fputcsv($handle, array('Tidak ada data transaksi sesuai filter.'));
+        }
+
+        foreach ($transactions as $transaction) {
+            fputcsv($handle, array(
+                $transaction['orderId'],
+                $transaction['type'],
+                $transaction['date'],
+                $transaction['time'],
+                $transaction['customer'],
+                $transaction['phone'],
+                $transaction['field'],
+                $transaction['bookingDate'] . ' ' . $transaction['bookingTime'],
+                $transaction['method'],
+                $transaction['total'],
+                $transaction['status'],
+            ));
+        }
+
+        rewind($handle);
+        $content = stream_get_contents($handle);
+        fclose($handle);
+
+        $this->clearOwnerReportOutputBuffer();
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $this->sanitizeOwnerReportFilename($filename) . '"');
+        header('Content-Length: ' . strlen($content));
+        echo $content;
+        exit;
     }
 
     protected function ownerReviewStats()
@@ -1961,7 +2532,6 @@ class PemilikController extends Controller
             'email' => $email,
             'phone' => $phone,
             'location' => isset($extras['location']) && trim((string) $extras['location']) !== '' ? $extras['location'] : 'Parepare, Sulawesi Selatan',
-            'bio' => isset($extras['bio']) && trim((string) $extras['bio']) !== '' ? $extras['bio'] : 'Pemilik beberapa lapangan olahraga di Parepare. Berkomitmen memberikan fasilitas terbaik untuk pelanggan.',
             'joined' => '12 Maret 2024',
             'totalFields' => '3 Lapangan',
             'lastLogin' => '16 Juni 2025, 21:15',
@@ -1976,8 +2546,6 @@ class PemilikController extends Controller
         $email = $this->cleanProfileValue(isset($_POST['email']) ? $_POST['email'] : '', 160);
         $phone = $this->cleanProfileValue(isset($_POST['phone']) ? $_POST['phone'] : '', 30);
         $location = $this->cleanProfileValue(isset($_POST['location']) ? $_POST['location'] : '', 180);
-        $bio = $this->cleanProfileTextarea(isset($_POST['bio']) ? $_POST['bio'] : '', 700);
-
         if ($name === '' || $email === '') {
             $this->setOwnerProfileFlash('error', 'Nama lengkap dan email wajib diisi.');
             return;
@@ -2011,7 +2579,6 @@ class PemilikController extends Controller
             'email' => $email,
             'phone' => $phone,
             'location' => $location,
-            'bio' => $bio,
             'avatar' => $avatar,
             'updated_at' => date('Y-m-d H:i:s'),
         ));
@@ -2369,19 +2936,6 @@ class PemilikController extends Controller
     {
         $value = trim((string) $value);
         $value = preg_replace('/\s+/', ' ', $value);
-
-        if (function_exists('mb_substr')) {
-            return mb_substr($value, 0, $maxLength, 'UTF-8');
-        }
-
-        return substr($value, 0, $maxLength);
-    }
-
-    protected function cleanProfileTextarea($value, $maxLength)
-    {
-        $value = trim((string) $value);
-        $value = preg_replace("/[ \t]+/", ' ', $value);
-        $value = preg_replace("/\r\n|\r/", "\n", $value);
 
         if (function_exists('mb_substr')) {
             return mb_substr($value, 0, $maxLength, 'UTF-8');

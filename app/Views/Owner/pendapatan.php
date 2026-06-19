@@ -1,6 +1,58 @@
 <?php
-$periodTabs = array('Mingguan', 'Bulanan', 'Tahunan');
+$periodTabs = isset($periodTabs) ? $periodTabs : array('mingguan' => 'Mingguan', 'bulanan' => 'Bulanan', 'tahunan' => 'Tahunan');
+$selectedPeriodKey = isset($selectedPeriodKey) ? $selectedPeriodKey : 'bulanan';
 $selectedPeriod = isset($selectedPeriod) ? $selectedPeriod : 'Juni 2025';
+$selectedStartDate = isset($selectedStartDate) ? $selectedStartDate : '2025-06-01';
+$selectedEndDate = isset($selectedEndDate) ? $selectedEndDate : '2025-06-30';
+$reportPeriodDefault = $selectedPeriodKey === 'mingguan' ? '7_hari' : ($selectedPeriodKey === 'bulanan' ? 'bulan_ini' : 'kustom');
+$formatReportInputDate = function ($dateValue) {
+    $months = array(
+        1 => 'Januari',
+        2 => 'Februari',
+        3 => 'Maret',
+        4 => 'April',
+        5 => 'Mei',
+        6 => 'Juni',
+        7 => 'Juli',
+        8 => 'Agustus',
+        9 => 'September',
+        10 => 'Oktober',
+        11 => 'November',
+        12 => 'Desember',
+    );
+    $date = DateTimeImmutable::createFromFormat('Y-m-d', $dateValue);
+
+    if (!$date) {
+        return '01 Juni 2025';
+    }
+
+    return sprintf('%02d %s %s', (int) $date->format('j'), $months[(int) $date->format('n')], $date->format('Y'));
+};
+$selectedStartText = $formatReportInputDate($selectedStartDate);
+$selectedEndText = $formatReportInputDate($selectedEndDate);
+$revenueChartLabels = isset($revenueChartLabels) && is_array($revenueChartLabels) ? $revenueChartLabels : array('1 Jun', '5 Jun', '10 Jun', '15 Jun', '20 Jun', '25 Jun', '30 Jun');
+$revenuePagination = isset($revenuePagination) ? $revenuePagination : array(
+    'currentPage' => 1,
+    'totalPages' => 1,
+    'total' => count($revenueTransactions),
+    'firstItem' => count($revenueTransactions) > 0 ? 1 : 0,
+    'lastItem' => count($revenueTransactions),
+);
+$revenueUrl = function (array $params) use ($selectedPeriodKey, $selectedStartDate, $selectedEndDate) {
+    $query = array_merge(array(
+        'periode' => $selectedPeriodKey,
+        'tanggal_mulai' => $selectedStartDate,
+        'tanggal_selesai' => $selectedEndDate,
+    ), $params);
+
+    foreach ($query as $key => $value) {
+        if ($value === null || $value === '') {
+            unset($query[$key]);
+        }
+    }
+
+    return app_url('pemilik/pendapatan?' . http_build_query($query));
+};
 $linePoints = array();
 $highlightPoint = null;
 
@@ -24,18 +76,40 @@ $linePoints = implode(' ', $linePoints);
 
         <div class="owner-pendapatan-toolbar" aria-label="Filter pendapatan">
             <div class="owner-pendapatan-tabs" role="tablist" aria-label="Periode pendapatan">
-                <?php foreach ($periodTabs as $tab): ?>
-                    <button class="<?php echo $tab === 'Bulanan' ? 'active' : ''; ?>" type="button" role="tab" aria-selected="<?php echo $tab === 'Bulanan' ? 'true' : 'false'; ?>">
+                <?php foreach ($periodTabs as $periodKey => $tab): ?>
+                    <?php $isActiveTab = $selectedPeriodKey === $periodKey; ?>
+                    <a class="<?php echo $isActiveTab ? 'active' : ''; ?>" href="<?php echo e($revenueUrl(array('periode' => $periodKey, 'tanggal_mulai' => null, 'tanggal_selesai' => null, 'page' => null))); ?>" role="tab" aria-selected="<?php echo $isActiveTab ? 'true' : 'false'; ?>">
                         <?php echo e($tab); ?>
-                    </button>
+                    </a>
                 <?php endforeach; ?>
             </div>
 
-            <button class="owner-pendapatan-filter-btn owner-pendapatan-date" type="button">
-                <i class="fa-regular fa-calendar"></i>
-                <span><?php echo e($selectedPeriod); ?></span>
-                <i class="fa-solid fa-chevron-down"></i>
-            </button>
+            <details class="owner-pendapatan-dropdown owner-pendapatan-date-dropdown">
+                <summary class="owner-pendapatan-filter-btn owner-pendapatan-date">
+                    <i class="fa-regular fa-calendar"></i>
+                    <span><?php echo e($selectedPeriod); ?></span>
+                    <i class="fa-solid fa-chevron-down"></i>
+                </summary>
+
+                <form class="owner-pendapatan-filter-panel" action="<?php echo e(app_url('pemilik/pendapatan')); ?>" method="get">
+                    <input type="hidden" name="periode" value="<?php echo e($selectedPeriodKey); ?>">
+
+                    <label>
+                        <span>Dari tanggal</span>
+                        <input type="date" name="tanggal_mulai" value="<?php echo e($selectedStartDate); ?>">
+                    </label>
+
+                    <label>
+                        <span>Sampai tanggal</span>
+                        <input type="date" name="tanggal_selesai" value="<?php echo e($selectedEndDate); ?>">
+                    </label>
+
+                    <div class="owner-pendapatan-filter-panel-actions">
+                        <a href="<?php echo e($revenueUrl(array('tanggal_mulai' => null, 'tanggal_selesai' => null, 'page' => null))); ?>">Reset</a>
+                        <button type="submit">Terapkan</button>
+                    </div>
+                </form>
+            </details>
 
             <button class="owner-pendapatan-download" type="button" data-owner-report-open aria-haspopup="dialog" aria-controls="ownerRevenueReportModal" aria-expanded="false">
                 <i class="fa-solid fa-download"></i>
@@ -99,13 +173,11 @@ $linePoints = implode(' ', $linePoints);
                     <?php endif; ?>
 
                     <div class="owner-pendapatan-x-axis" aria-hidden="true">
-                        <span>1 Jun</span>
-                        <span>5 Jun</span>
-                        <span>10 Jun</span>
-                        <span>15 Jun</span>
-                        <span>20 Jun</span>
-                        <span>25 Jun</span>
-                        <span>30 Jun</span>
+                        <?php foreach ($revenueChartLabels as $labelIndex => $chartLabel): ?>
+                            <?php if ($labelIndex === 0 || $labelIndex === count($revenueChartLabels) - 1 || $labelIndex % max(1, (int) ceil(count($revenueChartLabels) / 6)) === 0): ?>
+                                <span><?php echo e($chartLabel); ?></span>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
@@ -158,38 +230,68 @@ $linePoints = implode(' ', $linePoints);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($revenueTransactions as $index => $transaction): ?>
-                        <tr>
-                            <td><?php echo e($index + 1); ?></td>
-                            <td><?php echo e($transaction['date']); ?></td>
-                            <td><?php echo e($transaction['field']); ?></td>
-                            <td><?php echo e($transaction['tenant']); ?></td>
-                            <td>
-                                <span class="owner-pendapatan-method <?php echo e($transaction['methodClass']); ?>">
-                                    <i class="fa-solid <?php echo e($transaction['methodIcon']); ?>"></i>
-                                    <?php echo e($transaction['method']); ?>
-                                </span>
+                    <?php if (empty($revenueTransactions)): ?>
+                        <tr class="owner-pendapatan-empty-row">
+                            <td colspan="9">
+                                <div class="owner-pendapatan-empty">
+                                    <i class="fa-regular fa-calendar-xmark"></i>
+                                    <strong>Tidak ada transaksi ditemukan</strong>
+                                    <span>Ubah periode atau tanggal filter untuk melihat data pendapatan lain.</span>
+                                </div>
                             </td>
-                            <td><?php echo e($transaction['total']); ?></td>
-                            <td class="owner-pendapatan-fee"><?php echo e($transaction['fee']); ?></td>
-                            <td class="owner-pendapatan-net"><?php echo e($transaction['net']); ?></td>
-                            <td><span class="owner-pendapatan-status"><?php echo e($transaction['status']); ?></span></td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($revenueTransactions as $index => $transaction): ?>
+                            <tr>
+                                <td><?php echo e((int) $revenuePagination['firstItem'] + $index); ?></td>
+                                <td><?php echo e($transaction['date']); ?></td>
+                                <td><?php echo e($transaction['field']); ?></td>
+                                <td><?php echo e($transaction['tenant']); ?></td>
+                                <td>
+                                    <span class="owner-pendapatan-method <?php echo e($transaction['methodClass']); ?>">
+                                        <i class="fa-solid <?php echo e($transaction['methodIcon']); ?>"></i>
+                                        <?php echo e($transaction['method']); ?>
+                                    </span>
+                                </td>
+                                <td><?php echo e($transaction['total']); ?></td>
+                                <td class="owner-pendapatan-fee"><?php echo e($transaction['fee']); ?></td>
+                                <td class="owner-pendapatan-net"><?php echo e($transaction['net']); ?></td>
+                                <td><span class="owner-pendapatan-status"><?php echo e($transaction['status']); ?></span></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
         <div class="owner-pendapatan-table-footer">
-            <p>Menampilkan 1 - 5 dari 120 transaksi</p>
+            <p>
+                <?php if ((int) $revenuePagination['total'] > 0): ?>
+                    Menampilkan <?php echo e($revenuePagination['firstItem']); ?> - <?php echo e($revenuePagination['lastItem']); ?> dari <?php echo e($revenuePagination['total']); ?> transaksi
+                <?php else: ?>
+                    Tidak ada transaksi pada <?php echo e($selectedPeriod); ?>
+                <?php endif; ?>
+            </p>
             <nav class="owner-pendapatan-pagination" aria-label="Paginasi transaksi pendapatan">
-                <button type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
-                <button class="active" type="button" aria-current="page">1</button>
-                <button type="button">2</button>
-                <button type="button">3</button>
-                <span>...</span>
-                <button type="button">24</button>
-                <button type="button" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+                <?php if ((int) $revenuePagination['currentPage'] > 1): ?>
+                    <a href="<?php echo e($revenueUrl(array('page' => (int) $revenuePagination['currentPage'] - 1))); ?>" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></a>
+                <?php else: ?>
+                    <span class="disabled" aria-disabled="true" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></span>
+                <?php endif; ?>
+
+                <?php for ($pageNumber = 1; $pageNumber <= (int) $revenuePagination['totalPages']; $pageNumber++): ?>
+                    <?php if ($pageNumber === (int) $revenuePagination['currentPage']): ?>
+                        <span class="active" aria-current="page"><?php echo e($pageNumber); ?></span>
+                    <?php else: ?>
+                        <a href="<?php echo e($revenueUrl(array('page' => $pageNumber))); ?>"><?php echo e($pageNumber); ?></a>
+                    <?php endif; ?>
+                <?php endfor; ?>
+
+                <?php if ((int) $revenuePagination['currentPage'] < (int) $revenuePagination['totalPages']): ?>
+                    <a href="<?php echo e($revenueUrl(array('page' => (int) $revenuePagination['currentPage'] + 1))); ?>" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></a>
+                <?php else: ?>
+                    <span class="disabled" aria-disabled="true" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></span>
+                <?php endif; ?>
             </nav>
         </div>
     </article>
@@ -215,27 +317,27 @@ $linePoints = implode(' ', $linePoints);
 
                     <div class="owner-report-period-options" role="group" aria-label="Periode laporan">
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="hari_ini">
+                            <input type="radio" name="periode_laporan" value="hari_ini" <?php echo $reportPeriodDefault === 'hari_ini' ? 'checked' : ''; ?>>
                             <span>Hari Ini</span>
                         </label>
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="kemarin">
+                            <input type="radio" name="periode_laporan" value="kemarin" <?php echo $reportPeriodDefault === 'kemarin' ? 'checked' : ''; ?>>
                             <span>Kemarin</span>
                         </label>
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="7_hari">
+                            <input type="radio" name="periode_laporan" value="7_hari" <?php echo $reportPeriodDefault === '7_hari' ? 'checked' : ''; ?>>
                             <span>7 Hari Terakhir</span>
                         </label>
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="30_hari" checked>
+                            <input type="radio" name="periode_laporan" value="30_hari" <?php echo $reportPeriodDefault === '30_hari' ? 'checked' : ''; ?>>
                             <span>30 Hari Terakhir</span>
                         </label>
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="bulan_ini">
+                            <input type="radio" name="periode_laporan" value="bulan_ini" <?php echo $reportPeriodDefault === 'bulan_ini' ? 'checked' : ''; ?>>
                             <span>Bulan Ini</span>
                         </label>
                         <label class="owner-report-period-option">
-                            <input type="radio" name="periode_laporan" value="kustom">
+                            <input type="radio" name="periode_laporan" value="kustom" <?php echo $reportPeriodDefault === 'kustom' ? 'checked' : ''; ?>>
                             <span>Kustom <i class="fa-regular fa-calendar-days"></i></span>
                         </label>
                     </div>
@@ -244,7 +346,7 @@ $linePoints = implode(' ', $linePoints);
                         <label class="owner-report-date-field">
                             <span>Dari Tanggal</span>
                             <span class="owner-report-date-input">
-                                <input type="text" name="tanggal_mulai" value="01 Juni 2025" aria-label="Tanggal mulai laporan" autocomplete="off" data-owner-report-start>
+                                <input type="text" name="tanggal_mulai" value="<?php echo e($selectedStartText); ?>" aria-label="Tanggal mulai laporan" autocomplete="off" data-owner-report-start>
                                 <i class="fa-regular fa-calendar-days"></i>
                             </span>
                         </label>
@@ -252,7 +354,7 @@ $linePoints = implode(' ', $linePoints);
                         <label class="owner-report-date-field">
                             <span>Sampai Tanggal</span>
                             <span class="owner-report-date-input">
-                                <input type="text" name="tanggal_selesai" value="30 Juni 2025" aria-label="Tanggal selesai laporan" autocomplete="off" data-owner-report-end>
+                                <input type="text" name="tanggal_selesai" value="<?php echo e($selectedEndText); ?>" aria-label="Tanggal selesai laporan" autocomplete="off" data-owner-report-end>
                                 <i class="fa-regular fa-calendar-days"></i>
                             </span>
                         </label>
