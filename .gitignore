@@ -6,3 +6,4 @@
 !/storage/uploads/.gitkeep
 /storage/sessions/*
 !/storage/sessions/.gitkeep
+/storage/admin-settings.json

@@ -1,6 +1,8 @@
 <?php
 include '../config/connection.php';
+require_once __DIR__ . '/../app/Helpers/url.php';
 $error = '';
+$registrationEnabled = (string) app_setting('user_registration', '1') === '1';
 $styleVersion = is_file(__DIR__ . '/../assets/css/style.css') ? filemtime(__DIR__ . '/../assets/css/style.css') : time();
 
 function register_table_exists($conn, $table)
@@ -16,7 +18,9 @@ function register_user_table($conn)
     return register_table_exists($conn, 'users') ? 'users' : 'user';
 }
 
-if (isset($_POST['register'])) {
+if (isset($_POST['register']) && !$registrationEnabled) {
+    $error = 'Pendaftaran pengguna baru sedang dinonaktifkan oleh administrator.';
+} elseif (isset($_POST['register'])) {
     $id_user = 'USR' . date('ymdHis') . random_int(10, 99);
     $nama = trim($_POST['nama']);
     $email = trim($_POST['email']);
@@ -71,6 +75,7 @@ if (isset($_POST['register'])) {
                 <div class="error-message"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
             <?php endif; ?>
 
+            <?php if (!$registrationEnabled): ?><div class="error-message">Pendaftaran pengguna baru sedang dinonaktifkan.</div><?php endif; ?>
             <form id="registerForm" action="" method="POST" class="login-form">
                 <div class="field-group">
                     <div class="field-input">
@@ -114,7 +119,7 @@ if (isset($_POST['register'])) {
                     <small class="password-help">Gunakan huruf besar, huruf kecil, angka, dan satu karakter khusus.</small>
                 </div>
 
-                <button type="submit" name="register" class="btn-primary">Daftar</button>
+                <button type="submit" name="register" class="btn-primary" <?php echo $registrationEnabled ? '' : 'disabled'; ?>>Daftar</button>
             </form>
 
             <div class="divider"><span>atau daftar dengan</span></div>

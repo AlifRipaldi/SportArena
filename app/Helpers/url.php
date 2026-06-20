@@ -59,3 +59,16 @@ if (!function_exists('e')) {
         return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
     }
 }
+
+if (!function_exists('app_setting')) {
+    function app_setting($key, $default = null)
+    {
+        static $settings;
+        if ($settings === null) {
+            $path = __DIR__ . '/../../storage/admin-settings.json';
+            $decoded = is_file($path) ? json_decode((string) file_get_contents($path), true) : array();
+            $settings = is_array($decoded) ? $decoded : array();
+        }
+        return array_key_exists($key, $settings) ? $settings[$key] : $default;
+    }
+}

@@ -47,6 +47,504 @@ class AdminController extends Controller
         return in_array(strtolower(trim((string) $role)), array('admin', 'administrator', 'superadmin'), true);
     }
 
+    protected function requireAdmin()
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+        if (empty($_SESSION['id_user']) || !$this->isAdminRole($role)) {
+            header('Location: ' . app_url(empty($_SESSION['id_user']) ? 'public/login.php' : 'dashboard'));
+            exit;
+        }
+
+        return array(
+            'id' => (string) $_SESSION['id_user'],
+            'name' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena'),
+            'role' => $role,
+        );
+    }
+
+    protected function verifyAdminPost()
+    {
+        $this->requireAdmin();
+        $token = isset($_POST['admin_token']) ? (string) $_POST['admin_token'] : '';
+
+        if ($token === '' || empty($_SESSION['admin_csrf']) || !hash_equals((string) $_SESSION['admin_csrf'], $token)) {
+            http_response_code(419);
+            exit('Permintaan kedaluwarsa. Muat ulang halaman lalu coba lagi.');
+        }
+    }
+
+    protected function adminFlash($type, $message)
+    {
+        $_SESSION['admin_flash'] = array('type' => $type, 'message' => $message);
+    }
+
+    protected function adminActionResult($path, $success, $successMessage, $failureMessage)
+    {
+        $this->adminFlash($success ? 'success' : 'error', $success ? $successMessage : $failureMessage);
+        $this->redirect($path);
+    }
+
+    protected function adminId($prefix)
+    {
+        return strtoupper($prefix) . date('ymdHis') . strtoupper(bin2hex(random_bytes(2)));
+    }
+
+    public function storeBooking()
+    {
+        $this->verifyAdminPost();
+        $userId = trim(isset($_POST['id_user']) ? (string) $_POST['id_user'] : '');
+        $scheduleId = trim(isset($_POST['id_jadwal']) ? (string) $_POST['id_jadwal'] : '');
+        $note = trim(isset($_POST['catatan']) ? (string) $_POST['catatan'] : '');
+        $connection = Database::connection();
+        mysqli_begin_transaction($connection);
+
+        try {
+            $data = $this->adminData();
+            $schedule = $data->row("SELECT j.Harga,l.Harga AS field_price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE j.ID_Jadwal=? AND LOWER(j.Status) IN ('available','tersedia') AND l.deleted_at IS NULL FOR UPDATE", 's', array($scheduleId));
+            $isCustomer = (int) $data->value("SELECT COUNT(*) value FROM users WHERE ID_User=? AND LOWER(Role)='customer' AND LOWER(Status)='aktif'", 's', array($userId));
+            if (!$schedule || $isCustomer < 1) {
+                throw new \RuntimeException('Customer atau jadwal tidak valid.');
+            }
+
+            $bookingId = $this->adminId('BK');
+            $price = max(0, (int) ($schedule['Harga'] > 0 ? $schedule['Harga'] : $schedule['field_price']));
+            if (!$data->execute("INSERT INTO booking (ID_Booking,ID_Jadwal,ID_User,Waktu_transaksi,Total_harga,Status,Catatan) VALUES (?,?,?,NOW(),?,'Menunggu Pembayaran',?)", 'sssis', array($bookingId, $scheduleId, $userId, $price, $note))) {
+                throw new \RuntimeException('Booking gagal disimpan.');
+            }
+            $data->execute("UPDATE jadwal SET Status='Booked' WHERE ID_Jadwal=?", 's', array($scheduleId));
+            mysqli_commit($connection);
+            $this->adminActionResult('admin/booking', true, 'Booking baru berhasil dibuat.', '');
+        } catch (\Throwable $exception) {
+            mysqli_rollback($connection);
+            $this->adminActionResult('admin/booking', false, '', $exception->getMessage());
+        }
+    }
+
+    public function updateBooking()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_booking']) ? (string) $_POST['id_booking'] : '');
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : '');
+        $allowed = array('Menunggu Pembayaran', 'Aktif', 'Selesai', 'Dibatalkan');
+        if ($id === '' || !in_array($status, $allowed, true)) {
+            $this->adminActionResult('admin/booking', false, '', 'Data booking tidak valid.');
+        }
+
+        $data = $this->adminData();
+        $success = $data->execute("UPDATE booking SET Status=?,Dibatalkan_pada=IF(?='Dibatalkan',NOW(),NULL) WHERE ID_Booking=?", 'sss', array($status, $status, $id));
+        if ($success) {
+            $scheduleId = $data->value('SELECT ID_Jadwal value FROM booking WHERE ID_Booking=?', 's', array($id));
+            $data->execute("UPDATE jadwal SET Status=? WHERE ID_Jadwal=?", 'ss', array($status === 'Dibatalkan' ? 'Available' : 'Booked', $scheduleId));
+        }
+        $this->adminActionResult('admin/booking', $success, 'Status booking berhasil diperbarui.', 'Booking tidak ditemukan.');
+    }
+
+    public function deleteBooking()
+    {
+        $_POST['status'] = 'Dibatalkan';
+        $this->updateBooking();
+    }
+
+    public function storeLapangan()
+    {
+        $this->verifyAdminPost();
+        $ownerId = trim(isset($_POST['id_pemilik']) ? (string) $_POST['id_pemilik'] : '');
+        $name = trim(isset($_POST['nama']) ? (string) $_POST['nama'] : '');
+        $location = trim(isset($_POST['lokasi']) ? (string) $_POST['lokasi'] : '');
+        $type = trim(isset($_POST['jenis']) ? (string) $_POST['jenis'] : '');
+        $facilities = trim(isset($_POST['fasilitas']) ? (string) $_POST['fasilitas'] : '');
+        $price = max(0, (int) (isset($_POST['harga']) ? $_POST['harga'] : 0));
+        if ($ownerId === '' || $name === '' || $location === '' || $type === '' || $price < 1) {
+            $this->adminActionResult('admin/lapangan', false, '', 'Lengkapi data wajib lapangan.');
+        }
+        $success = $this->adminData()->execute("INSERT INTO lapangan (ID_Lapangan,Nama_lapangan,Lokasi,Jenis_olahraga,Fasilitas,ID_Pemilik,Harga,Status,Deskripsi) VALUES (?,?,?,?,?,?,?,'Aktif',?)", 'ssssssis', array($this->adminId('LP'), $name, $location, $type, $facilities, $ownerId, $price, trim(isset($_POST['deskripsi']) ? (string) $_POST['deskripsi'] : '')));
+        $this->adminActionResult('admin/lapangan', $success, 'Lapangan berhasil ditambahkan.', 'Lapangan gagal ditambahkan. Pastikan pemilik valid.');
+    }
+
+    public function updateLapangan()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_lapangan']) ? (string) $_POST['id_lapangan'] : '');
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : 'Aktif');
+        if (!in_array($status, array('Aktif', 'Maintenance', 'Nonaktif'), true)) {
+            $status = 'Nonaktif';
+        }
+        $values = array(
+            trim(isset($_POST['nama']) ? (string) $_POST['nama'] : ''),
+            trim(isset($_POST['lokasi']) ? (string) $_POST['lokasi'] : ''),
+            trim(isset($_POST['jenis']) ? (string) $_POST['jenis'] : ''),
+            trim(isset($_POST['fasilitas']) ? (string) $_POST['fasilitas'] : ''),
+            trim(isset($_POST['id_pemilik']) ? (string) $_POST['id_pemilik'] : ''),
+            max(0, (int) (isset($_POST['harga']) ? $_POST['harga'] : 0)),
+            $status,
+            trim(isset($_POST['deskripsi']) ? (string) $_POST['deskripsi'] : ''),
+            $id,
+        );
+        $valid = $id !== '' && $values[0] !== '' && $values[1] !== '' && $values[2] !== '' && $values[4] !== '' && $values[5] > 0;
+        $success = $valid && $this->adminData()->execute('UPDATE lapangan SET Nama_lapangan=?,Lokasi=?,Jenis_olahraga=?,Fasilitas=?,ID_Pemilik=?,Harga=?,Status=?,Deskripsi=? WHERE ID_Lapangan=? AND deleted_at IS NULL', 'sssssisss', $values);
+        $this->adminActionResult('admin/lapangan', $success, 'Lapangan berhasil diperbarui.', 'Data lapangan tidak valid.');
+    }
+
+    public function deleteLapangan()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_lapangan']) ? (string) $_POST['id_lapangan'] : '');
+        $success = $id !== '' && $this->adminData()->execute("UPDATE lapangan SET deleted_at=NOW(),Status='Nonaktif' WHERE ID_Lapangan=? AND deleted_at IS NULL", 's', array($id));
+        $this->adminActionResult('admin/lapangan', $success, 'Lapangan berhasil dinonaktifkan.', 'Lapangan tidak ditemukan.');
+    }
+
+    public function jadwal()
+    {
+        $admin = $this->requireAdmin();
+        $fieldId = trim(isset($_GET['field']) ? (string) $_GET['field'] : '');
+        $sql = "SELECT j.ID_Jadwal,j.ID_Lapangan,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,j.Status,j.Harga,l.Nama_lapangan FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE l.deleted_at IS NULL";
+        $types = '';
+        $params = array();
+        if ($fieldId !== '') {
+            $sql .= ' AND j.ID_Lapangan=?';
+            $types = 's';
+            $params[] = $fieldId;
+        }
+        $sql .= ' ORDER BY j.Tanggal DESC,j.Jam_Mulai';
+        return $this->view('Admin/jadwal', array(
+            'title' => 'Kelola Jadwal | Arena Sport', 'activeMenu' => 'lapangan', 'userName' => $admin['name'], 'userRole' => $admin['role'],
+            'selectedField' => $fieldId, 'schedules' => $this->adminData()->rows($sql, $types, $params),
+            'scheduleFields' => $this->adminData()->rows("SELECT ID_Lapangan id,Nama_lapangan name,Harga price FROM lapangan WHERE deleted_at IS NULL AND LOWER(Status)='aktif' ORDER BY Nama_lapangan"),
+        ), 'layouts/admin');
+    }
+
+    public function search()
+    {
+        $admin = $this->requireAdmin();
+        $query = trim(isset($_GET['q']) ? (string) $_GET['q'] : '');
+        $term = '%' . $query . '%';
+        $results = array();
+        if ($query !== '') {
+            foreach ($this->adminData()->rows("SELECT ID_User id,Nama title,CONCAT(Email,' · ',Role) detail FROM users WHERE Nama LIKE ? OR Email LIKE ? LIMIT 10", 'ss', array($term, $term)) as $row) {
+                $results[] = array_merge($row, array('type' => 'Pengguna', 'url' => app_url('admin/users')));
+            }
+            foreach ($this->adminData()->rows("SELECT ID_Lapangan id,Nama_lapangan title,CONCAT(Jenis_olahraga,' · ',Lokasi) detail FROM lapangan WHERE deleted_at IS NULL AND (Nama_lapangan LIKE ? OR Lokasi LIKE ?) LIMIT 10", 'ss', array($term, $term)) as $row) {
+                $results[] = array_merge($row, array('type' => 'Lapangan', 'url' => app_url('admin/lapangan')));
+            }
+            foreach ($this->adminData()->rows("SELECT b.ID_Booking id,b.ID_Booking title,CONCAT(u.Nama,' · ',l.Nama_lapangan) detail FROM booking b INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE b.ID_Booking LIKE ? OR u.Nama LIKE ? OR l.Nama_lapangan LIKE ? LIMIT 10", 'sss', array($term, $term, $term)) as $row) {
+                $results[] = array_merge($row, array('type' => 'Booking', 'url' => app_url('admin/booking')));
+            }
+        }
+        return $this->view('Admin/search', array('title' => 'Pencarian Admin | Arena Sport', 'activeMenu' => '', 'userName' => $admin['name'], 'userRole' => $admin['role'], 'query' => $query, 'results' => $results), 'layouts/admin');
+    }
+
+    public function storeJadwal()
+    {
+        $this->verifyAdminPost();
+        $fieldId = trim(isset($_POST['id_lapangan']) ? (string) $_POST['id_lapangan'] : '');
+        $date = trim(isset($_POST['tanggal']) ? (string) $_POST['tanggal'] : '');
+        $start = trim(isset($_POST['jam_mulai']) ? (string) $_POST['jam_mulai'] : '');
+        $end = trim(isset($_POST['jam_selesai']) ? (string) $_POST['jam_selesai'] : '');
+        $price = max(0, (int) (isset($_POST['harga']) ? $_POST['harga'] : 0));
+        $valid = $fieldId !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && $start !== '' && $start < $end;
+        $success = $valid && $this->adminData()->execute("INSERT INTO jadwal (ID_Jadwal,ID_Lapangan,Tanggal,Jam_Mulai,Jam_Selesai,Status,Harga) VALUES (?,?,?,?,?,'Available',?)", 'sssssi', array($this->adminId('JWL'), $fieldId, $date, $start, $end, $price));
+        $this->adminActionResult('admin/jadwal?field=' . rawurlencode($fieldId), $success, 'Jadwal berhasil ditambahkan.', 'Jadwal tidak valid atau slot sudah tersedia.');
+    }
+
+    public function updateJadwal()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_jadwal']) ? (string) $_POST['id_jadwal'] : '');
+        $fieldId = trim(isset($_POST['id_lapangan']) ? (string) $_POST['id_lapangan'] : '');
+        $date = trim(isset($_POST['tanggal']) ? (string) $_POST['tanggal'] : '');
+        $start = trim(isset($_POST['jam_mulai']) ? (string) $_POST['jam_mulai'] : '');
+        $end = trim(isset($_POST['jam_selesai']) ? (string) $_POST['jam_selesai'] : '');
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : 'Available');
+        $price = max(0, (int) (isset($_POST['harga']) ? $_POST['harga'] : 0));
+        $allowed = array('Available', 'Blocked', 'Maintenance');
+        $hasBooking = (int) $this->adminData()->value('SELECT COUNT(*) value FROM booking WHERE ID_Jadwal=?', 's', array($id));
+        $valid = $id !== '' && $fieldId !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && $start < $end && in_array($status, $allowed, true) && $hasBooking === 0;
+        $success = $valid && $this->adminData()->execute('UPDATE jadwal SET ID_Lapangan=?,Tanggal=?,Jam_Mulai=?,Jam_Selesai=?,Status=?,Harga=? WHERE ID_Jadwal=?', 'sssssis', array($fieldId, $date, $start, $end, $status, $price, $id));
+        $this->adminActionResult('admin/jadwal?field=' . rawurlencode($fieldId), $success, 'Jadwal berhasil diperbarui.', $hasBooking > 0 ? 'Jadwal yang sudah memiliki booking tidak dapat diubah.' : 'Data jadwal tidak valid.');
+    }
+
+    public function deleteJadwal()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_jadwal']) ? (string) $_POST['id_jadwal'] : '');
+        $fieldId = trim(isset($_POST['id_lapangan']) ? (string) $_POST['id_lapangan'] : '');
+        $hasBooking = (int) $this->adminData()->value('SELECT COUNT(*) value FROM booking WHERE ID_Jadwal=?', 's', array($id));
+        $success = $id !== '' && $hasBooking === 0 && $this->adminData()->execute('DELETE FROM jadwal WHERE ID_Jadwal=?', 's', array($id));
+        $this->adminActionResult('admin/jadwal?field=' . rawurlencode($fieldId), $success, 'Jadwal berhasil dihapus.', $hasBooking > 0 ? 'Jadwal memiliki booking dan tidak dapat dihapus.' : 'Jadwal tidak ditemukan.');
+    }
+
+    public function storeUser()
+    {
+        $this->verifyAdminPost();
+        $name = trim(isset($_POST['nama']) ? (string) $_POST['nama'] : '');
+        $email = strtolower(trim(isset($_POST['email']) ? (string) $_POST['email'] : ''));
+        $phone = trim(isset($_POST['telepon']) ? (string) $_POST['telepon'] : '');
+        $role = strtolower(trim(isset($_POST['role']) ? (string) $_POST['role'] : 'customer'));
+        $password = isset($_POST['password']) ? (string) $_POST['password'] : '';
+        if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || $phone === '' || strlen($password) < 8 || !in_array($role, array('customer', 'pemilik'), true)) {
+            $this->adminActionResult('admin/users', false, '', 'Nama, email, telepon, role, dan password minimal 8 karakter wajib diisi.');
+        }
+        $connection = Database::connection();
+        mysqli_begin_transaction($connection);
+        try {
+            $data = $this->adminData();
+            $id = $this->adminId('USR');
+            if (!$data->execute("INSERT INTO users (ID_User,Nama,Email,Password,Nomor_telepon,Role,Status) VALUES (?,?,?,?,?,?,'Aktif')", 'ssssss', array($id, $name, $email, password_hash($password, PASSWORD_DEFAULT), $phone, $role))) {
+                throw new \RuntimeException('Email sudah digunakan atau data tidak dapat disimpan.');
+            }
+            if ($role === 'pemilik') {
+                $business = trim(isset($_POST['nama_usaha']) ? (string) $_POST['nama_usaha'] : $name);
+                $address = trim(isset($_POST['alamat']) ? (string) $_POST['alamat'] : '-');
+                if (!$data->execute("INSERT INTO pemilik_lapangan (ID_Pemilik,ID_User,nama_usaha,alamat,Status_verifikasi) VALUES (?,?,?,?,'Terverifikasi')", 'ssss', array($this->adminId('OWN'), $id, $business !== '' ? $business : $name, $address !== '' ? $address : '-'))) {
+                    throw new \RuntimeException('Profil pemilik gagal dibuat.');
+                }
+            }
+            mysqli_commit($connection);
+            $this->adminActionResult('admin/users', true, 'Pengguna berhasil ditambahkan.', '');
+        } catch (\Throwable $exception) {
+            mysqli_rollback($connection);
+            $this->adminActionResult('admin/users', false, '', $exception->getMessage());
+        }
+    }
+
+    public function updateUser()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_user']) ? (string) $_POST['id_user'] : '');
+        $name = trim(isset($_POST['nama']) ? (string) $_POST['nama'] : '');
+        $email = strtolower(trim(isset($_POST['email']) ? (string) $_POST['email'] : ''));
+        $phone = trim(isset($_POST['telepon']) ? (string) $_POST['telepon'] : '');
+        $role = strtolower(trim(isset($_POST['role']) ? (string) $_POST['role'] : 'customer'));
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : 'Aktif');
+        $valid = $id !== '' && $name !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && $phone !== '' && in_array($role, array('customer', 'pemilik'), true) && in_array($status, array('Aktif', 'Nonaktif'), true);
+        $data = $this->adminData();
+        $ownerId = $data->value('SELECT ID_Pemilik value FROM pemilik_lapangan WHERE ID_User=?', 's', array($id));
+        if ($valid && $role === 'customer' && $ownerId && (int) $data->value('SELECT COUNT(*) value FROM lapangan WHERE ID_Pemilik=? AND deleted_at IS NULL', 's', array($ownerId)) > 0) {
+            $valid = false;
+        }
+        $success = $valid && $data->execute('UPDATE users SET Nama=?,Email=?,Nomor_telepon=?,Role=?,Status=? WHERE ID_User=? AND LOWER(Role)<>\'admin\'', 'ssssss', array($name, $email, $phone, $role, $status, $id));
+        if ($success && $role === 'pemilik' && !(int) $data->value('SELECT COUNT(*) value FROM pemilik_lapangan WHERE ID_User=?', 's', array($id))) {
+            $success = $data->execute("INSERT INTO pemilik_lapangan (ID_Pemilik,ID_User,nama_usaha,alamat,Status_verifikasi) VALUES (?,?,?,?,'Terverifikasi')", 'ssss', array($this->adminId('OWN'), $id, $name, '-'));
+        }
+        if ($success && $role === 'customer' && $ownerId) {
+            $success = $data->execute('DELETE FROM pemilik_lapangan WHERE ID_Pemilik=?', 's', array($ownerId));
+        }
+        $this->adminActionResult('admin/users', $success, 'Data pengguna berhasil diperbarui.', 'Data pengguna tidak valid atau email sudah digunakan.');
+    }
+
+    public function deleteUser()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_user']) ? (string) $_POST['id_user'] : '');
+        $success = $id !== '' && $this->adminData()->execute("UPDATE users SET Status='Nonaktif' WHERE ID_User=? AND LOWER(Role)<>'admin'", 's', array($id));
+        $this->adminActionResult('admin/users', $success, 'Pengguna dinonaktifkan agar riwayat transaksi tetap aman.', 'Pengguna tidak ditemukan.');
+    }
+
+    public function replyReview()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_review']) ? (string) $_POST['id_review'] : '');
+        $reply = trim(isset($_POST['balasan']) ? (string) $_POST['balasan'] : '');
+        $success = $id !== '' && $reply !== '' && $this->adminData()->execute('UPDATE review SET Balasan=? WHERE ID_Review=?', 'ss', array($reply, $id));
+        $this->adminActionResult('admin/ulasan', $success, 'Tanggapan ulasan berhasil disimpan.', 'Tanggapan tidak boleh kosong.');
+    }
+
+    public function deleteReview()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_review']) ? (string) $_POST['id_review'] : '');
+        $success = $id !== '' && $this->adminData()->execute('DELETE FROM review WHERE ID_Review=?', 's', array($id));
+        $this->adminActionResult('admin/ulasan', $success, 'Ulasan berhasil dihapus.', 'Ulasan tidak ditemukan.');
+    }
+
+    public function updateTransaction()
+    {
+        $this->verifyAdminPost();
+        $id = trim(isset($_POST['id_pembayaran']) ? (string) $_POST['id_pembayaran'] : '');
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : '');
+        $allowed = array('Pending', 'Berhasil', 'Gagal', 'Refund');
+        $success = $id !== '' && in_array($status, $allowed, true) && $this->adminData()->execute('UPDATE pembayaran SET Status=?,Waktu_pembayaran=IF(?=\'Berhasil\',COALESCE(Waktu_pembayaran,NOW()),Waktu_pembayaran) WHERE ID_Pembayaran=?', 'sss', array($status, $status, $id));
+        $this->adminActionResult('admin/transaksi', $success, 'Status transaksi berhasil diperbarui.', 'Transaksi tidak valid.');
+    }
+
+    public function updateProfile()
+    {
+        $admin = $this->requireAdmin();
+        $this->verifyAdminPost();
+        $name = trim(isset($_POST['nama']) ? (string) $_POST['nama'] : '');
+        $email = strtolower(trim(isset($_POST['email']) ? (string) $_POST['email'] : ''));
+        $phone = trim(isset($_POST['telepon']) ? (string) $_POST['telepon'] : '');
+        $success = $name !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) && $phone !== '' && $this->adminData()->execute('UPDATE users SET Nama=?,Email=?,Nomor_telepon=? WHERE ID_User=?', 'ssss', array($name, $email, $phone, $admin['id']));
+        if ($success) {
+            $_SESSION['nama_user'] = $name;
+            $_SESSION['nama'] = $name;
+        }
+        $this->adminActionResult('admin/pengaturan?tab=akun', $success, 'Profil administrator berhasil diperbarui.', 'Profil gagal diperbarui.');
+    }
+
+    public function updatePassword()
+    {
+        $admin = $this->requireAdmin();
+        $this->verifyAdminPost();
+        $current = isset($_POST['password_saat_ini']) ? (string) $_POST['password_saat_ini'] : '';
+        $new = isset($_POST['password_baru']) ? (string) $_POST['password_baru'] : '';
+        $confirmation = isset($_POST['konfirmasi_password']) ? (string) $_POST['konfirmasi_password'] : '';
+        $row = $this->adminData()->row('SELECT Password FROM users WHERE ID_User=?', 's', array($admin['id']));
+        $validCurrent = $row && (password_verify($current, (string) $row['Password']) || hash_equals((string) $row['Password'], $current));
+        $success = $validCurrent && strlen($new) >= 8 && $new === $confirmation && $this->adminData()->execute('UPDATE users SET Password=? WHERE ID_User=?', 'ss', array(password_hash($new, PASSWORD_DEFAULT), $admin['id']));
+        $message = !$validCurrent ? 'Password saat ini salah.' : (($new !== $confirmation || strlen($new) < 8) ? 'Password baru minimal 8 karakter dan konfirmasi harus sama.' : 'Password gagal diperbarui.');
+        $this->adminActionResult('admin/pengaturan?tab=akun', $success, 'Password administrator berhasil diganti.', $message);
+    }
+
+    public function updatePaymentMethods()
+    {
+        $this->verifyAdminPost();
+        $active = isset($_POST['methods']) && is_array($_POST['methods']) ? array_map('strval', $_POST['methods']) : array();
+        $data = $this->adminData();
+        $methods = $data->rows('SELECT ID_Metode FROM metode_pembayaran');
+        $success = true;
+        foreach ($methods as $method) {
+            $enabled = in_array((string) $method['ID_Metode'], $active, true) ? 1 : 0;
+            $success = $data->execute('UPDATE metode_pembayaran SET Aktif=? WHERE ID_Metode=?', 'is', array($enabled, $method['ID_Metode'])) && $success;
+        }
+        $this->adminActionResult('admin/pengaturan?tab=pembayaran', $success, 'Metode pembayaran berhasil diperbarui.', 'Metode pembayaran gagal diperbarui.');
+    }
+
+    public function updatePreferences()
+    {
+        $this->verifyAdminPost();
+        $section = strtolower(trim(isset($_POST['section']) ? (string) $_POST['section'] : 'umum'));
+        $allowedSections = array('umum', 'notifikasi', 'pembayaran', 'keamanan', 'akun');
+        if (!in_array($section, $allowedSections, true)) {
+            $section = 'umum';
+        }
+        $submitted = isset($_POST['settings']) && is_array($_POST['settings']) ? $_POST['settings'] : array();
+        $preferences = $this->adminPreferences();
+        foreach ($submitted as $key => $value) {
+            $key = preg_replace('/[^a-z0-9_]/i', '', (string) $key);
+            if ($key === '') {
+                continue;
+            }
+            $preferences[$key] = is_array($value) ? '' : substr(trim((string) $value), 0, 500);
+        }
+        $encoded = json_encode($preferences, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        $success = $encoded !== false && file_put_contents($this->adminPreferenceFile(), $encoded, LOCK_EX) !== false;
+        $this->adminActionResult('admin/pengaturan?tab=' . $section, $success, 'Preferensi berhasil disimpan.', 'Preferensi gagal disimpan.');
+    }
+
+    public function storeBankAccount()
+    {
+        $this->verifyAdminPost();
+        $ownerId = trim(isset($_POST['id_pemilik']) ? (string) $_POST['id_pemilik'] : '');
+        $bank = trim(isset($_POST['bank']) ? (string) $_POST['bank'] : '');
+        $number = preg_replace('/\s+/', '', trim(isset($_POST['nomor']) ? (string) $_POST['nomor'] : ''));
+        $holder = trim(isset($_POST['pemilik']) ? (string) $_POST['pemilik'] : '');
+        $success = $ownerId !== '' && $bank !== '' && $number !== '' && $holder !== '' && $this->adminData()->execute("INSERT INTO rekening_pemilik (ID_Pemilik,Nama_bank,Nomor_rekening,Nama_pemilik,Status) VALUES (?,?,?,?,'Aktif')", 'ssss', array($ownerId, $bank, $number, $holder));
+        $this->adminActionResult('admin/pengaturan?tab=pembayaran', $success, 'Rekening berhasil ditambahkan.', 'Data rekening tidak valid.');
+    }
+
+    public function updateBankAccount()
+    {
+        $this->verifyAdminPost();
+        $id = (int) (isset($_POST['id_rekening']) ? $_POST['id_rekening'] : 0);
+        $status = trim(isset($_POST['status']) ? (string) $_POST['status'] : 'Aktif');
+        if (!in_array($status, array('Aktif', 'Nonaktif'), true)) {
+            $status = 'Nonaktif';
+        }
+        $values = array(trim(isset($_POST['bank']) ? (string) $_POST['bank'] : ''), preg_replace('/\s+/', '', trim(isset($_POST['nomor']) ? (string) $_POST['nomor'] : '')), trim(isset($_POST['pemilik']) ? (string) $_POST['pemilik'] : ''), $status, $id);
+        $success = $id > 0 && $values[0] !== '' && $values[1] !== '' && $values[2] !== '' && $this->adminData()->execute('UPDATE rekening_pemilik SET Nama_bank=?,Nomor_rekening=?,Nama_pemilik=?,Status=? WHERE ID_Rekening=?', 'ssssi', $values);
+        $this->adminActionResult('admin/pengaturan?tab=pembayaran', $success, 'Rekening berhasil diperbarui.', 'Rekening tidak valid.');
+    }
+
+    public function deleteBankAccount()
+    {
+        $this->verifyAdminPost();
+        $id = (int) (isset($_POST['id_rekening']) ? $_POST['id_rekening'] : 0);
+        $success = $id > 0 && $this->adminData()->execute('DELETE FROM rekening_pemilik WHERE ID_Rekening=?', 'i', array($id));
+        $this->adminActionResult('admin/pengaturan?tab=pembayaran', $success, 'Rekening berhasil dihapus.', 'Rekening tidak ditemukan.');
+    }
+
+    protected function adminPreferenceFile()
+    {
+        return dirname(__DIR__, 2) . '/storage/admin-settings.json';
+    }
+
+    protected function adminPreferences()
+    {
+        $defaults = array(
+            'app_name' => 'Arena Sport',
+            'app_description' => 'Platform booking lapangan olahraga online.',
+            'admin_email' => 'admin@arenasport.com',
+            'admin_phone' => '0812-3456-7890',
+            'admin_address' => 'Parepare, Sulawesi Selatan',
+            'maintenance_mode' => '0', 'user_registration' => '1', 'auto_approval' => '1', 'email_notification' => '1', 'dark_theme' => '1',
+            'notification_in_app' => '1', 'notification_email' => '1', 'notification_new_booking' => '1', 'notification_confirmed' => '1', 'notification_cancelled' => '1', 'notification_reminder' => '1', 'notification_review' => '1', 'notification_promo' => '0', 'notification_security' => '1',
+            'payment_timeout' => '60 Menit', 'admin_fee' => '2,5 %', 'minimum_payment' => 'Rp 10.000',
+            'login_notification' => '1', 'two_factor' => '0', 'automatic_logout' => '1', 'login_history' => '1',
+        );
+        $path = $this->adminPreferenceFile();
+        if (!is_file($path)) {
+            return $defaults;
+        }
+        $decoded = json_decode((string) file_get_contents($path), true);
+        return is_array($decoded) ? array_merge($defaults, $decoded) : $defaults;
+    }
+
+    public function export($type)
+    {
+        $this->requireAdmin();
+        $type = strtolower(trim((string) $type));
+        $allowed = array('booking', 'users', 'lapangan', 'ulasan', 'transaksi', 'laporan');
+        if (!in_array($type, $allowed, true)) {
+            http_response_code(404);
+            exit('Jenis export tidak ditemukan.');
+        }
+
+        $rows = $this->adminExportRows($type);
+        $filename = 'arena-sport-' . $type . '-' . date('Ymd-His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo "\xEF\xBB\xBF";
+        $output = fopen('php://output', 'w');
+        if (!empty($rows)) {
+            fputcsv($output, array_keys($rows[0]), ';');
+            foreach ($rows as $row) {
+                fputcsv($output, array_values($row), ';');
+            }
+        }
+        fclose($output);
+        exit;
+    }
+
+    protected function adminExportRows($type)
+    {
+        if ($type === 'booking') {
+            return $this->adminData()->rows('SELECT b.ID_Booking,u.Nama AS Customer,l.Nama_lapangan AS Lapangan,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,b.Total_harga,b.Status FROM booking b INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ORDER BY b.Waktu_transaksi DESC');
+        }
+        if ($type === 'users') {
+            return $this->adminData()->rows("SELECT ID_User,Nama,Email,Nomor_telepon,Role,Status,created_at FROM users WHERE LOWER(Role)<>'admin' ORDER BY created_at DESC");
+        }
+        if ($type === 'lapangan') {
+            return $this->adminData()->rows('SELECT l.ID_Lapangan,l.Nama_lapangan,l.Lokasi,l.Jenis_olahraga,l.Harga,l.Status,p.nama_usaha AS Pemilik FROM lapangan l INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=l.ID_Pemilik WHERE l.deleted_at IS NULL ORDER BY l.created_at DESC');
+        }
+        if ($type === 'ulasan') {
+            return $this->adminData()->rows('SELECT r.ID_Review,u.Nama AS Pengguna,l.Nama_lapangan AS Lapangan,r.Rating,r.Komentar,r.Balasan,r.created_at FROM review r INNER JOIN users u ON u.ID_User=r.ID_User INNER JOIN lapangan l ON l.ID_Lapangan=r.ID_Lapangan ORDER BY r.created_at DESC');
+        }
+        if ($type === 'transaksi') {
+            return $this->adminData()->rows('SELECT p.ID_Pembayaran,p.ID_Booking,u.Nama AS Pengguna,l.Nama_lapangan AS Lapangan,p.Metode,p.Jumlah,p.Status,COALESCE(p.Waktu_pembayaran,p.created_at) AS Waktu FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ORDER BY p.created_at DESC');
+        }
+        return array(
+            array('Metrik' => 'Total Booking', 'Nilai' => (string) $this->adminData()->value('SELECT COUNT(*) value FROM booking')),
+            array('Metrik' => 'Total Pengguna', 'Nilai' => (string) $this->adminData()->value('SELECT COUNT(*) value FROM users')),
+            array('Metrik' => 'Lapangan Aktif', 'Nilai' => (string) $this->adminData()->value("SELECT COUNT(*) value FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL")),
+            array('Metrik' => 'Pendapatan', 'Nilai' => (string) $this->adminData()->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid')")),
+        );
+    }
+
     protected function adminData()
     {
         return new ArenaData();
@@ -65,9 +563,9 @@ class AdminController extends Controller
     protected function adminBookingRows()
     {
         return $this->adminData()->rows(
-            "SELECT b.ID_Booking, b.Status AS booking_status, b.Total_harga, b.Waktu_transaksi,
+            "SELECT b.ID_Booking, b.ID_User, b.ID_Jadwal, b.Status AS booking_status, b.Total_harga, b.Waktu_transaksi,
                     u.Nama AS customer_name, u.Nomor_telepon,
-                    j.Tanggal, j.Jam_Mulai, j.Jam_Selesai,
+                    j.Tanggal, j.Jam_Mulai, j.Jam_Selesai, j.Status AS schedule_status,
                     l.ID_Lapangan, l.Nama_lapangan,
                     p.ID_Pembayaran, p.Jumlah, p.Metode, p.Status AS payment_status,
                     p.Waktu_pembayaran, p.created_at AS payment_created_at
@@ -142,7 +640,7 @@ class AdminController extends Controller
     protected function adminBookingsFromDatabase()
     {
         $bookings=array();
-        foreach($this->adminBookingRows() as $row){$payload=$this->adminBookingPayload($row['booking_status'],isset($row['payment_status'])?$row['payment_status']:'');$bookings[]=array('code'=>$row['ID_Booking'],'field'=>$row['Nama_lapangan'],'user'=>$row['customer_name'],'date'=>$this->adminDate($row['Tanggal']),'time'=>substr($row['Jam_Mulai'],0,5).' - '.substr($row['Jam_Selesai'],0,5),'status'=>$payload['label'],'statusClass'=>$payload['class'],'total'=>$this->adminRupiah($row['Total_harga']));}
+        foreach($this->adminBookingRows() as $row){$payload=$this->adminBookingPayload($row['booking_status'],isset($row['payment_status'])?$row['payment_status']:'');$bookings[]=array('id'=>$row['ID_Booking'],'code'=>$row['ID_Booking'],'userId'=>$row['ID_User'],'scheduleId'=>$row['ID_Jadwal'],'field'=>$row['Nama_lapangan'],'user'=>$row['customer_name'],'date'=>$this->adminDate($row['Tanggal']),'time'=>substr($row['Jam_Mulai'],0,5).' - '.substr($row['Jam_Selesai'],0,5),'status'=>$payload['label'],'rawStatus'=>$row['booking_status'],'statusClass'=>$payload['class'],'total'=>$this->adminRupiah($row['Total_harga']));}
         return $bookings;
     }
 
@@ -173,14 +671,14 @@ class AdminController extends Controller
     {
         $rows=$this->adminData()->rows("SELECT l.*, COUNT(DISTINCT CASE WHEN j.Tanggal=CURDATE() THEN b.ID_Booking END) bookings, COALESCE(AVG(r.Rating),0) rating, COUNT(DISTINCT r.ID_Review) reviews FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY l.created_at DESC");
         $fields=array();
-        foreach($rows as $row){$status=$row['Status'];$type=strtolower($row['Jenis_olahraga']);$icon=strpos($type,'badminton')!==false?'fa-table-tennis-paddle-ball':(strpos($type,'basket')!==false?'fa-basketball':'fa-futbol');$fields[]=array('name'=>$row['Nama_lapangan'],'type'=>$row['Jenis_olahraga'],'location'=>$row['Lokasi'],'price'=>$this->adminRupiah($row['Harga']).'/jam','bookings'=>(int)$row['bookings'],'rating'=>number_format((float)$row['rating'],1),'reviews'=>(int)$row['reviews'],'status'=>$status,'badge'=>strtolower($status)==='aktif'?'success':'warning','progress'=>min(100,(int)$row['bookings']*10),'icon'=>$icon,'accent'=>strtolower($status)==='aktif'?'lime':'gold');}
+        foreach($rows as $row){$status=$row['Status'];$type=strtolower($row['Jenis_olahraga']);$icon=strpos($type,'badminton')!==false?'fa-table-tennis-paddle-ball':(strpos($type,'basket')!==false?'fa-basketball':'fa-futbol');$fields[]=array('id'=>$row['ID_Lapangan'],'ownerId'=>$row['ID_Pemilik'],'name'=>$row['Nama_lapangan'],'type'=>$row['Jenis_olahraga'],'location'=>$row['Lokasi'],'facilities'=>$row['Fasilitas'],'description'=>$row['Deskripsi'],'priceValue'=>(int)$row['Harga'],'price'=>$this->adminRupiah($row['Harga']).'/jam','bookings'=>(int)$row['bookings'],'rating'=>number_format((float)$row['rating'],1),'reviews'=>(int)$row['reviews'],'status'=>$status,'badge'=>strtolower($status)==='aktif'?'success':'warning','progress'=>min(100,(int)$row['bookings']*10),'icon'=>$icon,'accent'=>strtolower($status)==='aktif'?'lime':'gold');}
         return $fields;
     }
 
     protected function adminReviewsFromDatabase()
     {
-        $rows=$this->adminData()->rows("SELECT r.Rating,r.Komentar,r.Balasan,r.created_at,u.Nama,l.Nama_lapangan FROM review r INNER JOIN users u ON u.ID_User=r.ID_User INNER JOIN lapangan l ON l.ID_Lapangan=r.ID_Lapangan ORDER BY r.created_at DESC");$result=array();
-        foreach($rows as $row){$name=$row['Nama'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $part){$initials.=strtoupper(substr($part,0,1));}$responded=trim((string)$row['Balasan'])!=='';$result[]=array('initials'=>$initials,'user'=>$name,'field'=>$row['Nama_lapangan'],'rating'=>(float)$row['Rating'],'comment'=>$row['Komentar'],'date'=>$this->adminDate(substr($row['created_at'],0,10)),'status'=>$responded?'Ditanggapi':'Belum Ditanggapi','statusClass'=>$responded?'success':'warning','accent'=>'blue');}
+        $rows=$this->adminData()->rows("SELECT r.ID_Review,r.Rating,r.Komentar,r.Balasan,r.created_at,u.Nama,l.Nama_lapangan FROM review r INNER JOIN users u ON u.ID_User=r.ID_User INNER JOIN lapangan l ON l.ID_Lapangan=r.ID_Lapangan ORDER BY r.created_at DESC");$result=array();
+        foreach($rows as $row){$name=$row['Nama'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $part){$initials.=strtoupper(substr($part,0,1));}$responded=trim((string)$row['Balasan'])!=='';$result[]=array('id'=>$row['ID_Review'],'initials'=>$initials,'user'=>$name,'field'=>$row['Nama_lapangan'],'rating'=>(float)$row['Rating'],'comment'=>$row['Komentar'],'reply'=>$row['Balasan'],'date'=>$this->adminDate(substr($row['created_at'],0,10)),'status'=>$responded?'Ditanggapi':'Belum Ditanggapi','statusClass'=>$responded?'success':'warning','accent'=>'blue');}
         return $result;
     }
 
@@ -208,7 +706,7 @@ class AdminController extends Controller
 
     protected function adminTransactionsFromDatabase()
     {
-        $result=array();foreach($this->adminBookingRows() as $row){if(empty($row['ID_Pembayaran'])){continue;}$payload=$this->adminBookingPayload($row['booking_status'],$row['payment_status']);$created=!empty($row['Waktu_pembayaran'])?$row['Waktu_pembayaran']:$row['payment_created_at'];$name=$row['customer_name'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $p){$initials.=strtoupper(substr($p,0,1));}$result[]=array('id'=>$row['ID_Pembayaran'],'booking'=>$row['ID_Booking'],'field'=>$row['Nama_lapangan'],'user'=>$name,'initials'=>$initials,'phone'=>$row['Nomor_telepon'],'method'=>$row['Metode'],'methodClass'=>$this->adminMethodClass($row['Metode']),'amount'=>$this->adminRupiah($row['Jumlah']),'status'=>$payload['label']==='Selesai'?'Berhasil':$payload['label'],'statusClass'=>$payload['class'],'date'=>$this->adminDate(substr($created,0,10)),'time'=>substr($created,11,5),'accent'=>'green');}return $result;
+        $result=array();foreach($this->adminBookingRows() as $row){if(empty($row['ID_Pembayaran'])){continue;}$payload=$this->adminBookingPayload($row['booking_status'],$row['payment_status']);$created=!empty($row['Waktu_pembayaran'])?$row['Waktu_pembayaran']:$row['payment_created_at'];$name=$row['customer_name'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $p){$initials.=strtoupper(substr($p,0,1));}$result[]=array('id'=>$row['ID_Pembayaran'],'booking'=>$row['ID_Booking'],'field'=>$row['Nama_lapangan'],'user'=>$name,'initials'=>$initials,'phone'=>$row['Nomor_telepon'],'method'=>$row['Metode'],'methodClass'=>$this->adminMethodClass($row['Metode']),'amount'=>$this->adminRupiah($row['Jumlah']),'status'=>$payload['label']==='Selesai'?'Berhasil':$payload['label'],'rawStatus'=>$row['payment_status'],'statusClass'=>$payload['class'],'dateValue'=>substr($created,0,10),'date'=>$this->adminDate(substr($created,0,10)),'time'=>substr($created,11,5),'accent'=>'green');}return $result;
     }
 
     protected function adminTransactionStatsFromDatabase()
@@ -246,12 +744,12 @@ class AdminController extends Controller
 
     protected function adminPaymentMethodsFromDatabase()
     {
-        $rows=$this->adminData()->rows('SELECT * FROM metode_pembayaran ORDER BY Nama');$result=array();foreach($rows as $row){$result[]=array('name'=>$row['Nama'],'description'=>'Metode '.$row['Tipe'].'; biaya admin '.$this->adminRupiah($row['Biaya_admin']),'mark'=>strtoupper(substr($row['Nama'],0,2)),'accent'=>$this->adminMethodClass($row['Nama']),'enabled'=>(bool)$row['Aktif']);}return $result;
+        $rows=$this->adminData()->rows('SELECT * FROM metode_pembayaran ORDER BY Nama');$result=array();foreach($rows as $row){$result[]=array('id'=>$row['ID_Metode'],'name'=>$row['Nama'],'description'=>'Metode '.$row['Tipe'].'; biaya admin '.$this->adminRupiah($row['Biaya_admin']),'mark'=>strtoupper(substr($row['Nama'],0,2)),'accent'=>$this->adminMethodClass($row['Nama']),'enabled'=>(bool)$row['Aktif']);}return $result;
     }
 
     protected function adminBankAccountsFromDatabase()
     {
-        $rows=$this->adminData()->rows("SELECT rp.*,p.nama_usaha FROM rekening_pemilik rp INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=rp.ID_Pemilik ORDER BY rp.Utama DESC,rp.created_at DESC");$result=array();foreach($rows as $row){$active=strtolower($row['Status'])==='aktif';$result[]=array('bank'=>$row['Nama_bank'],'account'=>$row['Nomor_rekening'],'owner'=>$row['Nama_pemilik'],'status'=>$row['Status'],'statusClass'=>$active?'success':'inactive','accent'=>$this->adminMethodClass($row['Nama_bank']));}return $result;
+        $rows=$this->adminData()->rows("SELECT rp.*,p.nama_usaha FROM rekening_pemilik rp INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=rp.ID_Pemilik ORDER BY rp.Utama DESC,rp.created_at DESC");$result=array();foreach($rows as $row){$active=strtolower($row['Status'])==='aktif';$result[]=array('id'=>$row['ID_Rekening'],'ownerId'=>$row['ID_Pemilik'],'bank'=>$row['Nama_bank'],'account'=>$row['Nomor_rekening'],'owner'=>$row['Nama_pemilik'],'status'=>$row['Status'],'statusClass'=>$active?'success':'inactive','accent'=>$this->adminMethodClass($row['Nama_bank']));}return $result;
     }
 
     protected function adminMethodClass($method)
@@ -399,6 +897,8 @@ class AdminController extends Controller
             'activeMenu' => 'booking',
             'userName' => $userName,
             'recentBookings' => $this->recentBookings(),
+            'bookingCustomers' => $this->adminData()->rows("SELECT ID_User id,Nama name FROM users WHERE LOWER(Role)='customer' AND LOWER(Status)='aktif' ORDER BY Nama"),
+            'availableSchedules' => $this->adminData()->rows("SELECT j.ID_Jadwal id,l.Nama_lapangan field,j.Tanggal date,j.Jam_Mulai start,j.Jam_Selesai end,IF(j.Harga>0,j.Harga,l.Harga) price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE LOWER(j.Status) IN ('available','tersedia') AND j.Tanggal>=CURDATE() AND l.deleted_at IS NULL ORDER BY j.Tanggal,j.Jam_Mulai"),
         ), 'layouts/admin');
     }
 
@@ -427,6 +927,7 @@ class AdminController extends Controller
             'activeMenu' => 'lapangan',
             'userName' => $userName,
             'fields' => $this->adminFieldsFromDatabase(),
+            'fieldOwners' => $this->adminData()->rows("SELECT p.ID_Pemilik id,CONCAT(p.nama_usaha,' - ',u.Nama) name FROM pemilik_lapangan p INNER JOIN users u ON u.ID_User=p.ID_User WHERE LOWER(u.Status)='aktif' ORDER BY p.nama_usaha"),
         ), 'layouts/admin');
     }
 
@@ -531,7 +1032,8 @@ class AdminController extends Controller
         }
 
         $orderColumn = $registeredColumn !== '' ? $registeredColumn : $nameColumn;
-        $sql = 'SELECT ' . implode(', ', $select) . ' FROM `' . $table . '` u' . $ownerJoin . ' ORDER BY u.`' . $orderColumn . '` ASC';
+        $where = $roleColumn !== '' ? " WHERE LOWER(u.`" . $roleColumn . "`) <> 'admin'" : '';
+        $sql = 'SELECT ' . implode(', ', $select) . ' FROM `' . $table . '` u' . $ownerJoin . $where . ' ORDER BY u.`' . $orderColumn . '` ASC';
         $result = mysqli_query($connection, $sql);
 
         if (!$result) {
@@ -1126,10 +1628,10 @@ class AdminController extends Controller
     protected function reportDownloads()
     {
         return array(
-            array('title' => 'Laporan Pendapatan', 'description' => 'Ringkasan pendapatan dan transaksi', 'icon' => 'fa-file-invoice-dollar'),
-            array('title' => 'Laporan Booking', 'description' => 'Ringkasan data booking', 'icon' => 'fa-table-cells-large'),
-            array('title' => 'Laporan Pengguna', 'description' => 'Ringkasan data pengguna', 'icon' => 'fa-address-card'),
-            array('title' => 'Laporan Lapangan', 'description' => 'Ringkasan data lapangan', 'icon' => 'fa-file-lines'),
+            array('title' => 'Laporan Pendapatan', 'description' => 'Ringkasan pendapatan dan transaksi', 'icon' => 'fa-file-invoice-dollar', 'type' => 'transaksi'),
+            array('title' => 'Laporan Booking', 'description' => 'Ringkasan data booking', 'icon' => 'fa-table-cells-large', 'type' => 'booking'),
+            array('title' => 'Laporan Pengguna', 'description' => 'Ringkasan data pengguna', 'icon' => 'fa-address-card', 'type' => 'users'),
+            array('title' => 'Laporan Lapangan', 'description' => 'Ringkasan data lapangan', 'icon' => 'fa-file-lines', 'type' => 'lapangan'),
         );
     }
 
@@ -1183,6 +1685,8 @@ class AdminController extends Controller
             'adminLoginActivity' => $this->adminLoginActivity(),
             'adminAccessRights' => $this->adminAccessRights(),
             'adminActiveDevices' => $this->adminActiveDevices(),
+            'adminPreferences' => $this->adminPreferences(),
+            'bankOwners' => $this->adminData()->rows("SELECT p.ID_Pemilik id,CONCAT(p.nama_usaha,' - ',u.Nama) name FROM pemilik_lapangan p INNER JOIN users u ON u.ID_User=p.ID_User ORDER BY p.nama_usaha"),
         ), 'layouts/admin');
     }
 
@@ -1199,33 +1703,33 @@ class AdminController extends Controller
 
     protected function generalSettings()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Maintenance Mode', 'description' => 'Aktifkan mode maintenance (aplikasi tidak dapat diakses user)', 'enabled' => false),
-            array('label' => 'Registrasi User', 'description' => 'Izinkan user baru untuk mendaftar', 'enabled' => true),
-            array('label' => 'Auto Approval Booking', 'description' => 'Booking akan otomatis disetujui oleh sistem', 'enabled' => true),
-            array('label' => 'Email Notifikasi', 'description' => 'Kirim email notifikasi ke admin', 'enabled' => true),
-            array('label' => 'Tema Gelap', 'description' => 'Aktifkan tampilan tema gelap', 'enabled' => true),
+            array('key' => 'maintenance_mode', 'label' => 'Maintenance Mode', 'description' => 'Aktifkan mode maintenance (aplikasi tidak dapat diakses user)', 'enabled' => $preferences['maintenance_mode'] === '1'),
+            array('key' => 'user_registration', 'label' => 'Registrasi User', 'description' => 'Izinkan user baru untuk mendaftar', 'enabled' => $preferences['user_registration'] === '1'),
         );
     }
 
     protected function notificationChannels()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Notifikasi In-App', 'description' => 'Terima notifikasi melalui aplikasi Arena Sport.', 'icon' => 'fa-bell', 'accent' => 'green', 'enabled' => true),
-            array('label' => 'Email', 'description' => 'Terima notifikasi melalui email yang terdaftar.', 'icon' => 'fa-envelope', 'accent' => 'green', 'enabled' => true),
+            array('key' => 'notification_in_app', 'label' => 'Notifikasi In-App', 'description' => 'Terima notifikasi melalui aplikasi Arena Sport.', 'icon' => 'fa-bell', 'accent' => 'green', 'enabled' => $preferences['notification_in_app'] === '1'),
+            array('key' => 'notification_email', 'label' => 'Email', 'description' => 'Terima notifikasi melalui email yang terdaftar.', 'icon' => 'fa-envelope', 'accent' => 'green', 'enabled' => $preferences['notification_email'] === '1'),
         );
     }
 
     protected function notificationTypes()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Booking Baru', 'description' => 'Notifikasi ketika ada booking baru pada lapangan Anda.', 'enabled' => true),
-            array('label' => 'Booking Dikonfirmasi', 'description' => 'Notifikasi ketika booking dikonfirmasi oleh admin.', 'enabled' => true),
-            array('label' => 'Booking Dibatalkan', 'description' => 'Notifikasi ketika booking dibatalkan oleh pengguna.', 'enabled' => true),
-            array('label' => 'Pengingat Booking', 'description' => 'Notifikasi pengingat sebelum waktu booking dimulai.', 'enabled' => true),
-            array('label' => 'Ulasan & Rating Baru', 'description' => 'Notifikasi ketika ada ulasan atau rating baru diberikan.', 'enabled' => true),
-            array('label' => 'Promo & Informasi', 'description' => 'Notifikasi tentang promo, fitur baru, dan informasi penting.', 'enabled' => false),
-            array('label' => 'Sistem & Keamanan', 'description' => 'Notifikasi terkait keamanan akun dan aktivitas sistem.', 'enabled' => true),
+            array('key' => 'notification_new_booking', 'label' => 'Booking Baru', 'description' => 'Notifikasi ketika ada booking baru pada lapangan Anda.', 'enabled' => $preferences['notification_new_booking'] === '1'),
+            array('key' => 'notification_confirmed', 'label' => 'Booking Dikonfirmasi', 'description' => 'Notifikasi ketika booking dikonfirmasi oleh admin.', 'enabled' => $preferences['notification_confirmed'] === '1'),
+            array('key' => 'notification_cancelled', 'label' => 'Booking Dibatalkan', 'description' => 'Notifikasi ketika booking dibatalkan oleh pengguna.', 'enabled' => $preferences['notification_cancelled'] === '1'),
+            array('key' => 'notification_reminder', 'label' => 'Pengingat Booking', 'description' => 'Notifikasi pengingat sebelum waktu booking dimulai.', 'enabled' => $preferences['notification_reminder'] === '1'),
+            array('key' => 'notification_review', 'label' => 'Ulasan & Rating Baru', 'description' => 'Notifikasi ketika ada ulasan atau rating baru diberikan.', 'enabled' => $preferences['notification_review'] === '1'),
+            array('key' => 'notification_promo', 'label' => 'Promo & Informasi', 'description' => 'Notifikasi tentang promo, fitur baru, dan informasi penting.', 'enabled' => $preferences['notification_promo'] === '1'),
+            array('key' => 'notification_security', 'label' => 'Sistem & Keamanan', 'description' => 'Notifikasi terkait keamanan akun dan aktivitas sistem.', 'enabled' => $preferences['notification_security'] === '1'),
         );
     }
 
@@ -1266,10 +1770,11 @@ class AdminController extends Controller
 
     protected function adminPaymentSettings()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Batas Waktu Pembayaran', 'description' => 'Batas waktu maksimal pembayaran sebelum booking dibatalkan otomatis.', 'type' => 'select', 'value' => '60 Menit', 'options' => array('30 Menit', '60 Menit', '90 Menit')),
-            array('label' => 'Biaya Admin (Persentase)', 'description' => 'Persentase biaya admin yang dikenakan pada setiap transaksi.', 'type' => 'select', 'value' => '2,5 %', 'options' => array('1 %', '2,5 %', '5 %')),
-            array('label' => 'Minimal Pembayaran', 'description' => 'Nominal minimal pembayaran yang diperbolehkan.', 'type' => 'text', 'value' => 'Rp 10.000'),
+            array('key' => 'payment_timeout', 'label' => 'Batas Waktu Pembayaran', 'description' => 'Batas waktu maksimal pembayaran sebelum booking dibatalkan otomatis.', 'type' => 'select', 'value' => $preferences['payment_timeout'], 'options' => array('30 Menit', '60 Menit', '90 Menit')),
+            array('key' => 'admin_fee', 'label' => 'Biaya Admin (Persentase)', 'description' => 'Persentase biaya admin yang dikenakan pada setiap transaksi.', 'type' => 'select', 'value' => $preferences['admin_fee'], 'options' => array('1 %', '2,5 %', '5 %')),
+            array('key' => 'minimum_payment', 'label' => 'Minimal Pembayaran', 'description' => 'Nominal minimal pembayaran yang diperbolehkan.', 'type' => 'text', 'value' => $preferences['minimum_payment']),
         );
     }
 
@@ -1287,32 +1792,27 @@ class AdminController extends Controller
 
     protected function securitySettings()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Two-Factor Authentication (2FA)', 'description' => 'Tambahkan lapisan keamanan ekstra saat login.', 'icon' => 'fa-shield-halved', 'accent' => 'green', 'status' => 'Aktif', 'type' => 'toggle', 'enabled' => true),
-            array('label' => 'Sesi Aktif', 'description' => 'Kelola perangkat yang saat ini sedang login ke akun Anda.', 'icon' => 'fa-lock', 'accent' => 'blue', 'type' => 'button', 'button' => 'Kelola'),
-            array('label' => 'Ubah Password', 'description' => 'Ubah password akun administrator secara berkala.', 'icon' => 'fa-key', 'accent' => 'purple', 'type' => 'button', 'button' => 'Ubah Password'),
+            array('key' => 'two_factor', 'label' => 'Two-Factor Authentication (2FA)', 'description' => 'Simpan preferensi keamanan dua faktor.', 'icon' => 'fa-shield-halved', 'accent' => 'green', 'status' => $preferences['two_factor'] === '1' ? 'Aktif' : 'Nonaktif', 'type' => 'toggle', 'enabled' => $preferences['two_factor'] === '1'),
+            array('label' => 'Sesi Aktif', 'description' => 'Lihat perangkat yang saat ini sedang login ke akun Anda.', 'icon' => 'fa-lock', 'accent' => 'blue', 'type' => 'button', 'button' => 'Lihat Sesi', 'url' => '#active-sessions'),
+            array('label' => 'Ubah Password', 'description' => 'Ubah password akun administrator secara berkala.', 'icon' => 'fa-key', 'accent' => 'purple', 'type' => 'button', 'button' => 'Ubah Password', 'url' => app_url('admin/pengaturan?tab=akun')),
             array('label' => 'Verifikasi Email', 'description' => 'Email Anda telah terverifikasi.', 'icon' => 'fa-envelope-circle-check', 'accent' => 'gold', 'status' => 'Aktif', 'type' => 'verified', 'email' => 'admin@arenasport.com'),
-            array('label' => 'Notifikasi Keamanan', 'description' => 'Dapatkan notifikasi untuk aktivitas keamanan penting.', 'icon' => 'fa-shield', 'accent' => 'teal', 'type' => 'toggle', 'enabled' => true),
+            array('key' => 'notification_security', 'label' => 'Notifikasi Keamanan', 'description' => 'Dapatkan notifikasi untuk aktivitas keamanan penting.', 'icon' => 'fa-shield', 'accent' => 'teal', 'type' => 'toggle', 'enabled' => $preferences['notification_security'] === '1'),
         );
     }
 
     protected function securityActivities()
     {
         return array(
-            array('title' => 'Login Berhasil', 'description' => 'Windows • Chrome • 114.10.20.30', 'date' => '16 Juni 2024', 'time' => '17:54 WIB', 'icon' => 'fa-right-to-bracket', 'accent' => 'green'),
-            array('title' => 'Password Diubah', 'description' => 'Windows • Chrome • 114.10.20.30', 'date' => '14 Juni 2024', 'time' => '10:21 WIB', 'icon' => 'fa-lock', 'accent' => 'blue'),
-            array('title' => '2FA Diaktifkan', 'description' => 'Windows • Chrome • 114.10.20.30', 'date' => '10 Juni 2024', 'time' => '09:15 WIB', 'icon' => 'fa-key', 'accent' => 'gold'),
-            array('title' => 'Logout', 'description' => 'Windows • Chrome • 114.10.20.30', 'date' => '10 Juni 2024', 'time' => '09:10 WIB', 'icon' => 'fa-arrow-right-from-bracket', 'accent' => 'purple'),
-            array('title' => 'Login Gagal', 'description' => 'IP: 203.0.113.10', 'date' => '10 Juni 2024', 'time' => '08:45 WIB', 'icon' => 'fa-triangle-exclamation', 'accent' => 'red'),
+            array('title' => 'Sesi Admin Aktif', 'description' => 'IP: ' . (isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1'), 'date' => date('d/m/Y'), 'time' => date('H:i') . ' WITA', 'icon' => 'fa-right-to-bracket', 'accent' => 'green'),
         );
     }
 
     protected function activeSessions()
     {
         return array(
-            array('device' => 'Windows 11', 'type' => '', 'browser' => 'Chrome 126.0', 'location' => 'Parepare, Indonesia', 'ip' => '114.10.20.30', 'lastActive' => '16 Juni 2024<br>17:54 WIB', 'status' => 'Aktif', 'current' => true, 'icon' => 'fa-desktop', 'accent' => 'green'),
-            array('device' => 'iPhone 13', 'type' => 'Mobile', 'browser' => 'Safari 17.5', 'location' => 'Makassar, Indonesia', 'ip' => '36.80.15.42', 'lastActive' => '15 Juni 2024<br>21:30 WIB', 'status' => 'Aktif', 'current' => false, 'icon' => 'fa-mobile-screen-button', 'accent' => 'blue'),
-            array('device' => 'MacBook Pro', 'type' => 'Laptop', 'browser' => 'Chrome 125.0', 'location' => 'Jakarta, Indonesia', 'ip' => '103.21.45.67', 'lastActive' => '14 Juni 2024<br>11:20 WIB', 'status' => 'Aktif', 'current' => false, 'icon' => 'fa-laptop', 'accent' => 'gold'),
+            array('device' => PHP_OS_FAMILY, 'type' => '', 'browser' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 80) : 'Browser saat ini', 'location' => 'Sesi saat ini', 'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1', 'lastActive' => date('d/m/Y H:i') . ' WITA', 'status' => 'Aktif', 'current' => true, 'icon' => 'fa-desktop', 'accent' => 'green'),
         );
     }
 
@@ -1345,22 +1845,22 @@ class AdminController extends Controller
 
     protected function adminLoginSettings()
     {
+        $preferences = $this->adminPreferences();
         return array(
-            array('label' => 'Notifikasi Login Baru', 'description' => 'Kirim notifikasi ketika ada login di perangkat baru', 'enabled' => true),
-            array('label' => 'Autentikasi Dua Faktor (2FA)', 'description' => 'Tambahkan lapisan keamanan ekstra untuk akun', 'enabled' => false),
-            array('label' => 'Logout Otomatis', 'description' => 'Logout otomatis jika tidak aktif selama 30 menit', 'enabled' => true),
-            array('label' => 'Simpan Riwayat Login', 'description' => 'Simpan riwayat perangkat yang pernah login', 'enabled' => true),
+            array('key' => 'login_notification', 'label' => 'Notifikasi Login Baru', 'description' => 'Kirim notifikasi ketika ada login di perangkat baru', 'enabled' => $preferences['login_notification'] === '1'),
+            array('key' => 'two_factor', 'label' => 'Autentikasi Dua Faktor (2FA)', 'description' => 'Tambahkan lapisan keamanan ekstra untuk akun', 'enabled' => $preferences['two_factor'] === '1'),
+            array('key' => 'automatic_logout', 'label' => 'Logout Otomatis', 'description' => 'Logout otomatis jika tidak aktif selama 30 menit', 'enabled' => $preferences['automatic_logout'] === '1'),
+            array('key' => 'login_history', 'label' => 'Simpan Riwayat Login', 'description' => 'Simpan riwayat perangkat yang pernah login', 'enabled' => $preferences['login_history'] === '1'),
         );
     }
 
     protected function adminLoginActivity()
     {
         return array(
-            array('label' => 'Login Terakhir', 'value' => '16 Juni 2024 - 17:54 WIB'),
-            array('label' => 'Browser', 'value' => 'Google Chrome 137'),
-            array('label' => 'Sistem Operasi', 'value' => 'Windows 11'),
-            array('label' => 'IP Address', 'value' => '192.168.1.25'),
-            array('label' => 'Lokasi', 'value' => 'Makassar, Sulawesi Selatan, Indonesia'),
+            array('label' => 'Sesi Saat Ini', 'value' => date('d/m/Y H:i') . ' WITA'),
+            array('label' => 'Browser', 'value' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 90) : 'Browser saat ini'),
+            array('label' => 'Sistem Operasi Server', 'value' => PHP_OS_FAMILY),
+            array('label' => 'IP Address', 'value' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1'),
         );
     }
 
@@ -1381,8 +1881,7 @@ class AdminController extends Controller
     protected function adminActiveDevices()
     {
         return array(
-            array('device' => 'Windows - Chrome', 'ip' => '192.168.1.25', 'location' => 'Makassar, Indonesia', 'time' => '16 Juni 2024<br>17:54 WIB', 'icon' => 'fa-desktop', 'current' => true),
-            array('device' => 'Android - Chrome Mobile', 'ip' => '192.168.1.33', 'location' => 'Makassar, Indonesia', 'time' => '15 Juni 2024<br>21:30 WIB', 'icon' => 'fa-mobile-screen-button', 'current' => false),
+            array('device' => PHP_OS_FAMILY . ' - Browser', 'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '127.0.0.1', 'location' => 'Sesi saat ini', 'time' => date('d/m/Y H:i') . ' WITA', 'icon' => 'fa-desktop', 'current' => true),
         );
     }
 

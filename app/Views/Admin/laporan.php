@@ -27,32 +27,19 @@ $areaPoints = implode(' ', $areaPoints);
         <p>Lihat dan unduh laporan performa Arena Sport.</p>
     </div>
     <div class="admin-hero-actions">
-        <button class="admin-secondary-btn" type="button">
+        <a class="admin-secondary-btn" href="<?php echo e(app_url('admin/export/laporan')); ?>">
             <i class="fa-solid fa-download"></i>
-            <span>Export PDF</span>
-        </button>
+            <span>Export CSV</span>
+        </a>
     </div>
 </section>
 
 <section class="admin-report-toolbar" aria-label="Filter laporan">
-    <button class="admin-date-filter" type="button">
+    <div class="admin-date-filter">
         <i class="fa-regular fa-calendar-days"></i>
         <span><?php echo e($reportStartLabel . ' - ' . $reportEndLabel); ?></span>
-    </button>
-
-    <select class="admin-filter-select" aria-label="Filter lapangan laporan">
-        <option>Semua Lapangan</option>
-        <option>Arena Futsal Parepare</option>
-        <option>Badminton Center</option>
-        <option>Mini Soccer Victory</option>
-        <option>Basketball Court</option>
-    </select>
-
-    <select class="admin-filter-select admin-report-period" aria-label="Periode laporan">
-        <option>Periode: Bulan Ini</option>
-        <option>Periode: Minggu Ini</option>
-        <option>Periode: Tahun Ini</option>
-    </select>
+    </div>
+    <span class="admin-badge active">Semua Lapangan</span>
 </section>
 
 <section class="admin-report-stat-grid" aria-label="Ringkasan laporan">
@@ -77,7 +64,7 @@ $areaPoints = implode(' ', $areaPoints);
                 <h2>Grafik Pendapatan</h2>
                 <p>Grafik pendapatan selama periode <?php echo e($reportMonthLabel); ?></p>
             </div>
-            <button type="button">Harian <i class="fa-solid fa-chevron-down"></i></button>
+            <span class="admin-badge active">Harian</span>
         </div>
 
         <div class="admin-report-line-chart">
@@ -187,8 +174,7 @@ $areaPoints = implode(' ', $areaPoints);
                         <small><?php echo e($download['description']); ?></small>
                     </div>
                     <div class="admin-report-download-actions">
-                        <button type="button"><i class="fa-solid fa-download"></i> PDF</button>
-                        <button type="button"><i class="fa-solid fa-download"></i> Excel</button>
+                        <a href="<?php echo e(app_url('admin/export/' . $download['type'])); ?>"><i class="fa-solid fa-download"></i> CSV</a>
                     </div>
                 </div>
             <?php endforeach; ?>

@@ -15,7 +15,8 @@ $userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUse
         <p>Kelola semua customer dan pemilik lapangan dalam sistem Arena Sport</p>
     </div>
     <div class="admin-hero-actions">
-        <button class="btn-primary" type="button"><i class="fa-solid fa-plus"></i> Tambah Customer</button>
+        <button class="btn-primary" type="button" data-dialog-open="userCreateDialog"><i class="fa-solid fa-plus"></i> Tambah Pengguna</button>
+        <a class="admin-secondary-btn" href="<?php echo e(app_url('admin/export/users')); ?>"><i class="fa-solid fa-download"></i> Export</a>
     </div>
 </section>
 
@@ -51,20 +52,20 @@ $userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUse
 </section>
 
 <div class="admin-content-section">
-    <div class="admin-filter-bar">
+    <div class="admin-filter-bar" data-admin-filter="#adminUserRows tr[data-filter-text]">
         <label class="admin-filter-search">
             <i class="fa-solid fa-magnifying-glass"></i>
             <input type="search" placeholder="Cari customer..." class="admin-search-input" aria-label="Cari customer">
         </label>
         <select class="admin-filter-select" aria-label="Filter role customer">
-            <option>Semua</option>
-            <option>Pemilik</option>
-            <option>Customer</option>
+            <option value="">Semua Role</option>
+            <option value="Pemilik">Pemilik</option>
+            <option value="Customer">Customer</option>
         </select>
         <select class="admin-filter-select" aria-label="Filter status user">
-            <option></option>
-            <option>Aktif</option>
-            <option>Nonaktif</option>
+            <option value="">Semua Status</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Nonaktif">Nonaktif</option>
         </select>
     </div>
 
@@ -82,9 +83,9 @@ $userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUse
                         <th>Aksi</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="adminUserRows">
                     <?php if (empty($users)): ?>
-                        <tr>
+                        <tr data-filter-text="<?php echo e(implode(' ', array($user['name'], $user['email'], $user['phone'], $user['role'], $user['status']))); ?>">
                             <td colspan="7">Belum ada data customer di database.</td>
                         </tr>
                     <?php endif; ?>
@@ -104,12 +105,10 @@ $userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUse
                             <td><?php echo e($user['registered']); ?></td>
                             <td>
                                 <div class="admin-actions">
-                                    <button class="btn-icon" type="button" title="Edit <?php echo e($user['name']); ?>" aria-label="Edit <?php echo e($user['name']); ?>">
+                                    <button class="btn-icon" type="button" title="Edit <?php echo e($user['name']); ?>" aria-label="Edit <?php echo e($user['name']); ?>" data-dialog-open="userEditDialog" data-payload="<?php echo e(json_encode(array('id_user' => $user['id'], 'nama' => $user['name'], 'email' => $user['email'], 'telepon' => $user['phone'] === '-' ? '' : $user['phone'], 'role' => strtolower($user['role']), 'status' => $user['status']))); ?>">
                                         <i class="fa-solid fa-pen"></i>
                                     </button>
-                                    <button class="btn-icon danger" type="button" title="Hapus <?php echo e($user['name']); ?>" aria-label="Hapus <?php echo e($user['name']); ?>">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    <?php if ($user['status'] === 'Aktif'): ?><form class="admin-inline-form" action="<?php echo e(app_url('admin/users/hapus')); ?>" method="post" data-confirm="Nonaktifkan <?php echo e($user['name']); ?>? Riwayat pengguna tetap disimpan."><input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="id_user" value="<?php echo e($user['id']); ?>"><button class="btn-icon danger" type="submit" title="Nonaktifkan <?php echo e($user['name']); ?>"><i class="fa-solid fa-user-slash"></i></button></form><?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -119,9 +118,30 @@ $userStats = isset($userStats) && is_array($userStats) ? array_merge($defaultUse
         </div>
 
         <div class="admin-pagination">
-            <button class="admin-pagination-btn" type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
             <span>Menampilkan <?php echo e(count($users)); ?> data</span>
-            <button class="admin-pagination-btn" type="button" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
     </article>
 </div>
+
+<dialog class="admin-dialog" id="userCreateDialog">
+    <div class="admin-dialog-head"><h2>Tambah Pengguna</h2><button class="admin-dialog-close" type="button" data-dialog-close>&times;</button></div>
+    <form class="admin-dialog-form" action="<?php echo e(app_url('admin/users/tambah')); ?>" method="post">
+        <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>">
+        <label><span>Nama</span><input name="nama" required maxlength="120"></label><label><span>Email</span><input type="email" name="email" required maxlength="160"></label>
+        <label><span>Telepon</span><input name="telepon" required maxlength="50"></label><label><span>Password awal</span><input type="password" name="password" required minlength="8"></label>
+        <label><span>Role</span><select name="role" required><option value="customer">Customer</option><option value="pemilik">Pemilik</option></select></label><label><span>Nama usaha (untuk pemilik)</span><input name="nama_usaha" maxlength="255"></label>
+        <label class="full"><span>Alamat usaha</span><textarea name="alamat"></textarea></label>
+        <div class="admin-dialog-actions"><button type="button" class="admin-secondary-btn" data-dialog-close>Batal</button><button type="submit" class="btn-primary">Tambah</button></div>
+    </form>
+</dialog>
+
+<dialog class="admin-dialog" id="userEditDialog">
+    <div class="admin-dialog-head"><h2>Edit Pengguna</h2><button class="admin-dialog-close" type="button" data-dialog-close>&times;</button></div>
+    <form class="admin-dialog-form" action="<?php echo e(app_url('admin/users/update')); ?>" method="post">
+        <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="id_user">
+        <label><span>Nama</span><input name="nama" required maxlength="120"></label><label><span>Email</span><input type="email" name="email" required maxlength="160"></label>
+        <label><span>Telepon</span><input name="telepon" required maxlength="50"></label><label><span>Role</span><select name="role"><option value="customer">Customer</option><option value="pemilik">Pemilik</option></select></label>
+        <label class="full"><span>Status</span><select name="status"><option>Aktif</option><option>Nonaktif</option></select></label>
+        <div class="admin-dialog-actions"><button type="button" class="admin-secondary-btn" data-dialog-close>Batal</button><button type="submit" class="btn-primary">Simpan</button></div>
+    </form>
+</dialog>

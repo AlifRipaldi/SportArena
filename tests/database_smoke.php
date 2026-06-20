@@ -140,6 +140,50 @@ assertArrayResult('Admin laporan', invokeProtected($admin, 'adminReportStatsFrom
 assertArrayResult('Admin metode pembayaran', invokeProtected($admin, 'adminPaymentMethodsFromDatabase'), 1);
 $_SESSION['role_user'] = 'admin';
 $_SESSION['nama_user'] = 'Admin Test';
-assertRender('admin', $admin, array('index', 'booking', 'lapangan', 'users', 'ulasan', 'transaksi', 'laporan', 'pengaturan'));
+assertRender('admin', $admin, array('index', 'booking', 'lapangan', 'jadwal', 'users', 'ulasan', 'transaksi', 'laporan', 'pengaturan', 'search'));
+
+foreach (array(
+    'booking' => array('admin/booking/tambah', 'admin/booking/update', 'admin/booking/hapus'),
+    'lapangan' => array('admin/lapangan/tambah', 'admin/lapangan/update', 'admin/lapangan/hapus'),
+    'jadwal' => array('admin/jadwal/tambah', 'admin/jadwal/update', 'admin/jadwal/hapus'),
+    'users' => array('admin/users/tambah', 'admin/users/update', 'admin/users/hapus'),
+    'ulasan' => array('admin/ulasan/tanggapi', 'admin/export/ulasan'),
+    'transaksi' => array('admin/transaksi/update', 'admin/export/transaksi'),
+    'laporan' => array('admin/export/laporan'),
+    'pengaturan' => array('admin/pengaturan/profil', 'admin/pengaturan/password', 'admin/pengaturan/preferensi'),
+) as $method => $expectedRoutes) {
+    ob_start();
+    $admin->{$method}();
+    $page = ob_get_clean();
+    foreach ($expectedRoutes as $route) {
+        if (strpos($page, app_url($route)) === false) {
+            throw new RuntimeException('Fitur admin ' . $method . ' belum terhubung ke ' . $route . '.');
+        }
+    }
+    if ($method !== 'laporan' && strpos($page, 'name="admin_token"') === false) {
+        throw new RuntimeException('Form admin ' . $method . ' belum memiliki proteksi CSRF.');
+    }
+}
+echo '[OK] Form dan aksi admin terhubung serta terlindungi CSRF' . PHP_EOL;
+
+foreach (array('umum' => 'admin/pengaturan/preferensi', 'notifikasi' => 'admin/pengaturan/preferensi', 'pembayaran' => 'admin/pengaturan/metode', 'keamanan' => 'admin/pengaturan/preferensi') as $tab => $route) {
+    $_GET['tab'] = $tab;
+    ob_start();
+    $admin->pengaturan();
+    $settingsPage = ob_get_clean();
+    if (strpos($settingsPage, app_url($route)) === false || strpos($settingsPage, 'name="admin_token"') === false) {
+        throw new RuntimeException('Tab pengaturan admin ' . $tab . ' belum aktif.');
+    }
+}
+unset($_GET['tab']);
+echo '[OK] Seluruh tab pengaturan admin dapat disimpan' . PHP_EOL;
+
+foreach (array('booking', 'users', 'lapangan', 'ulasan', 'transaksi', 'laporan') as $exportType) {
+    $exportRows = invokeProtected($admin, 'adminExportRows', array($exportType));
+    if (!is_array($exportRows)) {
+        throw new RuntimeException('Export admin ' . $exportType . ' gagal dibuat.');
+    }
+}
+echo '[OK] Seluruh dataset export admin dapat dibuat' . PHP_EOL;
 
 echo 'Database smoke test selesai.' . PHP_EOL;

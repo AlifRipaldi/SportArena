@@ -39,7 +39,7 @@ $linePoints = implode(' ', $linePoints);
     <article class="admin-panel admin-revenue-panel">
         <div class="admin-panel-header">
             <h2>Pendapatan Bulanan</h2>
-            <button type="button">Tahun Ini <i class="fa-solid fa-chevron-down"></i></button>
+            <span class="admin-badge active">Tahun <?php echo e(date('Y')); ?></span>
         </div>
 
         <div class="admin-line-chart">
