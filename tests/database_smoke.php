@@ -53,6 +53,11 @@ assertArrayResult('Customer booking', invokeProtected($dashboard, 'customerBooki
 assertArrayResult('Customer favorit', invokeProtected($dashboard, 'customerFavoritesFromDatabase'));
 assertArrayResult('Customer ulasan', invokeProtected($dashboard, 'customerReviewsFromDatabase'));
 assertArrayResult('Customer pengaturan', invokeProtected($dashboard, 'customerAccountSettings'), 1);
+$availableVenues = invokeProtected($dashboard, 'databaseVenues');
+assertArrayResult('Customer lapangan tersedia', $availableVenues, 1);
+if (empty($availableVenues[0]['availableSchedules'])) {
+    throw new RuntimeException('Customer belum memiliki slot jadwal yang dapat dipesan.');
+}
 assertRender('customer', $dashboard, array('dashboard', 'search', 'booking', 'riwayat', 'favorit', 'ulasan', 'profil', 'settings'));
 
 $ownerUserId = $data->value(

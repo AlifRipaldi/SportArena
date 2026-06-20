@@ -6346,7 +6346,7 @@ body.booking-modal-open {
     font-weight: 500;
 }
 
-.field-result-price div {
+.field-result-price > div {
     display: grid;
     grid-template-columns: 108px 110px;
     gap: 14px;
@@ -8828,6 +8828,93 @@ body.dashboard-body.light .settings-password-tips {
 
 body.dashboard-body.light .settings-password-tips p {
     color: #2f4734;
+}
+
+.field-schedule-picker {
+    position: relative;
+}
+
+.field-schedule-picker > summary.primary,
+.field-result-price > div > span.primary {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(145, 225, 60, 0.34);
+    border-radius: 7px;
+    background: linear-gradient(135deg, #92e044, #61c42a);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    list-style: none;
+}
+
+.field-schedule-picker > summary::-webkit-details-marker {
+    display: none;
+}
+
+.field-schedule-options {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(330px, 80vw);
+    max-height: 310px;
+    overflow-y: auto;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 14px;
+    margin: 0 !important;
+    border: 1px solid rgba(145, 225, 60, 0.24);
+    border-radius: 12px;
+    background: #14212f;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.38);
+}
+
+.field-schedule-options > strong {
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.field-schedule-options form,
+.field-schedule-options button {
+    width: 100%;
+}
+
+.field-schedule-options button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 12px;
+    border: 1px solid rgba(190, 215, 238, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #ffffff;
+    text-align: left;
+    cursor: pointer;
+}
+
+.field-schedule-options button:hover {
+    border-color: rgba(145, 225, 60, 0.45);
+    background: rgba(145, 225, 60, 0.1);
+}
+
+.field-schedule-options button span {
+    display: grid;
+    gap: 3px;
+    font-weight: 700;
+}
+
+.field-schedule-options button small {
+    font-weight: 500;
+}
+
+.field-schedule-options button b {
+    color: #91e13c;
+    white-space: nowrap;
 }
 
 body.dashboard-body.light .field-advanced-filters {

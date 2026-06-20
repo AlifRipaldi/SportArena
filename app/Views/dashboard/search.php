@@ -206,6 +206,7 @@ sort($filterTimes);
                     $availableDates = isset($venue['availableDates']) ? $venue['availableDates'] : array();
                     $availableTimes = isset($venue['availableTimes']) ? $venue['availableTimes'] : array('08:00 - 09:00', '10:00 - 11:00', '18:00 - 19:00');
                     $availableSlots = isset($venue['availableSlots']) ? $venue['availableSlots'] : array();
+                    $availableSchedules = isset($venue['availableSchedules']) && is_array($venue['availableSchedules']) ? $venue['availableSchedules'] : array();
                 ?>
                 <article
                     class="field-result-card"
@@ -251,8 +252,23 @@ sort($filterTimes);
                         <strong><?php echo e($venue['price']); ?> <span>/jam</span></strong>
                         <div>
                             <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Lihat Detail</a>
-                            <?php if (!empty($venue['bookingUrl'])): ?>
-                                <a href="<?php echo e($venue['bookingUrl']); ?>" class="primary">Pilih Jadwal</a>
+                            <?php if (!empty($availableSchedules)): ?>
+                                <details class="field-schedule-picker">
+                                    <summary class="primary">Pilih Jadwal</summary>
+                                    <div class="field-schedule-options">
+                                        <strong>Jadwal tersedia</strong>
+                                        <?php foreach ($availableSchedules as $schedule): ?>
+                                            <form method="post" action="<?php echo e(app_url('public/booking.php')); ?>">
+                                                <input type="hidden" name="id_jadwal" value="<?php echo e($schedule['id']); ?>">
+                                                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
+                                                <button type="submit">
+                                                    <span><?php echo e($schedule['dateLabel']); ?><small><?php echo e($schedule['time']); ?></small></span>
+                                                    <b><?php echo e($schedule['price']); ?></b>
+                                                </button>
+                                            </form>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </details>
                             <?php else: ?>
                                 <span class="primary" aria-disabled="true">Jadwal Kosong</span>
                             <?php endif; ?>

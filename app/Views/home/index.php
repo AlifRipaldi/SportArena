@@ -122,7 +122,7 @@ $sportSlug = function ($name) {
                 ? 'Rp' . number_format((int) $row['Harga'], 0, ',', '.')
                 : 'Rp50.000';
             $ratingText = number_format(isset($row['Rating_avg']) ? (float) $row['Rating_avg'] : 0, 1) . ' (' . (isset($row['Review_count']) ? (int) $row['Review_count'] : 0) . ')';
-            $bookingUrl = !empty($row['ID_Jadwal']) ? app_url('booking/' . rawurlencode($row['ID_Jadwal'])) : app_url('dashboard/lapangan');
+            $bookingUrl = app_url('dashboard/lapangan');
             ?>
             <article class="home-field-card">
                 <a class="field-card-link" href="<?php echo e($bookingUrl); ?>">

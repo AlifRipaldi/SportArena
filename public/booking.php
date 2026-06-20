@@ -2,15 +2,18 @@
 include '../config/connection.php';
 session_start();
 
-$id_jadwal = null;
-if (isset($_GET['id_jadwal'])) {
-    $id_jadwal = $_GET['id_jadwal'];
-} elseif (isset($_GET['id'])) {
-    $id_jadwal = $_GET['id'];
-}
+$id_jadwal = $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['id_jadwal'])
+    ? trim((string) $_POST['id_jadwal'])
+    : null;
 
 if (!isset($_SESSION['id_user'])) {
     header('Location: login.php');
+    exit;
+}
+
+$bookingToken = isset($_POST['booking_token']) ? (string) $_POST['booking_token'] : '';
+if (!$id_jadwal || empty($_SESSION['booking_csrf']) || !hash_equals((string) $_SESSION['booking_csrf'], $bookingToken)) {
+    header('Location: ../dashboard/lapangan');
     exit;
 }
 
@@ -29,7 +32,7 @@ if ($id_jadwal) {
              FROM jadwal j
              INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
              INNER JOIN pemilik_lapangan p ON p.ID_Pemilik = l.ID_Pemilik
-             WHERE j.ID_Jadwal = ? AND l.deleted_at IS NULL
+             WHERE j.ID_Jadwal = ? AND l.deleted_at IS NULL AND LOWER(l.Status) = 'aktif'
              LIMIT 1 FOR UPDATE"
         );
 
@@ -86,6 +89,7 @@ if ($id_jadwal) {
         }
 
         mysqli_commit($conn);
+        unset($_SESSION['booking_csrf']);
         echo "<script>alert('Booking tersimpan dan menunggu pembayaran.'); window.location='../dashboard/booking';</script>";
         exit;
     } catch (Throwable $exception) {
@@ -94,8 +98,5 @@ if ($id_jadwal) {
         echo "<script>alert('{$message}'); window.location='../dashboard/lapangan';</script>";
         exit;
     }
-} else {
-    header('Location: ../index.php');
-    exit;
 }
 ?>

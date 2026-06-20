@@ -139,6 +139,7 @@ class DashboardController extends Controller
             'nextBooking' => $this->nextBooking(),
             'bookings' => $this->bookings(),
             'paymentMethods' => $this->customerPaymentMethods(),
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
         ), 'layouts/dashboard');
     }
 
@@ -595,9 +596,10 @@ class DashboardController extends Controller
         $venues = array();
         $scheduleStatement = mysqli_prepare(
             $connection,
-            "SELECT ID_Jadwal, Tanggal, Jam_mulai, Jam_selesai
+            "SELECT ID_Jadwal, Tanggal, Jam_mulai, Jam_selesai, Harga
              FROM jadwal
-             WHERE ID_Lapangan = ? AND LOWER(TRIM(Status)) IN ('available', 'tersedia', 'aktif')
+             WHERE ID_Lapangan = ? AND Tanggal >= CURDATE()
+               AND LOWER(TRIM(Status)) IN ('available', 'tersedia', 'aktif')
              ORDER BY Tanggal ASC, Jam_mulai ASC"
         );
         $index = 0;
@@ -610,6 +612,7 @@ class DashboardController extends Controller
             $availableTimes = array();
             $availableSlots = array();
             $availableScheduleIds = array();
+            $availableSchedules = array();
 
             if ($scheduleStatement && $fieldId !== '') {
                 mysqli_stmt_bind_param($scheduleStatement, 's', $fieldId);
@@ -637,6 +640,14 @@ class DashboardController extends Controller
 
                     if (!empty($schedule['ID_Jadwal'])) {
                         $availableScheduleIds[] = $schedule['ID_Jadwal'];
+                        $slotPrice = !empty($schedule['Harga']) ? (int) $schedule['Harga'] : (isset($row['Harga']) ? (int) $row['Harga'] : 0);
+                        $availableSchedules[] = array(
+                            'id' => $schedule['ID_Jadwal'],
+                            'date' => $date,
+                            'dateLabel' => $this->dashboardFormatDate($date),
+                            'time' => $time,
+                            'price' => $this->dashboardRupiah($slotPrice),
+                        );
                     }
                 }
 
@@ -662,6 +673,7 @@ class DashboardController extends Controller
                 'availableDates' => $availableDates,
                 'availableTimes' => $availableTimes,
                 'availableSlots' => $availableSlots,
+                'availableSchedules' => $availableSchedules,
                 'bookingUrl' => !empty($availableScheduleIds) ? app_url('booking/' . rawurlencode($availableScheduleIds[0])) : '',
                 'rating' => number_format(isset($row['Rating']) ? (float) $row['Rating'] : 0, 1),
                 'reviews' => (isset($row['Review_count']) ? (int) $row['Review_count'] : 0) . ' ulasan',
@@ -1165,6 +1177,15 @@ class DashboardController extends Controller
         }
 
         return strpos($avatar, '..') === false ? app_url($avatar) : '';
+    }
+
+    protected function bookingCsrfToken()
+    {
+        if (empty($_SESSION['booking_csrf'])) {
+            $_SESSION['booking_csrf'] = bin2hex(random_bytes(24));
+        }
+
+        return $_SESSION['booking_csrf'];
     }
 
     protected function accountTable($connection)
