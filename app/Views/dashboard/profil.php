@@ -42,14 +42,14 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                 <p><?php echo e(isset($pageSubheading) ? $pageSubheading : 'Kelola informasi profil dan aktivitas Anda.'); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup><?php echo e($profileMetrics['notifications']); ?></sup>
-                </button>
-                <div class="profile-account-menu">
+                </a>
+                <a href="<?php echo e(app_url('settings')); ?>" class="profile-account-menu" aria-label="Buka pengaturan akun">
                     <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
@@ -58,7 +58,6 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                 <div class="profile-photo-ring">
                     <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                 </div>
-                <button type="button" class="profile-camera-button" aria-label="Ubah foto">&#128247;</button>
             </div>
 
             <div class="profile-summary-copy">
@@ -74,7 +73,6 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                 </ul>
                 <div class="profile-action-row">
                     <a href="<?php echo e(app_url('settings')); ?>" class="profile-btn primary"><span>&#9998;</span>Edit Profil</a>
-                    <button type="button" class="profile-btn"><span>&#128247;</span>Ubah Foto</button>
                 </div>
             </div>
 
@@ -105,9 +103,8 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
         <nav class="profile-tabs" aria-label="Bagian profil">
             <a href="#informasi" class="active">Informasi Pribadi</a>
             <a href="#aktivitas">Aktivitas</a>
-            <a href="#ulasan">Ulasan</a>
-            <a href="#pembayaran">Metode Pembayaran</a>
-            <a href="#voucher">Voucher Saya</a>
+            <a href="<?php echo e(app_url('dashboard/ulasan')); ?>">Ulasan</a>
+            <a href="<?php echo e(app_url('dashboard/booking')); ?>">Pembayaran</a>
         </nav>
 
         <section class="profile-content-grid">
@@ -205,17 +202,6 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                     </div>
                 </article>
             </div>
-
-            <article class="profile-panel profile-social-panel">
-                <div class="profile-panel-header">
-                    <h2><span>&#8984;</span>Media Sosial</h2>
-                </div>
-                <div class="profile-social-list">
-                    <a href="#"><span><i>IG</i>Instagram</span><strong>Belum ditautkan</strong><em>&#8599;</em></a>
-                    <a href="#"><span><i>f</i>Facebook</span><strong>Belum ditautkan</strong><em>&#8599;</em></a>
-                    <a href="#"><span><i>X</i>Twitter</span><strong>Belum ditautkan</strong><em>&#8599;</em></a>
-                </div>
-            </article>
 
             <article class="profile-panel profile-achievements-panel">
                 <div class="profile-panel-header">

@@ -31,34 +31,36 @@
     </aside>
 
     <main class="dashboard-main profile-main review-main">
+        <?php if (!empty($reviewMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($reviewMessage); ?></section><?php endif; ?>
+        <?php if (!empty($reviewError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($reviewError); ?></section><?php endif; ?>
         <section class="profile-page-head review-page-head">
             <div>
                 <h1><?php echo e($pageHeading); ?></h1>
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
         <section class="review-toolbar" aria-label="Filter ulasan">
             <nav class="review-tabs" aria-label="Kategori ulasan">
-                <a href="#" class="active">Semua Ulasan</a>
-                <a href="#">Ulasan Tertinggi</a>
+                <button type="button" class="active" data-review-filter="all">Semua Ulasan</button>
+                <button type="button" data-review-filter="top">Rating 4&ndash;5</button>
             </nav>
             <label class="review-sort">
                 <span>Urutkan:</span>
-                <select aria-label="Urutkan ulasan">
-                    <option>Terbaru</option>
-                    <option>Rating Tertinggi</option>
-                    <option>Rating Terendah</option>
+                <select id="reviewSortControl" aria-label="Urutkan ulasan">
+                    <option value="newest">Terbaru</option>
+                    <option value="rating-high">Rating Tertinggi</option>
+                    <option value="rating-low">Rating Terendah</option>
                 </select>
             </label>
         </section>
@@ -67,6 +69,7 @@
             <section class="profile-panel" aria-label="Tulis ulasan baru">
                 <div class="profile-panel-header"><h2><span>&#9998;</span>Tulis Ulasan</h2></div>
                 <form class="login-form" method="post" action="<?php echo e(app_url('dashboard/ulasan/tambah')); ?>">
+                    <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
                     <label><span>Booking</span><select name="id_booking" required>
                         <option value="">Pilih booking yang selesai</option>
                         <?php foreach ($reviewableBookings as $booking): ?>
@@ -125,7 +128,7 @@
                     $filledStars = (int) floor($rating);
                     $emptyStars = max(0, 5 - $filledStars);
                 ?>
-                <article class="review-match-card">
+                <article class="review-match-card" data-review-rating="<?php echo e($rating); ?>" data-review-date="<?php echo e(isset($review['dateValue']) ? $review['dateValue'] : ''); ?>">
                     <div class="review-match-media">
                         <img src="<?php echo e($review['image']); ?>" alt="<?php echo e($review['venue']); ?>">
                         <span><?php echo e($review['type']); ?></span>
@@ -153,8 +156,7 @@
                         </div>
                     </div>
                     <div class="review-card-actions">
-                        <button type="button" aria-label="Menu ulasan">&#8943;</button>
-                        <a href="#">Lihat Detail</a>
+                        <?php if ($review['code'] !== '-'): ?><a href="<?php echo e(app_url('dashboard/booking?booking=' . rawurlencode($review['code']))); ?>">Lihat Booking</a><?php endif; ?>
                     </div>
                 </article>
             <?php endforeach; ?>
@@ -165,3 +167,34 @@
         </section>
     </main>
 </div>
+
+<script>
+    (function () {
+        var list = document.querySelector('.review-list');
+        var cards = list ? Array.prototype.slice.call(list.querySelectorAll('.review-match-card')) : [];
+        var filters = Array.prototype.slice.call(document.querySelectorAll('[data-review-filter]'));
+        var sort = document.getElementById('reviewSortControl');
+        var activeFilter = 'all';
+        if (!list || !sort) { return; }
+        function applyReviewView() {
+            cards.sort(function (a, b) {
+                if (sort.value === 'rating-high') { return Number(b.dataset.reviewRating) - Number(a.dataset.reviewRating); }
+                if (sort.value === 'rating-low') { return Number(a.dataset.reviewRating) - Number(b.dataset.reviewRating); }
+                return b.dataset.reviewDate.localeCompare(a.dataset.reviewDate);
+            });
+            cards.forEach(function (card) {
+                list.appendChild(card);
+                card.hidden = activeFilter === 'top' && Number(card.dataset.reviewRating) < 4;
+            });
+        }
+        filters.forEach(function (button) {
+            button.addEventListener('click', function () {
+                activeFilter = button.dataset.reviewFilter;
+                filters.forEach(function (item) { item.classList.toggle('active', item === button); });
+                applyReviewView();
+            });
+        });
+        sort.addEventListener('change', applyReviewView);
+        applyReviewView();
+    }());
+</script>

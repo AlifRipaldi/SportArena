@@ -37,30 +37,30 @@
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
         <section class="history-toolbar" aria-label="Filter riwayat">
             <nav class="history-filter-tabs" aria-label="Status riwayat">
-                <a href="#" class="active">Semua</a>
-                <a href="#">Selesai</a>
-                <a href="#">Dibatalkan</a>
+                <button type="button" class="active" data-history-filter="all">Semua</button>
+                <button type="button" data-history-filter="completed">Selesai</button>
+                <button type="button" data-history-filter="cancelled">Dibatalkan</button>
             </nav>
             <label class="history-sort-control">
                 <span>Urutkan:</span>
-                <select aria-label="Urutkan riwayat">
-                    <option>Terbaru</option>
-                    <option>Terlama</option>
-                    <option>Pembayaran Tertinggi</option>
-                    <option>Pembayaran Terendah</option>
+                <select id="historySortControl" aria-label="Urutkan riwayat">
+                    <option value="newest">Terbaru</option>
+                    <option value="oldest">Terlama</option>
+                    <option value="price-high">Pembayaran Tertinggi</option>
+                    <option value="price-low">Pembayaran Terendah</option>
                 </select>
             </label>
         </section>
@@ -78,7 +78,7 @@
                     $statusLabel = $isCanceled ? 'Dibatalkan' : 'Selesai';
                     $statusClass = $isCanceled ? 'canceled' : 'completed';
                 ?>
-                <article class="history-match-card">
+                <article class="history-match-card" data-history-status="<?php echo $isCanceled ? 'cancelled' : 'completed'; ?>" data-history-date="<?php echo e(isset($booking['dateValue']) ? $booking['dateValue'] : ''); ?>" data-history-price="<?php echo e((int) preg_replace('/[^0-9]/', '', $booking['price'])); ?>">
                     <div class="history-match-media">
                         <img src="<?php echo e($booking['image']); ?>" alt="<?php echo e($booking['venue']); ?>">
                         <span><?php echo e($booking['type']); ?></span>
@@ -95,7 +95,7 @@
                         <div class="history-code-row">
                             <small>Kode Booking</small>
                             <strong><?php echo e($booking['code']); ?></strong>
-                            <button type="button" aria-label="Salin kode booking">&#128203;</button>
+                            <button type="button" data-history-copy="<?php echo e($booking['code']); ?>" aria-label="Salin kode booking">&#128203;</button>
                         </div>
                     </div>
 
@@ -105,16 +105,62 @@
                             <small>Total Pembayaran</small>
                             <strong class="<?php echo e($statusClass); ?>"><?php echo e($booking['price']); ?></strong>
                         </div>
-                        <a href="#">Lihat Detail</a>
+                        <a href="<?php echo e(app_url('dashboard/booking?booking=' . rawurlencode($booking['code']))); ?>">Lihat Detail</a>
                     </div>
 
-                    <a class="history-row-arrow" href="#" aria-label="Lihat detail <?php echo e($booking['venue']); ?>">&#8250;</a>
+                    <a class="history-row-arrow" href="<?php echo e(app_url('dashboard/booking?booking=' . rawurlencode($booking['code']))); ?>" aria-label="Lihat detail <?php echo e($booking['venue']); ?>">&#8250;</a>
                 </article>
             <?php endforeach; ?>
         </section>
 
         <section class="history-empty-note">
-            <p>Tidak menemukan booking? Coba <a href="#">ubah filter</a> atau urutan pencarian.</p>
+            <p id="historyEmptyState" hidden>Tidak ada riwayat pada filter ini.</p>
+            <p>Ingin bermain lagi? <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Cari lapangan</a>.</p>
         </section>
     </main>
 </div>
+
+<script>
+    (function () {
+        var list = document.getElementById('booking-list');
+        var cards = list ? Array.prototype.slice.call(list.querySelectorAll('.history-match-card')) : [];
+        var filters = Array.prototype.slice.call(document.querySelectorAll('[data-history-filter]'));
+        var sort = document.getElementById('historySortControl');
+        var empty = document.getElementById('historyEmptyState');
+        var activeFilter = 'all';
+
+        if (!list || !sort) { return; }
+        function applyHistoryView() {
+            cards.sort(function (a, b) {
+                if (sort.value === 'oldest') { return a.dataset.historyDate.localeCompare(b.dataset.historyDate); }
+                if (sort.value === 'price-high') { return Number(b.dataset.historyPrice) - Number(a.dataset.historyPrice); }
+                if (sort.value === 'price-low') { return Number(a.dataset.historyPrice) - Number(b.dataset.historyPrice); }
+                return b.dataset.historyDate.localeCompare(a.dataset.historyDate);
+            });
+            var visible = 0;
+            cards.forEach(function (card) {
+                list.appendChild(card);
+                card.hidden = activeFilter !== 'all' && card.dataset.historyStatus !== activeFilter;
+                if (!card.hidden) { visible++; }
+            });
+            empty.hidden = visible !== 0;
+        }
+        filters.forEach(function (button) {
+            button.addEventListener('click', function () {
+                activeFilter = button.dataset.historyFilter;
+                filters.forEach(function (item) { item.classList.toggle('active', item === button); });
+                applyHistoryView();
+            });
+        });
+        sort.addEventListener('change', applyHistoryView);
+        list.addEventListener('click', function (event) {
+            var button = event.target.closest('[data-history-copy]');
+            if (!button) { return; }
+            var value = button.dataset.historyCopy;
+            if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(value); return; }
+            var input = document.createElement('textarea');
+            input.value = value; document.body.appendChild(input); input.select(); document.execCommand('copy'); input.remove();
+        });
+        applyHistoryView();
+    }());
+</script>

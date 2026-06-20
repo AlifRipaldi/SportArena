@@ -1,8 +1,19 @@
 <?php
 $bookingCounts = array('upcoming' => 0, 'completed' => 0, 'cancelled' => 0);
+$rescheduleSchedules = array();
+
+foreach (isset($venues) ? $venues : array() as $venue) {
+    if (!empty($venue['id'])) {
+        $rescheduleSchedules[$venue['id']] = isset($venue['availableSchedules']) ? $venue['availableSchedules'] : array();
+    }
+}
 
 foreach ($bookings as $bookingItem) {
     $bookingCategory = isset($bookingItem['category']) ? $bookingItem['category'] : 'upcoming';
+
+    if ($bookingCategory === 'pending') {
+        $bookingCategory = 'upcoming';
+    }
 
     if (isset($bookingCounts[$bookingCategory])) {
         $bookingCounts[$bookingCategory]++;
@@ -48,6 +59,8 @@ foreach ($bookings as $bookingItem) {
     </aside>
 
     <main class="dashboard-main profile-main booking-main">
+        <?php if (!empty($bookingMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($bookingMessage); ?></section><?php endif; ?>
+        <?php if (!empty($bookingError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($bookingError); ?></section><?php endif; ?>
         <section class="profile-page-head booking-page-head">
             <div>
                 <h1><?php echo e($pageHeading); ?></h1>
@@ -109,6 +122,7 @@ foreach ($bookings as $bookingItem) {
                     $statusClass = isset($booking['statusClass']) ? $booking['statusClass'] : 'upcoming';
                     $buttonText = isset($booking['button']) ? $booking['button'] : 'Ubah Booking';
                     $category = isset($booking['category']) ? $booking['category'] : 'upcoming';
+                    $category = $category === 'pending' ? 'upcoming' : $category;
                     $action = isset($booking['action']) ? $booking['action'] : 'edit';
                     $dateValue = isset($booking['dateValue']) ? $booking['dateValue'] : '';
                     $priceNumber = (int) preg_replace('/[^0-9]/', '', $booking['price']);
@@ -116,6 +130,7 @@ foreach ($bookings as $bookingItem) {
                 <article
                     class="booking-match-card"
                     data-booking-code="<?php echo e($booking['code']); ?>"
+                    data-field-id="<?php echo e(isset($booking['fieldId']) ? $booking['fieldId'] : ''); ?>"
                     data-category="<?php echo e($category); ?>"
                     data-action="<?php echo e($action); ?>"
                     data-venue="<?php echo e($booking['venue']); ?>"
@@ -247,21 +262,13 @@ foreach ($bookings as $bookingItem) {
             <button type="button" data-booking-modal-close aria-label="Tutup ubah booking">&#215;</button>
         </header>
         <form id="bookingEditForm" class="booking-modal-form" method="post" action="<?php echo e(app_url('dashboard/booking/update')); ?>">
+            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <input type="hidden" id="bookingEditCode" name="id_booking" value="">
             <input type="hidden" id="bookingEditAction" name="booking_action" value="reschedule">
             <label>
-                <span>Tanggal Bermain</span>
-                <input type="date" id="bookingEditDate" name="booking_date" min="<?php echo e(date('Y-m-d')); ?>" required>
-            </label>
-            <label>
-                <span>Waktu Bermain</span>
-                <select id="bookingEditTime" name="booking_time" required>
-                    <option value="08:00 - 09:00">08:00 - 09:00</option>
-                    <option value="10:00 - 11:00">10:00 - 11:00</option>
-                    <option value="14:00 - 15:00">14:00 - 15:00</option>
-                    <option value="17:00 - 18:00">17:00 - 18:00</option>
-                    <option value="18:00 - 19:00">18:00 - 19:00</option>
-                    <option value="19:00 - 20:00">19:00 - 20:00</option>
+                <span>Jadwal Baru</span>
+                <select id="bookingEditSlot" name="booking_slot" required>
+                    <option value="">Pilih jadwal tersedia</option>
                 </select>
             </label>
             <p class="booking-modal-note">Perubahan hanya berhasil jika slot jadwal tersedia di database.</p>
@@ -286,6 +293,7 @@ foreach ($bookings as $bookingItem) {
             <button type="button" data-booking-modal-close aria-label="Tutup pembayaran">&#215;</button>
         </header>
         <form id="bookingPaymentForm" class="booking-modal-form" method="post" action="<?php echo e(app_url('dashboard/booking/bayar')); ?>">
+            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <input type="hidden" id="bookingPaymentBookingId" name="id_booking" value="">
             <div class="booking-payment-summary">
                 <span>Total yang harus dibayar</span>
@@ -302,7 +310,7 @@ foreach ($bookings as $bookingItem) {
             </label>
             <p class="booking-modal-note">Pembayaran yang dikonfirmasi akan tersimpan pada riwayat transaksi.</p>
             <div class="booking-modal-actions split">
-                <button type="button" class="booking-modal-secondary" data-booking-modal-close>Nanti</button>
+                <button type="button" class="booking-modal-danger" id="bookingPendingCancelButton">Batalkan Booking</button>
                 <button type="submit" class="booking-modal-primary">Konfirmasi Pembayaran</button>
             </div>
         </form>
@@ -327,12 +335,14 @@ foreach ($bookings as $bookingItem) {
         var editForm = document.getElementById('bookingEditForm');
         var paymentForm = document.getElementById('bookingPaymentForm');
         var cancelButton = document.getElementById('bookingCancelButton');
+        var pendingCancelButton = document.getElementById('bookingPendingCancelButton');
         var toast = document.getElementById('bookingToast');
         var activeFilter = 'upcoming';
         var selectedCard = null;
         var lastFocusedElement = null;
         var toastTimer = null;
         var storageKey = 'arenaSportBookingStateV1';
+        var rescheduleSchedules = <?php echo json_encode($rescheduleSchedules, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
 
         if (!dashboard || !list) {
             return;
@@ -523,8 +533,21 @@ foreach ($bookings as $bookingItem) {
         function openEdit(card) {
             selectedCard = card;
             document.getElementById('bookingEditVenue').textContent = card.dataset.venue + ' • ' + card.dataset.bookingCode;
-            document.getElementById('bookingEditDate').value = card.dataset.date;
-            document.getElementById('bookingEditTime').value = card.dataset.time;
+            var slotControl = document.getElementById('bookingEditSlot');
+            var schedules = rescheduleSchedules[card.dataset.fieldId] || [];
+            slotControl.innerHTML = '<option value="">Pilih jadwal tersedia</option>';
+            schedules.forEach(function (schedule) {
+                var option = document.createElement('option');
+                option.value = schedule.date + '@' + schedule.time;
+                option.textContent = schedule.dateLabel + ' - ' + schedule.time + ' (' + schedule.price + ')';
+                slotControl.appendChild(option);
+            });
+            if (!schedules.length) {
+                var emptyOption = document.createElement('option');
+                emptyOption.disabled = true;
+                emptyOption.textContent = 'Belum ada jadwal pengganti';
+                slotControl.appendChild(emptyOption);
+            }
             document.getElementById('bookingEditCode').value = card.dataset.bookingCode;
             document.getElementById('bookingEditAction').value = 'reschedule';
             setModal(editModal, true);
@@ -663,6 +686,13 @@ foreach ($bookings as $bookingItem) {
             editForm.submit();
         });
 
+        pendingCancelButton.addEventListener('click', function () {
+            if (!selectedCard || !window.confirm('Yakin ingin membatalkan booking ini?')) { return; }
+            document.getElementById('bookingEditCode').value = selectedCard.dataset.bookingCode;
+            document.getElementById('bookingEditAction').value = 'cancel';
+            editForm.submit();
+        });
+
         paymentForm.addEventListener('submit', function (event) {
             if (!selectedCard || !paymentForm.reportValidity()) {
                 event.preventDefault();
@@ -739,6 +769,18 @@ foreach ($bookings as $bookingItem) {
         });
 
         restoreSavedState();
+
+        var requestedBooking = new URLSearchParams(window.location.search).get('booking');
+        var requestedCard = requestedBooking ? cards.find(function (card) { return card.dataset.bookingCode === requestedBooking; }) : null;
+        if (requestedCard) {
+            activeFilter = requestedCard.dataset.category;
+            filterButtons.forEach(function (button) {
+                var active = button.dataset.bookingFilter === activeFilter;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+        }
         applyView();
+        if (requestedCard) { openDetail(requestedCard); }
     }());
 </script>

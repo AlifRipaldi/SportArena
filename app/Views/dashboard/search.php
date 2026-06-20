@@ -32,6 +32,29 @@ foreach ($venues as $venue) {
 sort($filterSports);
 sort($filterFacilities);
 sort($filterTimes);
+
+$venueDetails = array();
+foreach ($venues as $venue) {
+    $venueId = isset($venue['id']) ? (string) $venue['id'] : '';
+    if ($venueId === '') {
+        continue;
+    }
+
+    $venueDetails[$venueId] = array(
+        'id' => $venueId,
+        'name' => isset($venue['name']) ? $venue['name'] : 'Lapangan Olahraga',
+        'type' => isset($venue['type']) ? $venue['type'] : '',
+        'location' => isset($venue['location']) ? $venue['location'] : '',
+        'description' => isset($venue['description']) ? $venue['description'] : '',
+        'features' => isset($venue['features']) && is_array($venue['features']) ? $venue['features'] : array(),
+        'rating' => isset($venue['rating']) ? $venue['rating'] : '0.0',
+        'reviews' => isset($venue['reviews']) ? $venue['reviews'] : '0 ulasan',
+        'distance' => isset($venue['distance']) ? $venue['distance'] : '-',
+        'price' => isset($venue['price']) ? $venue['price'] : 'Rp0',
+        'image' => isset($venue['image']) ? $venue['image'] : '',
+        'schedules' => isset($venue['availableSchedules']) && is_array($venue['availableSchedules']) ? $venue['availableSchedules'] : array(),
+    );
+}
 ?>
 
 <div class="dashboard-shell profile-dashboard search-dashboard">
@@ -67,20 +90,22 @@ sort($filterTimes);
     </aside>
 
     <main class="dashboard-main profile-main search-main">
+        <?php if (!empty($bookingMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($bookingMessage); ?></section><?php endif; ?>
+        <?php if (!empty($bookingError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($bookingError); ?></section><?php endif; ?>
         <section class="profile-page-head search-page-head">
             <div>
                 <h1><?php echo e($pageHeading); ?></h1>
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
@@ -91,7 +116,6 @@ sort($filterTimes);
                     <div>
                         <i>&#9906;</i>
                         <input id="fieldLocationFilter" type="search" placeholder="Contoh: Parepare, Mattirotasi, Sudirman" autocomplete="off">
-                        <button type="button" aria-label="Gunakan lokasi saat ini">&#9881;</button>
                     </div>
                 </label>
 
@@ -210,6 +234,9 @@ sort($filterTimes);
                 ?>
                 <article
                     class="field-result-card"
+                    id="lapangan-<?php echo e(isset($venue['id']) ? $venue['id'] : $index); ?>"
+                    data-field-id="<?php echo e(isset($venue['id']) ? $venue['id'] : ''); ?>"
+                    data-detail-url="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : ''))); ?>"
                     data-name="<?php echo e($venue['name']); ?>"
                     data-location="<?php echo e($venue['location']); ?>"
                     data-sport="<?php echo e($type); ?>"
@@ -221,12 +248,18 @@ sort($filterTimes);
                     data-dates="<?php echo e(implode('|', $availableDates)); ?>"
                     data-times="<?php echo e(implode('|', $availableTimes)); ?>"
                     data-slots="<?php echo e(implode('|', $availableSlots)); ?>"
+                    role="button"
+                    tabindex="0"
+                    aria-haspopup="dialog"
+                    aria-controls="fieldDetailModal"
+                    aria-label="Lihat detail dan jadwal <?php echo e($venue['name']); ?>"
                 >
                     <div class="field-result-media">
                         <img src="<?php echo e($venue['image']); ?>" alt="<?php echo e($venue['name']); ?>">
                         <span>Populer</span>
                         <form method="post" action="<?php echo e(app_url('dashboard/favorit/toggle')); ?>">
                             <input type="hidden" name="id_lapangan" value="<?php echo e(isset($venue['id']) ? $venue['id'] : ''); ?>">
+                            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
                             <button type="submit" aria-label="Tambah <?php echo e($venue['name']); ?> ke favorit">&#9825;</button>
                         </form>
                     </div>
@@ -251,24 +284,9 @@ sort($filterTimes);
                         <small>Harga Mulai Dari</small>
                         <strong><?php echo e($venue['price']); ?> <span>/jam</span></strong>
                         <div>
-                            <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Lihat Detail</a>
+                            <button type="button" class="field-detail-button" data-field-open>Lihat Detail</button>
                             <?php if (!empty($availableSchedules)): ?>
-                                <details class="field-schedule-picker">
-                                    <summary class="primary">Pilih Jadwal</summary>
-                                    <div class="field-schedule-options">
-                                        <strong>Jadwal tersedia</strong>
-                                        <?php foreach ($availableSchedules as $schedule): ?>
-                                            <form method="post" action="<?php echo e(app_url('public/booking.php')); ?>">
-                                                <input type="hidden" name="id_jadwal" value="<?php echo e($schedule['id']); ?>">
-                                                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
-                                                <button type="submit">
-                                                    <span><?php echo e($schedule['dateLabel']); ?><small><?php echo e($schedule['time']); ?></small></span>
-                                                    <b><?php echo e($schedule['price']); ?></b>
-                                                </button>
-                                            </form>
-                                        <?php endforeach; ?>
-                                    </div>
-                                </details>
+                                <button type="button" class="field-book-button" data-field-open data-focus-schedules>Pilih Jadwal</button>
                             <?php else: ?>
                                 <span class="primary" aria-disabled="true">Jadwal Kosong</span>
                             <?php endif; ?>
@@ -285,6 +303,43 @@ sort($filterTimes);
             </div>
         </section>
     </main>
+</div>
+
+<div class="field-detail-modal" id="fieldDetailModal" hidden>
+    <div class="field-detail-backdrop" data-field-close></div>
+    <section class="field-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="fieldDetailTitle">
+        <button type="button" class="field-detail-close" data-field-close aria-label="Tutup detail lapangan">&#215;</button>
+        <div class="field-detail-hero">
+            <img id="fieldDetailImage" src="" alt="">
+            <span id="fieldDetailType">Olahraga</span>
+        </div>
+        <div class="field-detail-body">
+            <div class="field-detail-heading">
+                <div>
+                    <h2 id="fieldDetailTitle">Detail Lapangan</h2>
+                    <p id="fieldDetailLocation"></p>
+                </div>
+                <div class="field-detail-price">
+                    <small>Harga mulai</small>
+                    <strong id="fieldDetailPrice">Rp0</strong>
+                    <span>/jam</span>
+                </div>
+            </div>
+            <p class="field-detail-description" id="fieldDetailDescription"></p>
+            <div class="field-detail-rating" id="fieldDetailRating"></div>
+            <div class="field-detail-facilities" id="fieldDetailFacilities" aria-label="Fasilitas lapangan"></div>
+            <section class="field-detail-schedules" id="fieldDetailSchedules" tabindex="-1">
+                <header>
+                    <div>
+                        <h3>Jadwal Tersedia</h3>
+                        <p>Pilih waktu bermain, lalu booking langsung.</p>
+                    </div>
+                    <span id="fieldScheduleCount">0 slot</span>
+                </header>
+                <div class="field-detail-schedule-list" id="fieldDetailScheduleList"></div>
+            </section>
+        </div>
+    </section>
 </div>
 
 <script>
@@ -310,9 +365,111 @@ sort($filterTimes);
         var activeFilters = document.getElementById('fieldActiveFilters');
         var activeFilterList = document.getElementById('fieldActiveFilterList');
         var clearFilters = document.getElementById('fieldClearFilters');
+        var detailModal = document.getElementById('fieldDetailModal');
+        var detailScheduleList = document.getElementById('fieldDetailScheduleList');
+        var detailSchedules = document.getElementById('fieldDetailSchedules');
+        var venueDetails = <?php echo json_encode($venueDetails, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+        var bookingCreateUrl = <?php echo json_encode(app_url('dashboard/booking/tambah'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
+        var bookingToken = <?php echo json_encode(isset($bookingCsrfToken) ? $bookingCsrfToken : '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+        var lastFieldTrigger = null;
 
-        if (!toggle || !panel || !resultList) {
+        if (!toggle || !panel || !resultList || !detailModal) {
             return;
+        }
+
+        function appendSchedule(detail, schedule) {
+            var form = document.createElement('form');
+            var scheduleInput = document.createElement('input');
+            var tokenInput = document.createElement('input');
+            var button = document.createElement('button');
+            var info = document.createElement('span');
+            var date = document.createElement('strong');
+            var time = document.createElement('small');
+            var price = document.createElement('b');
+            var action = document.createElement('em');
+
+            form.method = 'post';
+            form.action = bookingCreateUrl;
+            scheduleInput.type = 'hidden';
+            scheduleInput.name = 'id_jadwal';
+            scheduleInput.value = schedule.id;
+            tokenInput.type = 'hidden';
+            tokenInput.name = 'booking_token';
+            tokenInput.value = bookingToken;
+            button.type = 'submit';
+            button.setAttribute('aria-label', 'Booking ' + detail.name + ', ' + schedule.dateLabel + ' ' + schedule.time);
+            date.textContent = schedule.dateLabel;
+            time.textContent = schedule.time;
+            price.textContent = schedule.price;
+            action.textContent = 'Booking';
+
+            info.appendChild(date);
+            info.appendChild(time);
+            button.appendChild(info);
+            button.appendChild(price);
+            button.appendChild(action);
+            form.appendChild(scheduleInput);
+            form.appendChild(tokenInput);
+            form.appendChild(button);
+            detailScheduleList.appendChild(form);
+        }
+
+        function openFieldDetail(card, focusSchedules) {
+            if (card && card.dataset.detailUrl) {
+                window.location.href = card.dataset.detailUrl;
+                return;
+            }
+
+            var detail = card ? venueDetails[card.dataset.fieldId] : null;
+            if (!detail) { return; }
+
+            lastFieldTrigger = document.activeElement;
+            document.getElementById('fieldDetailTitle').textContent = detail.name;
+            document.getElementById('fieldDetailLocation').textContent = '⌖ ' + detail.location;
+            document.getElementById('fieldDetailType').textContent = detail.type || 'Olahraga';
+            document.getElementById('fieldDetailPrice').textContent = detail.price;
+            document.getElementById('fieldDetailDescription').textContent = detail.description || 'Lapangan siap digunakan untuk jadwal bermain Anda.';
+            document.getElementById('fieldDetailRating').textContent = '★ ' + detail.rating + ' (' + detail.reviews + ')  •  ' + detail.distance;
+
+            var image = document.getElementById('fieldDetailImage');
+            image.src = detail.image;
+            image.alt = 'Foto ' + detail.name;
+
+            var facilities = document.getElementById('fieldDetailFacilities');
+            facilities.textContent = '';
+            (detail.features || []).forEach(function (feature) {
+                var item = document.createElement('span');
+                item.textContent = feature;
+                facilities.appendChild(item);
+            });
+
+            detailScheduleList.textContent = '';
+            var schedules = detail.schedules || [];
+            document.getElementById('fieldScheduleCount').textContent = schedules.length + ' slot';
+            if (schedules.length) {
+                schedules.forEach(function (schedule) { appendSchedule(detail, schedule); });
+            } else {
+                var empty = document.createElement('div');
+                empty.className = 'field-detail-schedule-empty';
+                empty.innerHTML = '<span aria-hidden="true">&#128197;</span><strong>Belum ada jadwal tersedia</strong><p>Silakan cek kembali setelah pemilik lapangan menambahkan jadwal.</p>';
+                detailScheduleList.appendChild(empty);
+            }
+
+            detailModal.hidden = false;
+            document.body.classList.add('field-detail-modal-open');
+            window.setTimeout(function () {
+                if (focusSchedules) {
+                    detailSchedules.focus();
+                } else {
+                    detailModal.querySelector('.field-detail-close').focus();
+                }
+            }, 0);
+        }
+
+        function closeFieldDetail() {
+            detailModal.hidden = true;
+            document.body.classList.remove('field-detail-modal-open');
+            if (lastFieldTrigger && typeof lastFieldTrigger.focus === 'function') { lastFieldTrigger.focus(); }
         }
 
         function normalize(value) {
@@ -563,6 +720,28 @@ sort($filterTimes);
 
         sortControl.addEventListener('change', applyFilters);
 
+        resultList.addEventListener('click', function (event) {
+            var card = event.target.closest('.field-result-card');
+            var opener = event.target.closest('[data-field-open]');
+            if (!card) { return; }
+            if (event.target.closest('form') && !opener) { return; }
+            if (event.target.closest('a, button, input, select, textarea, summary') && !opener) { return; }
+            openFieldDetail(card, Boolean(opener && opener.hasAttribute('data-focus-schedules')));
+        });
+
+        cards.forEach(function (card) {
+            card.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter' || event.key === ' ') && event.target === card) {
+                    event.preventDefault();
+                    openFieldDetail(card, false);
+                }
+            });
+        });
+
+        detailModal.querySelectorAll('[data-field-close]').forEach(function (button) {
+            button.addEventListener('click', closeFieldDetail);
+        });
+
         activeFilterList.addEventListener('click', function (event) {
             var chip = event.target.closest('[data-filter-key]');
 
@@ -575,12 +754,23 @@ sort($filterTimes);
         emptyReset.addEventListener('click', clearAllFilters);
 
         document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' && toggle.getAttribute('aria-expanded') === 'true') {
+            if (event.key !== 'Escape') { return; }
+            if (!detailModal.hidden) {
+                closeFieldDetail();
+            } else if (toggle.getAttribute('aria-expanded') === 'true') {
                 setFilterPanel(false);
                 toggle.focus();
             }
         });
 
+        var query = new URLSearchParams(window.location.search);
+        var initialSearch = query.get('q');
+        if (initialSearch) { controls.location.value = initialSearch; }
+        var requestedField = query.get('lapangan');
+        var requestedFieldCard = requestedField ? cards.find(function (card) { return card.dataset.fieldId === requestedField; }) : null;
+        if (requestedFieldCard) {
+            openFieldDetail(requestedFieldCard, false);
+        }
         applyFilters();
     }());
 </script>

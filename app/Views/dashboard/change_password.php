@@ -25,6 +25,7 @@
         <?php endif; ?>
 
         <form action="<?php echo e(app_url('settings/password')); ?>" method="post" class="settings-password-form">
+            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <label>
                 <span>Password Saat Ini</span>
                 <div class="settings-password-input">
@@ -68,7 +69,7 @@
         </form>
     </section>
 
-    <p class="settings-password-help">Butuh bantuan? Hubungi <a href="#">admin sistem</a>.</p>
+    <p class="settings-password-help">Butuh bantuan? Hubungi <a href="mailto:admin@arenasport.id">admin sistem</a>.</p>
 </main>
 
 <script>

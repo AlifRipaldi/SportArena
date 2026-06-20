@@ -37,14 +37,14 @@
                 <p>Kelola preferensi akun dan aplikasi Anda.</p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
@@ -57,6 +57,7 @@
         <?php endif; ?>
 
         <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>" data-theme-url="<?php echo e(app_url('settings/theme')); ?>">
+            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <section class="settings-panel settings-profile-panel">
                 <div class="settings-panel-title">
                     <span>&#9786;</span>
@@ -66,7 +67,6 @@
                 <div class="settings-profile-body">
                     <div class="settings-avatar-wrap">
                         <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
-                        <button type="button" aria-label="Ubah foto profil">&#128247;</button>
                     </div>
 
                     <div class="settings-profile-fields">
@@ -91,7 +91,7 @@
                             <i>:</i>
                             <input name="kota" type="text" value="<?php echo e($userCity); ?>">
                         </label>
-                        <button type="button" class="settings-outline-button">Ubah Profil</button>
+                        <button type="submit" class="settings-outline-button">Simpan Profil</button>
                     </div>
                 </div>
             </section>
@@ -189,12 +189,10 @@
                     </div>
 
                     <div class="settings-payment-list">
-                        <a href="#"><span class="bca">BCA</span>BCA Virtual Account<i>&#8250;</i></a>
-                        <a href="#"><span class="dana">&#9679;</span>Dana<i>&#8250;</i></a>
-                        <a href="#"><span class="ovo">&#9679;</span>OVO<i>&#8250;</i></a>
-                        <a href="#"><span class="gopay">&#9679;</span>GoPay<i>&#8250;</i></a>
+                        <?php foreach (isset($paymentMethods) ? $paymentMethods : array() as $method): ?>
+                            <a href="<?php echo e(app_url('dashboard/booking')); ?>"><span class="bca">&#128179;</span><?php echo e($method['Nama']); ?><i>&#8250;</i></a>
+                        <?php endforeach; ?>
                     </div>
-                    <button type="button" class="settings-add-payment"><span>+</span>Tambah Metode</button>
                 </article>
 
                 <article class="settings-panel settings-mini-panel">
@@ -237,27 +235,6 @@
                 </article>
             </section>
 
-            <section class="settings-panel settings-danger-panel">
-                <div class="settings-panel-title danger">
-                    <span>&#9888;</span>
-                    <h2>Zona Bahaya</h2>
-                </div>
-                <div class="settings-danger-row">
-                    <div>
-                        <h3>Hapus seluruh riwayat booking</h3>
-                        <p>Tindakan ini akan menghapus semua riwayat booking Anda secara permanen.</p>
-                    </div>
-                    <button type="button"><span>&#128465;</span>Hapus Riwayat</button>
-                </div>
-                <div class="settings-danger-row">
-                    <div>
-                        <h3>Hapus Akun Permanen</h3>
-                        <p>Tindakan ini akan menghapus akun Anda secara permanen dan tidak dapat dikembalikan.</p>
-                    </div>
-                    <button type="button"><span>&#128465;</span>Hapus Akun Permanen</button>
-                </div>
-            </section>
-
             <div class="settings-save-row">
                 <button type="submit" class="settings-save-button"><span>&#10003;</span>Simpan Perubahan</button>
             </div>
@@ -285,6 +262,7 @@
 
                 var request = new FormData();
                 request.append('theme_mode', choice.value);
+                request.append('booking_token', form.querySelector('[name="booking_token"]').value);
 
                 fetch(form.getAttribute('data-theme-url'), {
                     method: 'POST',

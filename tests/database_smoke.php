@@ -11,6 +11,7 @@ use App\Controllers\AdminController;
 use App\Controllers\DashboardController;
 use App\Controllers\PemilikController;
 use App\Models\ArenaData;
+use App\Core\Database;
 
 function invokeProtected($object, $method, array $arguments = array())
 {
@@ -58,6 +59,59 @@ assertArrayResult('Customer lapangan tersedia', $availableVenues, 1);
 if (empty($availableVenues[0]['availableSchedules'])) {
     throw new RuntimeException('Customer belum memiliki slot jadwal yang dapat dipesan.');
 }
+
+$connection = Database::connection();
+mysqli_begin_transaction($connection);
+try {
+    $scheduleId = $availableVenues[0]['availableSchedules'][0]['id'];
+    $testBooking = invokeProtected($dashboard, 'reserveBooking', array($connection, $scheduleId, $customerId));
+    invokeProtected($dashboard, 'createBookingNotifications', array($connection, $testBooking));
+    $bookingStatement = mysqli_prepare($connection, 'SELECT COUNT(*) AS total FROM booking WHERE ID_Booking=? AND ID_User=?');
+    mysqli_stmt_bind_param($bookingStatement, 'ss', $testBooking['id'], $customerId);
+    mysqli_stmt_execute($bookingStatement);
+    $bookingResult = mysqli_stmt_get_result($bookingStatement);
+    $bookingCount = $bookingResult ? (int) mysqli_fetch_assoc($bookingResult)['total'] : 0;
+    mysqli_stmt_close($bookingStatement);
+    if ($bookingCount !== 1) {
+        throw new RuntimeException('Transaksi pembuatan booking customer gagal.');
+    }
+    echo '[OK] Customer membuat booking dalam transaksi' . PHP_EOL;
+} finally {
+    mysqli_rollback($connection);
+}
+
+ob_start();
+$dashboard->search();
+$searchPage = ob_get_clean();
+if (
+    strpos($searchPage, app_url('dashboard/booking/tambah')) === false
+    || strpos($searchPage, 'name="booking_token"') === false
+    || strpos($searchPage, 'id="fieldDetailModal"') === false
+    || strpos($searchPage, 'data-field-open') === false
+) {
+    throw new RuntimeException('Form booking customer belum terhubung ke route aman.');
+}
+echo '[OK] Form booking customer terhubung' . PHP_EOL;
+
+ob_start();
+$dashboard->booking();
+$bookingPage = ob_get_clean();
+if (strpos($bookingPage, 'name="booking_slot"') === false || strpos($bookingPage, 'name="payment_method"') === false) {
+    throw new RuntimeException('Pengelolaan jadwal atau pembayaran booking customer belum aktif.');
+}
+echo '[OK] Pengelolaan booking customer aktif' . PHP_EOL;
+
+ob_start();
+$dashboard->fieldDetail($availableVenues[0]['id']);
+$fieldDetailPage = ob_get_clean();
+if (
+    strpos($fieldDetailPage, 'class="customer-field-page"') === false
+    || strpos($fieldDetailPage, 'id="customerFieldBooking"') === false
+    || strpos($fieldDetailPage, app_url('dashboard/booking/tambah')) === false
+) {
+    throw new RuntimeException('Halaman detail dan booking lapangan customer belum aktif.');
+}
+echo '[OK] Detail lapangan customer aktif' . PHP_EOL;
 assertRender('customer', $dashboard, array('dashboard', 'search', 'booking', 'riwayat', 'favorit', 'ulasan', 'profil', 'settings'));
 
 $ownerUserId = $data->value(

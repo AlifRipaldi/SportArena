@@ -41,6 +41,49 @@ class DashboardController extends Controller
         return $this->renderDashboard('dashboard/search', 'lapangan', 'Cari Lapangan | Arena Sport', 'Cari Lapangan', 'Temukan lapangan terbaik di sekitar kamu.');
     }
 
+    public function fieldDetail($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+        if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+
+        $fieldId = rawurldecode(trim((string) $id));
+        $venue = null;
+        foreach ($this->databaseVenues() as $item) {
+            if (isset($item['id']) && hash_equals((string) $item['id'], $fieldId)) {
+                $venue = $item;
+                break;
+            }
+        }
+
+        if (!$venue) {
+            $_SESSION['booking_error'] = 'Lapangan tidak ditemukan atau sedang tidak aktif.';
+            header('Location: ' . app_url('dashboard/lapangan'));
+            exit;
+        }
+
+        $reviews = $this->dashboardData()->rows(
+            "SELECT r.Rating, r.Komentar, r.created_at, u.Nama
+             FROM review r
+             INNER JOIN users u ON u.ID_User=r.ID_User
+             WHERE r.ID_Lapangan=? AND LOWER(r.Status)='tampil'
+             ORDER BY r.created_at DESC",
+            's', array($fieldId)
+        );
+        $operatingHours = $this->dashboardData()->rows(
+            'SELECT Hari, Jam_buka, Jam_tutup, Tutup FROM jam_operasional WHERE ID_Lapangan=? ORDER BY Hari',
+            's', array($fieldId)
+        );
+
+        return $this->view('dashboard/field_detail', array(
+            'title' => $venue['name'] . ' | Arena Sport',
+            'themeMode' => $this->dashboardThemeMode(),
+            'venue' => $venue,
+            'reviews' => $reviews,
+            'operatingHours' => $operatingHours,
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
+        ), 'layouts/dashboard');
+    }
+
     public function ulasan()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -52,6 +95,10 @@ class DashboardController extends Controller
             exit;
         }
 
+        $reviewMessage = isset($_SESSION['review_success']) ? (string) $_SESSION['review_success'] : '';
+        $reviewError = isset($_SESSION['review_error']) ? (string) $_SESSION['review_error'] : '';
+        unset($_SESSION['review_success'], $_SESSION['review_error']);
+
         return $this->view('dashboard/ulasan', array(
             'title' => 'Ulasan Saya | Arena Sport',
             'themeMode' => $this->dashboardThemeMode(),
@@ -62,6 +109,9 @@ class DashboardController extends Controller
             'reviewSummary' => $this->reviewSummary(),
             'reviews' => $this->reviews(),
             'reviewableBookings' => $this->customerReviewableBookings(),
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
+            'reviewMessage' => $reviewMessage,
+            'reviewError' => $reviewError,
         ), 'layouts/dashboard');
     }
 
@@ -69,6 +119,12 @@ class DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['review_error'] = 'Permintaan ulasan tidak valid.';
+            header('Location: ' . app_url('dashboard/ulasan'));
+            exit;
+        }
+
         $bookingId = isset($_POST['id_booking']) ? trim((string) $_POST['id_booking']) : '';
         $rating = isset($_POST['rating']) ? (int) $_POST['rating'] : 0;
         $comment = isset($_POST['komentar']) ? trim((string) $_POST['komentar']) : '';
@@ -80,8 +136,13 @@ class DashboardController extends Controller
             );
             if ($row) {
                 $reviewId = 'RVW' . date('ymdHis') . random_int(10, 99);
-                $this->dashboardData()->execute("INSERT INTO review (ID_Review,ID_User,ID_Lapangan,ID_Booking,Rating,Komentar,Status) VALUES (?,?,?,?,?,?,'Tampil')", 'ssssis', array($reviewId, $this->dashboardUserId(), $row['ID_Lapangan'], $bookingId, $rating, $comment));
+                $saved = $this->dashboardData()->execute("INSERT INTO review (ID_Review,ID_User,ID_Lapangan,ID_Booking,Rating,Komentar,Status) VALUES (?,?,?,?,?,?,'Tampil')", 'ssssis', array($reviewId, $this->dashboardUserId(), $row['ID_Lapangan'], $bookingId, $rating, $comment));
+                $_SESSION[$saved ? 'review_success' : 'review_error'] = $saved ? 'Ulasan berhasil dikirim.' : 'Ulasan belum dapat disimpan.';
+            } else {
+                $_SESSION['review_error'] = 'Booking tidak dapat diulas atau sudah pernah diulas.';
             }
+        } else {
+            $_SESSION['review_error'] = 'Lengkapi booking, rating, dan komentar ulasan.';
         }
 
         header('Location: ' . app_url('dashboard/ulasan'));
@@ -126,6 +187,10 @@ class DashboardController extends Controller
 
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
+        $bookingMessage = isset($_SESSION['booking_success']) ? (string) $_SESSION['booking_success'] : '';
+        $bookingError = isset($_SESSION['booking_error']) ? (string) $_SESSION['booking_error'] : '';
+        unset($_SESSION['booking_success'], $_SESSION['booking_error']);
+
         return $this->view($view, array(
             'title' => $title,
             'themeMode' => $this->dashboardThemeMode(),
@@ -140,6 +205,8 @@ class DashboardController extends Controller
             'bookings' => $this->bookings(),
             'paymentMethods' => $this->customerPaymentMethods(),
             'bookingCsrfToken' => $this->bookingCsrfToken(),
+            'bookingMessage' => $bookingMessage,
+            'bookingError' => $bookingError,
         ), 'layouts/dashboard');
     }
 
@@ -250,10 +317,125 @@ class DashboardController extends Controller
         return $this->renderDashboard('dashboard/booking', 'booking', 'Booking Saya | Arena Sport', 'Booking Saya', 'Kelola semua booking lapangan kamu');
     }
 
+    public function storeBooking()
+    {
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+        if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+
+        $scheduleId = isset($_POST['id_jadwal']) ? trim((string) $_POST['id_jadwal']) : '';
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['booking_error'] = 'Permintaan booking tidak valid. Silakan pilih jadwal kembali.';
+            header('Location: ' . app_url('dashboard/lapangan'));
+            exit;
+        }
+
+        $connection = Database::connection();
+        mysqli_begin_transaction($connection);
+
+        try {
+            $booking = $this->reserveBooking($connection, $scheduleId, $this->dashboardUserId());
+            $this->createBookingNotifications($connection, $booking);
+            mysqli_commit($connection);
+            $_SESSION['booking_success'] = 'Booking ' . $booking['venue'] . ' berhasil dibuat. Silakan selesaikan pembayaran.';
+            header('Location: ' . app_url('dashboard/booking'));
+            exit;
+        } catch (\Throwable $exception) {
+            mysqli_rollback($connection);
+            $_SESSION['booking_error'] = $exception->getMessage();
+            header('Location: ' . app_url('dashboard/lapangan'));
+            exit;
+        }
+    }
+
+    protected function reserveBooking($connection, $scheduleId, $userId)
+    {
+        if ($scheduleId === '' || $userId === '') {
+            throw new \RuntimeException('Jadwal booking tidak valid.');
+        }
+
+        $statement = mysqli_prepare(
+            $connection,
+            "SELECT j.ID_Jadwal, j.Tanggal, j.Jam_Mulai,
+                    COALESCE(NULLIF(j.Harga, 0), l.Harga) AS Harga,
+                    l.Nama_lapangan, p.ID_User AS ID_Pemilik_User
+             FROM jadwal j
+             INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan
+             INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=l.ID_Pemilik
+             WHERE j.ID_Jadwal=? AND LOWER(TRIM(j.Status)) IN ('available','tersedia','aktif')
+               AND LOWER(TRIM(l.Status))='aktif' AND l.deleted_at IS NULL
+             LIMIT 1 FOR UPDATE"
+        );
+        if (!$statement) { throw new \RuntimeException('Jadwal tidak dapat dibaca.'); }
+        mysqli_stmt_bind_param($statement, 's', $scheduleId);
+        mysqli_stmt_execute($statement);
+        $result = mysqli_stmt_get_result($statement);
+        $schedule = $result ? mysqli_fetch_assoc($result) : null;
+        mysqli_stmt_close($statement);
+
+        if (!$schedule) { throw new \RuntimeException('Jadwal sudah tidak tersedia.'); }
+        $startAt = strtotime($schedule['Tanggal'] . ' ' . $schedule['Jam_Mulai']);
+        if ($startAt === false || $startAt <= time()) { throw new \RuntimeException('Jadwal sudah lewat.'); }
+
+        $bookingId = 'BKG' . date('ymdHis') . random_int(10, 99);
+        $price = max(0, (int) $schedule['Harga']);
+        $createdAt = date('Y-m-d H:i:s');
+        $insert = mysqli_prepare($connection, "INSERT INTO booking (ID_Booking,ID_Jadwal,ID_User,Waktu_transaksi,Total_harga,Status) VALUES (?,?,?,?,?,'Menunggu Pembayaran')");
+        if (!$insert) { throw new \RuntimeException('Booking tidak dapat dibuat.'); }
+        mysqli_stmt_bind_param($insert, 'ssssi', $bookingId, $scheduleId, $userId, $createdAt, $price);
+        if (!mysqli_stmt_execute($insert)) {
+            mysqli_stmt_close($insert);
+            throw new \RuntimeException('Booking gagal disimpan.');
+        }
+        mysqli_stmt_close($insert);
+
+        $update = mysqli_prepare($connection, "UPDATE jadwal SET Status='Booked' WHERE ID_Jadwal=? AND LOWER(TRIM(Status)) IN ('available','tersedia','aktif')");
+        if (!$update) { throw new \RuntimeException('Jadwal gagal diamankan.'); }
+        mysqli_stmt_bind_param($update, 's', $scheduleId);
+        mysqli_stmt_execute($update);
+        $updated = mysqli_stmt_affected_rows($update);
+        mysqli_stmt_close($update);
+        if ($updated !== 1) { throw new \RuntimeException('Jadwal baru saja dipesan pengguna lain.'); }
+
+        return array(
+            'id' => $bookingId,
+            'userId' => $userId,
+            'ownerUserId' => isset($schedule['ID_Pemilik_User']) ? $schedule['ID_Pemilik_User'] : '',
+            'venue' => isset($schedule['Nama_lapangan']) ? $schedule['Nama_lapangan'] : 'lapangan',
+        );
+    }
+
+    protected function createBookingNotifications($connection, array $booking)
+    {
+        $statement = mysqli_prepare($connection, "INSERT INTO notifikasi (ID_User,Judul,Pesan,Tipe,Link) VALUES (?,?,?,?,?)");
+        if (!$statement) { return; }
+
+        $type = 'booking';
+        $link = 'dashboard/booking';
+        $title = 'Booking berhasil dibuat';
+        $message = 'Booking ' . $booking['venue'] . ' menunggu pembayaran.';
+        mysqli_stmt_bind_param($statement, 'sssss', $booking['userId'], $title, $message, $type, $link);
+        mysqli_stmt_execute($statement);
+
+        if (!empty($booking['ownerUserId'])) {
+            $ownerTitle = 'Booking baru';
+            $ownerMessage = 'Ada booking baru untuk ' . $booking['venue'] . '.';
+            $ownerLink = 'pemilik/booking';
+            mysqli_stmt_bind_param($statement, 'sssss', $booking['ownerUserId'], $ownerTitle, $ownerMessage, $type, $ownerLink);
+            mysqli_stmt_execute($statement);
+        }
+        mysqli_stmt_close($statement);
+    }
+
     public function updateBooking()
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['booking_error'] = 'Permintaan perubahan booking tidak valid.';
+            header('Location: ' . app_url('dashboard/booking'));
+            exit;
+        }
 
         $bookingId = isset($_POST['id_booking']) ? trim((string) $_POST['id_booking']) : '';
         $action = isset($_POST['booking_action']) ? trim((string) $_POST['booking_action']) : 'reschedule';
@@ -271,6 +453,11 @@ class DashboardController extends Controller
             mysqli_stmt_close($statement);
             if (!$booking) { throw new \RuntimeException('Booking tidak ditemukan.'); }
 
+            $currentStatus = strtolower(trim((string) $booking['Status']));
+            if (strpos($currentStatus, 'batal') !== false || strpos($currentStatus, 'selesai') !== false || strpos($currentStatus, 'complete') !== false) {
+                throw new \RuntimeException('Booking ini tidak dapat diubah lagi.');
+            }
+
             if ($action === 'cancel') {
                 $update = mysqli_prepare($connection, "UPDATE booking SET Status='Dibatalkan', Dibatalkan_pada=NOW() WHERE ID_Booking=?");
                 mysqli_stmt_bind_param($update, 's', $bookingId);
@@ -282,11 +469,14 @@ class DashboardController extends Controller
                 mysqli_stmt_close($schedule);
                 $this->dashboardCancelPendingPayments($connection, $bookingId);
             } else {
-                $date = isset($_POST['booking_date']) ? trim((string) $_POST['booking_date']) : '';
-                $time = isset($_POST['booking_time']) ? trim((string) $_POST['booking_time']) : '';
+                $slot = isset($_POST['booking_slot']) ? trim((string) $_POST['booking_slot']) : '';
+                $slotParts = explode('@', $slot, 2);
+                $date = isset($slotParts[0]) ? trim($slotParts[0]) : '';
+                $time = isset($slotParts[1]) ? trim($slotParts[1]) : '';
                 $parts = preg_split('/\s*-\s*/', $time);
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || count($parts) !== 2) { throw new \RuntimeException('Jadwal baru tidak valid.'); }
                 $start = $parts[0] . ':00'; $end = $parts[1] . ':00';
+                if (strtotime($date . ' ' . $start) <= time()) { throw new \RuntimeException('Jadwal baru harus berada di waktu mendatang.'); }
                 $target = mysqli_prepare($connection, "SELECT ID_Jadwal FROM jadwal WHERE ID_Lapangan=? AND Tanggal=? AND Jam_Mulai=? AND Jam_Selesai=? AND LOWER(Status) IN ('available','tersedia','aktif') LIMIT 1 FOR UPDATE");
                 mysqli_stmt_bind_param($target, 'ssss', $booking['ID_Lapangan'], $date, $start, $end);
                 mysqli_stmt_execute($target);
@@ -304,6 +494,7 @@ class DashboardController extends Controller
             }
 
             mysqli_commit($connection);
+            $_SESSION['booking_success'] = $action === 'cancel' ? 'Booking berhasil dibatalkan.' : 'Jadwal booking berhasil diubah.';
         } catch (\Throwable $exception) {
             mysqli_rollback($connection);
             $_SESSION['booking_error'] = $exception->getMessage();
@@ -317,6 +508,13 @@ class DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['booking_error'] = 'Permintaan pembayaran tidak valid.';
+            header('Location: ' . app_url('dashboard/booking'));
+            exit;
+        }
+
         $bookingId = isset($_POST['id_booking']) ? trim((string) $_POST['id_booking']) : '';
         $methodInput = isset($_POST['payment_method']) ? trim((string) $_POST['payment_method']) : '';
         $connection = Database::connection();
@@ -332,6 +530,7 @@ class DashboardController extends Controller
             $userId = $this->dashboardUserId(); mysqli_stmt_bind_param($statement, 'ss', $bookingId, $userId); mysqli_stmt_execute($statement);
             $result = mysqli_stmt_get_result($statement); $booking = $result ? mysqli_fetch_assoc($result) : null; mysqli_stmt_close($statement);
             if (!$booking || stripos((string) $booking['Status'], 'batal') !== false) { throw new \RuntimeException('Booking tidak dapat dibayar.'); }
+            if (stripos((string) $booking['Status'], 'menunggu') === false && stripos((string) $booking['Status'], 'pending') === false) { throw new \RuntimeException('Booking ini tidak sedang menunggu pembayaran.'); }
 
             $existing = mysqli_prepare($connection, "SELECT ID_Pembayaran FROM pembayaran WHERE ID_Booking=? AND LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') LIMIT 1");
             mysqli_stmt_bind_param($existing, 's', $bookingId); mysqli_stmt_execute($existing); $existingResult=mysqli_stmt_get_result($existing); $paid=$existingResult?mysqli_fetch_assoc($existingResult):null; mysqli_stmt_close($existing);
@@ -342,6 +541,7 @@ class DashboardController extends Controller
             mysqli_stmt_bind_param($insert,'ssiss',$paymentId,$bookingId,$amount,$methodName,$reference); if(!mysqli_stmt_execute($insert)){throw new \RuntimeException('Pembayaran gagal disimpan.');} mysqli_stmt_close($insert);
             $update=mysqli_prepare($connection,"UPDATE booking SET Status='Aktif' WHERE ID_Booking=?"); mysqli_stmt_bind_param($update,'s',$bookingId); mysqli_stmt_execute($update); mysqli_stmt_close($update);
             mysqli_commit($connection);
+            $_SESSION['booking_success']='Pembayaran booking berhasil dikonfirmasi.';
         } catch (\Throwable $exception) {
             mysqli_rollback($connection); $_SESSION['booking_error']=$exception->getMessage();
         }
@@ -352,7 +552,15 @@ class DashboardController extends Controller
 
     protected function dashboardCancelPendingPayments($connection, $bookingId)
     {
-        $statement = mysqli_prepare($connection, "UPDATE pembayaran SET Status='Dibatalkan' WHERE ID_Booking=? AND LOWER(Status) IN ('pending','menunggu')");
+        $statement = mysqli_prepare(
+            $connection,
+            "UPDATE pembayaran
+             SET Status=CASE
+                 WHEN LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') THEN 'Refund Pending'
+                 ELSE 'Dibatalkan'
+             END
+             WHERE ID_Booking=? AND LOWER(Status) IN ('pending','menunggu','berhasil','dibayar','lunas','success','paid')"
+        );
         if ($statement) { mysqli_stmt_bind_param($statement, 's', $bookingId); mysqli_stmt_execute($statement); mysqli_stmt_close($statement); }
     }
 
@@ -452,6 +660,11 @@ class DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['booking_error'] = 'Permintaan favorit tidak valid.';
+            header('Location: ' . app_url('dashboard/lapangan'));
+            exit;
+        }
 
         $fieldId = isset($_POST['id_lapangan']) ? trim((string) $_POST['id_lapangan']) : '';
         if ($fieldId !== '') {
@@ -460,12 +673,16 @@ class DashboardController extends Controller
 
             if ($exists > 0) {
                 $data->execute('DELETE FROM favorit WHERE ID_User = ? AND ID_Lapangan = ?', 'ss', array($this->dashboardUserId(), $fieldId));
+                $_SESSION['booking_success'] = 'Lapangan dihapus dari favorit.';
             } else {
-                $data->execute('INSERT IGNORE INTO favorit (ID_User, ID_Lapangan) SELECT ?, ID_Lapangan FROM lapangan WHERE ID_Lapangan = ? AND deleted_at IS NULL', 'ss', array($this->dashboardUserId(), $fieldId));
+                $saved = $data->execute('INSERT IGNORE INTO favorit (ID_User, ID_Lapangan) SELECT ?, ID_Lapangan FROM lapangan WHERE ID_Lapangan = ? AND deleted_at IS NULL', 'ss', array($this->dashboardUserId(), $fieldId));
+                $_SESSION[$saved ? 'booking_success' : 'booking_error'] = $saved ? 'Lapangan ditambahkan ke favorit.' : 'Lapangan belum dapat ditambahkan ke favorit.';
             }
         }
 
-        header('Location: ' . app_url(isset($_POST['return_to']) && $_POST['return_to'] === 'favorit' ? 'dashboard/favorit' : 'dashboard/lapangan'));
+        $returnPages = array('dashboard' => 'dashboard', 'favorit' => 'dashboard/favorit', 'search' => 'dashboard/lapangan');
+        $returnTo = isset($_POST['return_to']) ? trim((string) $_POST['return_to']) : 'search';
+        header('Location: ' . app_url(isset($returnPages[$returnTo]) ? $returnPages[$returnTo] : $returnPages['search']));
         exit;
     }
 
@@ -473,7 +690,13 @@ class DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['booking_error'] = 'Permintaan hapus favorit tidak valid.';
+            header('Location: ' . app_url('dashboard/favorit'));
+            exit;
+        }
         $this->dashboardData()->execute('DELETE FROM favorit WHERE ID_User = ?', 's', array($this->dashboardUserId()));
+        $_SESSION['booking_success'] = 'Semua lapangan favorit berhasil dihapus.';
         header('Location: ' . app_url('dashboard/favorit'));
         exit;
     }
@@ -579,13 +802,13 @@ class DashboardController extends Controller
 
         $result = mysqli_query(
             $connection,
-            "SELECT l.ID_Lapangan, l.Nama_lapangan, l.Lokasi, l.Jenis_olahraga, l.Fasilitas, l.Harga, l.Foto,
+            "SELECT l.ID_Lapangan, l.Nama_lapangan, l.Lokasi, l.Jenis_olahraga, l.Fasilitas, l.Harga, l.Foto, l.Deskripsi, l.Latitude, l.Longitude,
                     COALESCE(AVG(r.Rating), 0) AS Rating,
                     COUNT(r.ID_Review) AS Review_count
              FROM lapangan l
              LEFT JOIN review r ON r.ID_Lapangan = l.ID_Lapangan AND LOWER(r.Status) = 'tampil'
              WHERE LOWER(TRIM(l.Status)) = 'aktif' AND l.deleted_at IS NULL
-             GROUP BY l.ID_Lapangan, l.Nama_lapangan, l.Lokasi, l.Jenis_olahraga, l.Fasilitas, l.Harga, l.Foto
+             GROUP BY l.ID_Lapangan, l.Nama_lapangan, l.Lokasi, l.Jenis_olahraga, l.Fasilitas, l.Harga, l.Foto, l.Deskripsi, l.Latitude, l.Longitude
              ORDER BY Nama_lapangan ASC"
         );
 
@@ -667,6 +890,9 @@ class DashboardController extends Controller
                 'name' => isset($row['Nama_lapangan']) ? $row['Nama_lapangan'] : 'Lapangan Olahraga',
                 'type' => $type,
                 'location' => isset($row['Lokasi']) ? $row['Lokasi'] : '',
+                'description' => !empty($row['Deskripsi']) ? $row['Deskripsi'] : 'Lapangan olahraga dengan fasilitas yang siap digunakan untuk jadwal bermain Anda.',
+                'latitude' => isset($row['Latitude']) ? $row['Latitude'] : '',
+                'longitude' => isset($row['Longitude']) ? $row['Longitude'] : '',
                 'features' => $features,
                 'distance' => number_format(1 + ($index * 0.8), 1) . ' km',
                 'availableDays' => array(),
@@ -679,6 +905,7 @@ class DashboardController extends Controller
                 'reviews' => (isset($row['Review_count']) ? (int) $row['Review_count'] : 0) . ' ulasan',
                 'price' => 'Rp' . number_format($price, 0, ',', '.'),
                 'image' => $this->dashboardVenueImage(isset($row['Foto']) ? $row['Foto'] : '', $type),
+                'images' => $this->dashboardVenueImages(isset($row['Foto']) ? $row['Foto'] : '', $type),
             );
             $index++;
         }
@@ -715,14 +942,26 @@ class DashboardController extends Controller
 
     protected function dashboardVenueImage($value, $type)
     {
+        $images = $this->dashboardVenueImages($value, $type);
+
+        return isset($images[0]) ? $images[0] : '';
+    }
+
+    protected function dashboardVenueImages($value, $type)
+    {
         $photos = $this->decodeDashboardList($value);
+        $images = array();
 
         foreach ($photos as $photo) {
             $photo = str_replace('\\', '/', $photo);
 
             if (strpos($photo, '..') === false && strpos($photo, 'storage/uploads/lapangan/') === 0) {
-                return app_url($photo);
+                $images[] = app_url($photo);
             }
+        }
+
+        if (!empty($images)) {
+            return array_values(array_unique($images));
         }
 
         $fallbacks = array(
@@ -732,9 +971,11 @@ class DashboardController extends Controller
         );
         $typeKey = strtolower(trim((string) $type));
 
-        return isset($fallbacks[$typeKey])
+        $fallback = isset($fallbacks[$typeKey])
             ? $fallbacks[$typeKey]
             : 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop';
+
+        return array($fallback);
     }
 
     protected function favorites()
@@ -794,6 +1035,7 @@ class DashboardController extends Controller
         foreach ($this->customerBookingsFromDatabase(false) as $booking) {
             if (isset($booking['category']) && in_array($booking['category'], array('upcoming', 'pending'), true)) {
                 return array(
+                    'code' => $booking['code'],
                     'venue' => $booking['venue'],
                     'date' => $booking['date'],
                     'time' => $booking['time'],
@@ -957,6 +1199,7 @@ class DashboardController extends Controller
 
             $booking = array(
                 'type' => isset($row['Jenis_olahraga']) ? $row['Jenis_olahraga'] : '',
+                'fieldId' => isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '',
                 'venue' => isset($row['Nama_lapangan']) ? $row['Nama_lapangan'] : 'Lapangan Olahraga',
                 'location' => isset($row['Lokasi']) ? $row['Lokasi'] : '',
                 'date' => $this->dashboardFormatDate($dateValue),
@@ -1075,6 +1318,7 @@ class DashboardController extends Controller
                 'reviews' => (int) $row['review_count'],
                 'comment' => $row['Komentar'],
                 'date' => $this->dashboardFormatDate(substr((string) $row['created_at'], 0, 10)),
+                'dateValue' => substr((string) $row['created_at'], 0, 10),
                 'code' => isset($row['ID_Booking']) ? $row['ID_Booking'] : '-',
                 'image' => $this->dashboardVenueImage($row['Foto'], $row['Jenis_olahraga']),
             );
@@ -1188,6 +1432,14 @@ class DashboardController extends Controller
         return $_SESSION['booking_csrf'];
     }
 
+    protected function hasValidBookingToken()
+    {
+        $token = isset($_POST['booking_token']) ? (string) $_POST['booking_token'] : '';
+
+        return $token !== '' && !empty($_SESSION['booking_csrf'])
+            && hash_equals((string) $_SESSION['booking_csrf'], $token);
+    }
+
     protected function accountTable($connection)
     {
         $result = mysqli_query($connection, "SHOW TABLES LIKE 'users'");
@@ -1207,10 +1459,14 @@ class DashboardController extends Controller
         }
 
         $settings = $this->customerAccountSettings();
+        $settingsError = isset($_SESSION['settings_error']) ? (string) $_SESSION['settings_error'] : '';
+        unset($_SESSION['settings_error']);
         $_SESSION['theme_mode'] = $settings['theme'];
 
         return $this->view('dashboard/settings', array(
             'title' => 'Pengaturan Akun | Arena Sport',
+            'message' => '',
+            'errorMessage' => $settingsError,
             'themeMode' => $settings['theme'],
             'userName' => $settings['name'],
             'userEmail' => $settings['email'],
@@ -1225,6 +1481,8 @@ class DashboardController extends Controller
             'favoriteCity' => $settings['favoriteCity'],
             'favoriteSport' => $settings['favoriteSport'],
             'searchRadius' => $settings['searchRadius'],
+            'paymentMethods' => $this->customerPaymentMethods(),
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
         ), 'layouts/dashboard');
     }
 
@@ -1251,6 +1509,10 @@ class DashboardController extends Controller
         if (empty($_SESSION['id_user'])) {
             header('Location: ' . app_url('public/login.php'));
             exit;
+        }
+
+        if (!$this->hasValidBookingToken()) {
+            return $this->renderPasswordView('', 'Permintaan ubah password tidak valid.');
         }
 
         $currentPassword = isset($_POST['current_password']) ? (string) $_POST['current_password'] : '';
@@ -1292,6 +1554,7 @@ class DashboardController extends Controller
             'displayDate' => $this->indonesianDateTime(),
             'message' => $message,
             'errorMessage' => $errorMessage,
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
         ), 'layouts/dashboard');
     }
 
@@ -1352,8 +1615,10 @@ class DashboardController extends Controller
         }
 
         mysqli_stmt_bind_param($statement, 'ss', $passwordHash, $userId);
+        $saved = mysqli_stmt_execute($statement);
+        mysqli_stmt_close($statement);
 
-        return mysqli_stmt_execute($statement);
+        return $saved;
     }
 
     public function updateSettings()
@@ -1364,6 +1629,12 @@ class DashboardController extends Controller
 
         if (empty($_SESSION['id_user'])) {
             header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        if (!$this->hasValidBookingToken()) {
+            $_SESSION['settings_error'] = 'Permintaan pengaturan tidak valid.';
+            header('Location: ' . app_url('settings'));
             exit;
         }
 
@@ -1458,6 +1729,8 @@ class DashboardController extends Controller
             'favoriteCity' => $favoriteCity,
             'favoriteSport' => $favoriteSport,
             'searchRadius' => $searchRadius,
+            'paymentMethods' => $this->customerPaymentMethods(),
+            'bookingCsrfToken' => $this->bookingCsrfToken(),
         ), 'layouts/dashboard');
     }
 
@@ -1471,6 +1744,13 @@ class DashboardController extends Controller
             http_response_code(401);
             header('Content-Type: application/json');
             echo json_encode(array('ok' => false, 'message' => 'Sesi login sudah berakhir.'));
+            return;
+        }
+
+        if (!$this->hasValidBookingToken()) {
+            http_response_code(419);
+            header('Content-Type: application/json');
+            echo json_encode(array('ok' => false, 'message' => 'Permintaan tema tidak valid.'));
             return;
         }
 
