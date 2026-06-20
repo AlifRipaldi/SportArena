@@ -8,7 +8,18 @@ class Lapangan extends Model
     {
         $limit = max(1, (int) $limit);
         $rows = array();
-        $result = mysqli_query($this->db(), 'SELECT * FROM lapangan LIMIT ' . $limit);
+        $result = mysqli_query($this->db(),
+            "SELECT l.*, COALESCE(AVG(r.Rating),0) AS Rating_avg, COUNT(r.ID_Review) AS Review_count,
+                    (SELECT j.ID_Jadwal FROM jadwal j
+                     WHERE j.ID_Lapangan=l.ID_Lapangan AND j.Tanggal>=CURDATE()
+                       AND LOWER(j.Status) IN ('available','tersedia','aktif')
+                     ORDER BY j.Tanggal,j.Jam_Mulai LIMIT 1) AS ID_Jadwal
+             FROM lapangan l
+             LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan AND LOWER(r.Status)='tampil'
+             WHERE LOWER(l.Status)='aktif' AND l.deleted_at IS NULL
+             GROUP BY l.ID_Lapangan
+             ORDER BY Review_count DESC,l.created_at DESC LIMIT " . $limit
+        );
 
         if (!$result) {
             return $rows;
@@ -26,7 +37,7 @@ class Lapangan extends Model
         $rows = array();
         $statement = mysqli_prepare(
             $this->db(),
-            'SELECT * FROM lapangan WHERE ID_Pemilik = ? ORDER BY ID_Lapangan DESC'
+            'SELECT * FROM lapangan WHERE ID_Pemilik = ? AND deleted_at IS NULL ORDER BY created_at DESC, ID_Lapangan DESC'
         );
 
         if (!$statement) {
@@ -155,7 +166,7 @@ class Lapangan extends Model
     {
         $statement = mysqli_prepare(
             $this->db(),
-            'DELETE FROM lapangan WHERE ID_Lapangan = ? AND ID_Pemilik = ?'
+            "UPDATE lapangan SET Status = 'Nonaktif', deleted_at = NOW() WHERE ID_Lapangan = ? AND ID_Pemilik = ?"
         );
 
         if (!$statement) {

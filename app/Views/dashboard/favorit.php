@@ -73,7 +73,9 @@
                 <h2><?php echo e(count($favorites)); ?> Lapangan Favorit</h2>
                 <p>Temukan dan booking lapangan favoritmu kapan saja dengan mudah.</p>
             </div>
-            <button type="button" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
+            <form method="post" action="<?php echo e(app_url('dashboard/favorit/hapus-semua')); ?>">
+                <button type="submit" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
+            </form>
         </section>
 
         <section id="favorite-list" class="favorite-match-list" aria-label="Daftar lapangan favorit">
@@ -112,7 +114,11 @@
                     </div>
 
                     <div class="favorite-card-actions">
-                        <button type="button" class="favorite-heart-button" aria-label="Hapus favorit <?php echo e($favorite['venue']); ?>">&#10084;</button>
+                        <form method="post" action="<?php echo e(app_url('dashboard/favorit/toggle')); ?>">
+                            <input type="hidden" name="id_lapangan" value="<?php echo e($favorite['id']); ?>">
+                            <input type="hidden" name="return_to" value="favorit">
+                            <button type="submit" class="favorite-heart-button" aria-label="Hapus favorit <?php echo e($favorite['venue']); ?>">&#10084;</button>
+                        </form>
                         <button type="button" class="favorite-menu-button" aria-label="Menu <?php echo e($favorite['venue']); ?>">&#8942;</button>
                     </div>
                 </article>

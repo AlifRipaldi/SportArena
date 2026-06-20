@@ -1,4 +1,5 @@
 <?php
+if (!isset($fields) || !is_array($fields)) {
 $fields = array(
     array(
         'name' => 'Futsal A',
@@ -57,6 +58,7 @@ $fields = array(
         'accent' => 'gold',
     ),
 );
+}
 
 $activeFields = 0;
 $maintenanceFields = 0;

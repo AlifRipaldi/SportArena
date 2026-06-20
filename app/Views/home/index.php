@@ -7,14 +7,7 @@ $sportImages = array(
     'basket' => 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1000&auto=format&fit=crop',
     'default' => 'https://images.unsplash.com/photo-1518605336396-d31032230006?q=80&w=1000&auto=format&fit=crop',
 );
-$fallbackLapangan = array(
-    array('ID_Lapangan' => 'futsal-parepare', 'Nama_lapangan' => 'Arena Futsal Parepare', 'Jenis_olahraga' => 'Futsal', 'Lokasi' => 'Mattirotasi No. 12, Parepare', 'Harga' => 80000, 'rating' => '4.8 (120)'),
-    array('ID_Lapangan' => 'badminton-andi-makkasau', 'Nama_lapangan' => 'Lapangan Badminton Andi Makkasau', 'Jenis_olahraga' => 'Badminton', 'Lokasi' => 'Jend. Sudirman, Parepare', 'Harga' => 50000, 'rating' => '4.6 (85)'),
-    array('ID_Lapangan' => 'mini-soccer-victory', 'Nama_lapangan' => 'Mini Soccer Victory', 'Jenis_olahraga' => 'Mini Soccer', 'Lokasi' => 'Bau Massepe, Parepare', 'Harga' => 100000, 'rating' => '4.7 (68)'),
-    array('ID_Lapangan' => 'basket-ball-center', 'Nama_lapangan' => 'Basket Ball Center', 'Jenis_olahraga' => 'Basket', 'Lokasi' => 'Veteran, Parepare', 'Harga' => 60000, 'rating' => '4.5 (60)'),
-);
-$displayLapangan = is_array($lapangan) && !empty($lapangan) ? array_slice($lapangan, 0, 4) : $fallbackLapangan;
-$totalLapangan = max($totalLapangan, count($displayLapangan));
+$displayLapangan = is_array($lapangan) ? array_slice($lapangan, 0, 4) : array();
 $sportSlug = function ($name) {
     $slug = strtolower(trim((string) $name));
     $slug = str_replace(array(' ', '_'), '-', $slug);
@@ -128,8 +121,8 @@ $sportSlug = function ($name) {
             $priceText = isset($row['Harga'])
                 ? 'Rp' . number_format((int) $row['Harga'], 0, ',', '.')
                 : 'Rp50.000';
-            $ratingText = isset($row['rating']) ? $row['rating'] : '4.8 (120)';
-            $bookingUrl = app_url('public/booking.php?id=' . rawurlencode(isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : ''));
+            $ratingText = number_format(isset($row['Rating_avg']) ? (float) $row['Rating_avg'] : 0, 1) . ' (' . (isset($row['Review_count']) ? (int) $row['Review_count'] : 0) . ')';
+            $bookingUrl = !empty($row['ID_Jadwal']) ? app_url('booking/' . rawurlencode($row['ID_Jadwal'])) : app_url('dashboard/lapangan');
             ?>
             <article class="home-field-card">
                 <a class="field-card-link" href="<?php echo e($bookingUrl); ?>">
@@ -149,6 +142,9 @@ $sportSlug = function ($name) {
                 </a>
             </article>
         <?php endforeach; ?>
+        <?php if (empty($displayLapangan)): ?>
+            <p class="data-alert">Belum ada lapangan aktif dengan jadwal tersedia.</p>
+        <?php endif; ?>
     </div>
 
     <div class="home-trust-strip" aria-label="Keunggulan layanan">

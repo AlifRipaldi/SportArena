@@ -159,7 +159,7 @@ function owner_review_stars($rating)
         </div>
 
         <div class="owner-ulasan-table-footer">
-            <p>Menampilkan 1 - 5 dari 156 ulasan</p>
+            <p>Menampilkan <?php echo e(count($reviews)); ?> ulasan</p>
             <nav class="owner-ulasan-pagination" aria-label="Paginasi ulasan">
                 <button type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
                 <button class="active" type="button" aria-current="page">1</button>

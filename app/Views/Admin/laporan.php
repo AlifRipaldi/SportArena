@@ -2,6 +2,9 @@
 $linePoints = array();
 $areaPoints = array('0,100');
 $highlightPoint = null;
+$reportStartLabel = date('d/m/Y', strtotime('first day of this month'));
+$reportEndLabel = date('d/m/Y', strtotime('last day of this month'));
+$reportMonthLabel = date('m/Y');
 
 foreach ($revenueReportPoints as $point) {
     $coordinate = $point['x'] . ',' . $point['y'];
@@ -34,7 +37,7 @@ $areaPoints = implode(' ', $areaPoints);
 <section class="admin-report-toolbar" aria-label="Filter laporan">
     <button class="admin-date-filter" type="button">
         <i class="fa-regular fa-calendar-days"></i>
-        <span>01/05/2024 - 31/05/2024</span>
+        <span><?php echo e($reportStartLabel . ' - ' . $reportEndLabel); ?></span>
     </button>
 
     <select class="admin-filter-select" aria-label="Filter lapangan laporan">
@@ -72,7 +75,7 @@ $areaPoints = implode(' ', $areaPoints);
         <div class="admin-report-panel-head">
             <div>
                 <h2>Grafik Pendapatan</h2>
-                <p>Grafik pendapatan selama periode 01 Mei - 31 Mei 2024</p>
+                <p>Grafik pendapatan selama periode <?php echo e($reportMonthLabel); ?></p>
             </div>
             <button type="button">Harian <i class="fa-solid fa-chevron-down"></i></button>
         </div>
@@ -98,17 +101,17 @@ $areaPoints = implode(' ', $areaPoints);
 
                 <?php if ($highlightPoint): ?>
                     <div class="admin-report-tooltip" style="left: <?php echo e($highlightPoint['x']); ?>%; top: <?php echo e($highlightPoint['y']); ?>%;">
-                        <span><?php echo e($highlightPoint['label']); ?> 2024</span>
+                        <span><?php echo e($highlightPoint['label']); ?></span>
                         <strong><i></i><?php echo e($highlightPoint['amount']); ?></strong>
                     </div>
                 <?php endif; ?>
 
                 <div class="admin-report-chart-months">
-                    <span>1 Mei</span>
-                    <span>8 Mei</span>
-                    <span>15 Mei</span>
-                    <span>22 Mei</span>
-                    <span>31 Mei</span>
+                    <span><?php echo e(date('d M', strtotime('first day of this month'))); ?></span>
+                    <span><?php echo e(date('d M', strtotime('+7 days', strtotime('first day of this month')))); ?></span>
+                    <span><?php echo e(date('d M', strtotime('+14 days', strtotime('first day of this month')))); ?></span>
+                    <span><?php echo e(date('d M', strtotime('+21 days', strtotime('first day of this month')))); ?></span>
+                    <span><?php echo e(date('d M', strtotime('last day of this month'))); ?></span>
                 </div>
             </div>
         </div>

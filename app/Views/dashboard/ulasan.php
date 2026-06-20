@@ -63,6 +63,23 @@
             </label>
         </section>
 
+        <?php if (!empty($reviewableBookings)): ?>
+            <section class="profile-panel" aria-label="Tulis ulasan baru">
+                <div class="profile-panel-header"><h2><span>&#9998;</span>Tulis Ulasan</h2></div>
+                <form class="login-form" method="post" action="<?php echo e(app_url('dashboard/ulasan/tambah')); ?>">
+                    <label><span>Booking</span><select name="id_booking" required>
+                        <option value="">Pilih booking yang selesai</option>
+                        <?php foreach ($reviewableBookings as $booking): ?>
+                            <option value="<?php echo e($booking['ID_Booking']); ?>"><?php echo e($booking['Nama_lapangan'] . ' — ' . $booking['Tanggal']); ?></option>
+                        <?php endforeach; ?>
+                    </select></label>
+                    <label><span>Rating</span><select name="rating" required><option value="5">5 - Sangat Baik</option><option value="4">4 - Baik</option><option value="3">3 - Cukup</option><option value="2">2 - Kurang</option><option value="1">1 - Buruk</option></select></label>
+                    <label><span>Komentar</span><textarea name="komentar" rows="3" maxlength="2000" required></textarea></label>
+                    <button class="profile-panel-action" type="submit">Kirim Ulasan</button>
+                </form>
+            </section>
+        <?php endif; ?>
+
         <section class="review-summary-panel" aria-label="Ringkasan ulasan">
             <article class="review-summary-card average">
                 <span class="review-summary-icon">&#9734;</span>

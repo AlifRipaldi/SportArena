@@ -1,9 +1,9 @@
 <?php
 $periodTabs = isset($periodTabs) ? $periodTabs : array('mingguan' => 'Mingguan', 'bulanan' => 'Bulanan', 'tahunan' => 'Tahunan');
 $selectedPeriodKey = isset($selectedPeriodKey) ? $selectedPeriodKey : 'bulanan';
-$selectedPeriod = isset($selectedPeriod) ? $selectedPeriod : 'Juni 2025';
-$selectedStartDate = isset($selectedStartDate) ? $selectedStartDate : '2025-06-01';
-$selectedEndDate = isset($selectedEndDate) ? $selectedEndDate : '2025-06-30';
+$selectedPeriod = isset($selectedPeriod) ? $selectedPeriod : date('F Y');
+$selectedStartDate = isset($selectedStartDate) ? $selectedStartDate : date('Y-m-01');
+$selectedEndDate = isset($selectedEndDate) ? $selectedEndDate : date('Y-m-t');
 $reportPeriodDefault = $selectedPeriodKey === 'mingguan' ? '7_hari' : ($selectedPeriodKey === 'bulanan' ? 'bulan_ini' : 'kustom');
 $formatReportInputDate = function ($dateValue) {
     $months = array(
@@ -23,7 +23,7 @@ $formatReportInputDate = function ($dateValue) {
     $date = DateTimeImmutable::createFromFormat('Y-m-d', $dateValue);
 
     if (!$date) {
-        return '01 Juni 2025';
+        return date('d/m/Y');
     }
 
     return sprintf('%02d %s %s', (int) $date->format('j'), $months[(int) $date->format('n')], $date->format('Y'));
@@ -470,7 +470,7 @@ $linePoints = implode(' ', $linePoints);
     var submitLabel = submitButton ? submitButton.querySelector('span') : null;
     var submitDefaultLabel = submitLabel ? submitLabel.textContent : '';
     var defaultNote = note ? note.querySelector('span').textContent : '';
-    var reportBaseDate = new Date(2025, 5, 30);
+    var reportBaseDate = new Date(<?php echo (int) date('Y'); ?>, <?php echo (int) date('n') - 1; ?>, <?php echo (int) date('t'); ?>);
     var monthNames = [
         'Januari',
         'Februari',

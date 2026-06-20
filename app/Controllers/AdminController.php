@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
+use App\Models\ArenaData;
 
 class AdminController extends Controller
 {
@@ -46,8 +47,227 @@ class AdminController extends Controller
         return in_array(strtolower(trim((string) $role)), array('admin', 'administrator', 'superadmin'), true);
     }
 
+    protected function adminData()
+    {
+        return new ArenaData();
+    }
+
+    protected function adminRupiah($amount)
+    {
+        return 'Rp' . number_format(max(0, (int) $amount), 0, ',', '.');
+    }
+
+    protected function adminDate($date)
+    {
+        return $this->adminFormatDate($date);
+    }
+
+    protected function adminBookingRows()
+    {
+        return $this->adminData()->rows(
+            "SELECT b.ID_Booking, b.Status AS booking_status, b.Total_harga, b.Waktu_transaksi,
+                    u.Nama AS customer_name, u.Nomor_telepon,
+                    j.Tanggal, j.Jam_Mulai, j.Jam_Selesai,
+                    l.ID_Lapangan, l.Nama_lapangan,
+                    p.ID_Pembayaran, p.Jumlah, p.Metode, p.Status AS payment_status,
+                    p.Waktu_pembayaran, p.created_at AS payment_created_at
+             FROM booking b
+             INNER JOIN users u ON u.ID_User = b.ID_User
+             INNER JOIN jadwal j ON j.ID_Jadwal = b.ID_Jadwal
+             INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
+             LEFT JOIN pembayaran p ON p.ID_Pembayaran = (
+                 SELECT p2.ID_Pembayaran FROM pembayaran p2
+                 WHERE p2.ID_Booking = b.ID_Booking
+                 ORDER BY p2.created_at DESC, p2.ID_Pembayaran DESC LIMIT 1
+             )
+             ORDER BY b.Waktu_transaksi DESC"
+        );
+    }
+
+    protected function adminBookingPayload($bookingStatus, $paymentStatus = '')
+    {
+        $status = strtolower(trim((string) ($bookingStatus . ' ' . $paymentStatus)));
+
+        if (strpos($status, 'batal') !== false || strpos($status, 'refund') !== false || strpos($status, 'gagal') !== false) {
+            return array('label' => 'Dibatalkan', 'class' => 'danger', 'key' => 'cancelled');
+        }
+
+        if (strpos($status, 'selesai') !== false || strpos($status, 'berhasil') !== false || strpos($status, 'dibayar') !== false || strpos($status, 'lunas') !== false || strpos($status, 'paid') !== false) {
+            return array('label' => 'Selesai', 'class' => 'active', 'key' => 'completed');
+        }
+
+        if (strpos($status, 'menunggu') !== false || strpos($status, 'pending') !== false) {
+            return array('label' => 'Pending', 'class' => 'warning', 'key' => 'pending');
+        }
+
+        return array('label' => 'Aktif', 'class' => 'success', 'key' => 'active');
+    }
+
+    protected function adminSummaryCardsFromDatabase()
+    {
+        $data = $this->adminData();
+        $customers = (int) $data->value("SELECT COUNT(*) AS value FROM users WHERE Role='customer'");
+        $today = (int) $data->value("SELECT COUNT(*) AS value FROM booking b INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal WHERE j.Tanggal=CURDATE()");
+        $income = (int) $data->value("SELECT COALESCE(SUM(Jumlah),0) AS value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid')");
+        $fields = (int) $data->value("SELECT COUNT(*) AS value FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL");
+
+        return array(
+            array('label'=>'Total Customer','value'=>(string)$customers,'trend'=>'0%','note'=>'data tersimpan','icon'=>'fa-users','accent'=>'lime'),
+            array('label'=>'Booking Hari Ini','value'=>(string)$today,'trend'=>'0%','note'=>'hari ini','icon'=>'fa-calendar-days','accent'=>'blue'),
+            array('label'=>'Total Pendapatan','value'=>$this->adminRupiah($income),'trend'=>'0%','note'=>'seluruh periode','icon'=>'fa-rupiah-sign','accent'=>'green'),
+            array('label'=>'Lapangan Aktif','value'=>(string)$fields,'trend'=>'0','note'=>'data saat ini','icon'=>'fa-volleyball','accent'=>'gold'),
+        );
+    }
+
+    protected function adminMonthlyRevenueFromDatabase()
+    {
+        $amounts = array_fill(1, 12, 0);
+        $rows = $this->adminData()->rows("SELECT MONTH(COALESCE(Waktu_pembayaran,created_at)) month_number, COALESCE(SUM(Jumlah),0) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') AND YEAR(COALESCE(Waktu_pembayaran,created_at))=YEAR(CURDATE()) GROUP BY MONTH(COALESCE(Waktu_pembayaran,created_at))");
+        foreach ($rows as $row) { $amounts[(int)$row['month_number']] = (int)$row['amount']; }
+        $names=array(1=>'Jan',2=>'Feb',3=>'Mar',4=>'Apr',5=>'Mei',6=>'Jun',7=>'Jul',8=>'Agu',9=>'Sep',10=>'Okt',11=>'Nov',12=>'Des');
+        $max=max(1,max($amounts)); $result=array();
+        foreach($amounts as $month=>$amount){$result[]=array('month'=>$names[$month],'amount'=>$this->adminRupiah($amount),'x'=>round((($month-1)/11)*100,2),'y'=>round(92-(($amount/$max)*82),2));}
+        return $result;
+    }
+
+    protected function adminBookingStatusFromDatabase()
+    {
+        $counts=array('Selesai'=>0,'Aktif'=>0,'Pending'=>0,'Dibatalkan'=>0);
+        foreach($this->adminBookingRows() as $row){$payload=$this->adminBookingPayload($row['booking_status'],isset($row['payment_status'])?$row['payment_status']:'');$counts[$payload['label']]++;}
+        $total=max(1,array_sum($counts));$colors=array('Selesai'=>'lime','Aktif'=>'blue','Pending'=>'gold','Dibatalkan'=>'red');$result=array();
+        foreach($counts as $label=>$count){$result[]=array('label'=>$label,'value'=>number_format(($count/$total)*100,0).'%','count'=>(string)$count,'color'=>$colors[$label]);}
+        return $result;
+    }
+
+    protected function adminBookingsFromDatabase()
+    {
+        $bookings=array();
+        foreach($this->adminBookingRows() as $row){$payload=$this->adminBookingPayload($row['booking_status'],isset($row['payment_status'])?$row['payment_status']:'');$bookings[]=array('code'=>$row['ID_Booking'],'field'=>$row['Nama_lapangan'],'user'=>$row['customer_name'],'date'=>$this->adminDate($row['Tanggal']),'time'=>substr($row['Jam_Mulai'],0,5).' - '.substr($row['Jam_Selesai'],0,5),'status'=>$payload['label'],'statusClass'=>$payload['class'],'total'=>$this->adminRupiah($row['Total_harga']));}
+        return $bookings;
+    }
+
+    protected function adminPopularFieldsFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT l.Nama_lapangan name, COUNT(b.ID_Booking) booking FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY booking DESC LIMIT 5");
+        $max=1;foreach($rows as $row){$max=max($max,(int)$row['booking']);}$result=array();
+        foreach($rows as $row){$result[]=array('name'=>$row['name'],'booking'=>(string)$row['booking'],'percent'=>round(((int)$row['booking']/$max)*100));}
+        return $result;
+    }
+
+    protected function adminBottomMetricsFromDatabase()
+    {
+        $data=$this->adminData();
+        $todayIncome=(int)$data->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') AND DATE(COALESCE(Waktu_pembayaran,created_at))=CURDATE()");
+        $monthIncome=(int)$data->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') AND YEAR(COALESCE(Waktu_pembayaran,created_at))=YEAR(CURDATE()) AND MONTH(COALESCE(Waktu_pembayaran,created_at))=MONTH(CURDATE())");
+        $monthBookings=(int)$data->value("SELECT COUNT(*) value FROM booking WHERE YEAR(Waktu_transaksi)=YEAR(CURDATE()) AND MONTH(Waktu_transaksi)=MONTH(CURDATE())");
+        $rating=(float)$data->value("SELECT COALESCE(AVG(Rating),0) value FROM review");
+        return array(
+            array('label'=>'Pendapatan Hari Ini','value'=>$this->adminRupiah($todayIncome),'trend'=>'0%','note'=>'hari ini','icon'=>'fa-rupiah-sign','accent'=>'green'),
+            array('label'=>'Pendapatan Bulan Ini','value'=>$this->adminRupiah($monthIncome),'trend'=>'0%','note'=>'bulan ini','icon'=>'fa-volleyball','accent'=>'indigo'),
+            array('label'=>'Total Booking Bulan Ini','value'=>(string)$monthBookings,'trend'=>'0%','note'=>'bulan ini','icon'=>'fa-calendar-days','accent'=>'gold'),
+            array('label'=>'Rata-rata Rating','value'=>number_format($rating,1).' / 5','trend'=>'0','note'=>'semua ulasan','icon'=>'fa-calendar-check','accent'=>'purple'),
+        );
+    }
+
+    protected function adminFieldsFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT l.*, COUNT(DISTINCT CASE WHEN j.Tanggal=CURDATE() THEN b.ID_Booking END) bookings, COALESCE(AVG(r.Rating),0) rating, COUNT(DISTINCT r.ID_Review) reviews FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY l.created_at DESC");
+        $fields=array();
+        foreach($rows as $row){$status=$row['Status'];$type=strtolower($row['Jenis_olahraga']);$icon=strpos($type,'badminton')!==false?'fa-table-tennis-paddle-ball':(strpos($type,'basket')!==false?'fa-basketball':'fa-futbol');$fields[]=array('name'=>$row['Nama_lapangan'],'type'=>$row['Jenis_olahraga'],'location'=>$row['Lokasi'],'price'=>$this->adminRupiah($row['Harga']).'/jam','bookings'=>(int)$row['bookings'],'rating'=>number_format((float)$row['rating'],1),'reviews'=>(int)$row['reviews'],'status'=>$status,'badge'=>strtolower($status)==='aktif'?'success':'warning','progress'=>min(100,(int)$row['bookings']*10),'icon'=>$icon,'accent'=>strtolower($status)==='aktif'?'lime':'gold');}
+        return $fields;
+    }
+
+    protected function adminReviewsFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT r.Rating,r.Komentar,r.Balasan,r.created_at,u.Nama,l.Nama_lapangan FROM review r INNER JOIN users u ON u.ID_User=r.ID_User INNER JOIN lapangan l ON l.ID_Lapangan=r.ID_Lapangan ORDER BY r.created_at DESC");$result=array();
+        foreach($rows as $row){$name=$row['Nama'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $part){$initials.=strtoupper(substr($part,0,1));}$responded=trim((string)$row['Balasan'])!=='';$result[]=array('initials'=>$initials,'user'=>$name,'field'=>$row['Nama_lapangan'],'rating'=>(float)$row['Rating'],'comment'=>$row['Komentar'],'date'=>$this->adminDate(substr($row['created_at'],0,10)),'status'=>$responded?'Ditanggapi':'Belum Ditanggapi','statusClass'=>$responded?'success':'warning','accent'=>'blue');}
+        return $result;
+    }
+
+    protected function adminReviewStatsFromDatabase()
+    {
+        $reviews=$this->adminReviewsFromDatabase();$total=count($reviews);$sum=0;$positive=0;$unanswered=0;foreach($reviews as $r){$sum+=$r['rating'];$positive+=$r['rating']>=4?1:0;$unanswered+=$r['status']==='Belum Ditanggapi'?1:0;}$average=$total?$sum/$total:0;
+        return array(
+            array('label'=>'Total Ulasan','value'=>(string)$total,'trend'=>'0','note'=>'data tersimpan','icon'=>'fa-star','accent'=>'gold','direction'=>'up'),
+            array('label'=>'Rating Rata-rata','value'=>number_format($average,1),'trend'=>'0','note'=>'semua ulasan','icon'=>'fa-star','accent'=>'blue','direction'=>'up'),
+            array('label'=>'Ulasan Baru','value'=>(string)$total,'trend'=>'0','note'=>'seluruh periode','icon'=>'fa-star','accent'=>'purple','direction'=>'up'),
+            array('label'=>'Belum Ditanggapi','value'=>(string)$unanswered,'trend'=>'0','note'=>'perlu tindakan','icon'=>'fa-message','accent'=>'red','direction'=>'down'),
+            array('label'=>'Ulasan Positif','value'=>$total?number_format(($positive/$total)*100,0).'%':'0%','trend'=>'0%','note'=>'dari total ulasan','icon'=>'fa-thumbs-up','accent'=>'green','direction'=>'up'),
+        );
+    }
+
+    protected function adminRatingDistributionFromDatabase()
+    {
+        $counts=array(5=>0,4=>0,3=>0,2=>0,1=>0);foreach($this->adminReviewsFromDatabase() as $review){$star=max(1,min(5,(int)round($review['rating'])));$counts[$star]++;}$total=max(1,array_sum($counts));$colors=array(5=>'lime',4=>'green',3=>'gold',2=>'orange',1=>'red');$result=array();foreach($counts as $star=>$count){$result[]=array('label'=>$star.' Bintang','percent'=>round(($count/$total)*100),'count'=>$count,'color'=>$colors[$star]);}return $result;
+    }
+
+    protected function adminFieldRatingsFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT l.Nama_lapangan,l.Jenis_olahraga,l.Foto,COALESCE(AVG(r.Rating),0) rating,COUNT(r.ID_Review) reviews FROM lapangan l LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY rating DESC");$result=array();foreach($rows as $row){$result[]=array('name'=>$row['Nama_lapangan'],'rating'=>number_format((float)$row['rating'],1),'reviews'=>(int)$row['reviews'],'image'=>$this->adminFieldImage($row['Foto'],$row['Jenis_olahraga']));}return $result;
+    }
+
+    protected function adminTransactionsFromDatabase()
+    {
+        $result=array();foreach($this->adminBookingRows() as $row){if(empty($row['ID_Pembayaran'])){continue;}$payload=$this->adminBookingPayload($row['booking_status'],$row['payment_status']);$created=!empty($row['Waktu_pembayaran'])?$row['Waktu_pembayaran']:$row['payment_created_at'];$name=$row['customer_name'];$parts=preg_split('/\s+/',trim($name));$initials='';foreach(array_slice($parts,0,2) as $p){$initials.=strtoupper(substr($p,0,1));}$result[]=array('id'=>$row['ID_Pembayaran'],'booking'=>$row['ID_Booking'],'field'=>$row['Nama_lapangan'],'user'=>$name,'initials'=>$initials,'phone'=>$row['Nomor_telepon'],'method'=>$row['Metode'],'methodClass'=>$this->adminMethodClass($row['Metode']),'amount'=>$this->adminRupiah($row['Jumlah']),'status'=>$payload['label']==='Selesai'?'Berhasil':$payload['label'],'statusClass'=>$payload['class'],'date'=>$this->adminDate(substr($created,0,10)),'time'=>substr($created,11,5),'accent'=>'green');}return $result;
+    }
+
+    protected function adminTransactionStatsFromDatabase()
+    {
+        $rows=$this->adminTransactionsFromDatabase();$income=0;$success=0;$failed=0;$refund=0;foreach($rows as $row){if($row['status']==='Berhasil'){$success++;$income+=(int)preg_replace('/[^0-9]/','',$row['amount']);}elseif(strtolower($row['status'])==='refund'){$refund++;}else{$failed++;}}
+        return array(
+            array('label'=>'Total Transaksi','value'=>(string)count($rows),'trend'=>'0','note'=>'data tersimpan','icon'=>'fa-wallet','accent'=>'green','direction'=>'up'),
+            array('label'=>'Total Pendapatan','value'=>$this->adminRupiah($income),'trend'=>'0%','note'=>'transaksi berhasil','icon'=>'fa-money-check-dollar','accent'=>'blue','direction'=>'up'),
+            array('label'=>'Transaksi Berhasil','value'=>(string)$success,'trend'=>'0','note'=>'data tersimpan','icon'=>'fa-circle-check','accent'=>'purple','direction'=>'up'),
+            array('label'=>'Transaksi Gagal','value'=>(string)$failed,'trend'=>'0','note'=>'data tersimpan','icon'=>'fa-rectangle-xmark','accent'=>'red','direction'=>'down'),
+            array('label'=>'Refund','value'=>(string)$refund,'trend'=>'0','note'=>'data tersimpan','icon'=>'fa-clock-rotate-left','accent'=>'gold','direction'=>'down'),
+        );
+    }
+
+    protected function adminReportStatsFromDatabase()
+    {
+        $data=$this->adminData();$income=(int)$data->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid')");$bookings=(int)$data->value('SELECT COUNT(*) value FROM booking');$users=(int)$data->value("SELECT COUNT(*) value FROM users WHERE created_at >= DATE_FORMAT(CURDATE(),'%Y-%m-01')");$fields=(int)$data->value("SELECT COUNT(*) value FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL");
+        return array(array('label'=>'Total Pendapatan','value'=>$this->adminRupiah($income),'trend'=>'0%','note'=>'seluruh periode','icon'=>'fa-wallet','accent'=>'green'),array('label'=>'Total Booking','value'=>(string)$bookings,'trend'=>'0%','note'=>'seluruh periode','icon'=>'fa-calendar-check','accent'=>'purple'),array('label'=>'Total Pengguna Baru','value'=>(string)$users,'trend'=>'0%','note'=>'bulan ini','icon'=>'fa-user-plus','accent'=>'blue'),array('label'=>'Total Lapangan Aktif','value'=>(string)$fields,'trend'=>'0%','note'=>'saat ini','icon'=>'fa-table-cells-large','accent'=>'gold'));
+    }
+
+    protected function adminRevenueReportFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT DATE(COALESCE(Waktu_pembayaran,created_at)) report_date,SUM(Jumlah) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') AND COALESCE(Waktu_pembayaran,created_at)>=DATE_SUB(CURDATE(),INTERVAL 30 DAY) GROUP BY DATE(COALESCE(Waktu_pembayaran,created_at)) ORDER BY report_date");if(empty($rows)){return array(array('label'=>$this->adminDate(date('Y-m-d')),'amount'=>'Rp0','x'=>50,'y'=>92,'highlight'=>true));}$max=1;foreach($rows as $r){$max=max($max,(int)$r['amount']);}$count=count($rows);$result=array();$highlight=0;$best=-1;foreach($rows as $i=>$row){if((int)$row['amount']>$best){$best=(int)$row['amount'];$highlight=$i;}$result[]=array('label'=>$this->adminDate($row['report_date']),'amount'=>$this->adminRupiah($row['amount']),'x'=>$count>1?round(($i/($count-1))*100,2):50,'y'=>round(92-(((int)$row['amount']/$max)*82),2));}$result[$highlight]['highlight']=true;return $result;
+    }
+
+    protected function adminPaymentReportFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT Metode method,SUM(Jumlah) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') GROUP BY Metode ORDER BY amount DESC");$total=0;foreach($rows as $r){$total+=(int)$r['amount'];}$colors=array('blue','purple','teal','orange','light');$result=array();foreach($rows as $i=>$r){$result[]=array('method'=>$r['method'],'amount'=>$this->adminRupiah($r['amount']),'percent'=>$total?round(((int)$r['amount']/$total)*100):0,'color'=>$colors[$i%count($colors)]);}return $result;
+    }
+
+    protected function adminFieldBookingReportFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT l.Nama_lapangan field,COUNT(b.ID_Booking) value FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY value DESC LIMIT 6");$max=1;foreach($rows as $r){$max=max($max,(int)$r['value']);}$result=array();foreach($rows as $r){$result[]=array('field'=>$r['field'],'short'=>htmlspecialchars($r['field'],ENT_QUOTES,'UTF-8'),'value'=>(int)$r['value'],'height'=>round(((int)$r['value']/$max)*100));}return $result;
+    }
+
+    protected function adminPaymentMethodsFromDatabase()
+    {
+        $rows=$this->adminData()->rows('SELECT * FROM metode_pembayaran ORDER BY Nama');$result=array();foreach($rows as $row){$result[]=array('name'=>$row['Nama'],'description'=>'Metode '.$row['Tipe'].'; biaya admin '.$this->adminRupiah($row['Biaya_admin']),'mark'=>strtoupper(substr($row['Nama'],0,2)),'accent'=>$this->adminMethodClass($row['Nama']),'enabled'=>(bool)$row['Aktif']);}return $result;
+    }
+
+    protected function adminBankAccountsFromDatabase()
+    {
+        $rows=$this->adminData()->rows("SELECT rp.*,p.nama_usaha FROM rekening_pemilik rp INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=rp.ID_Pemilik ORDER BY rp.Utama DESC,rp.created_at DESC");$result=array();foreach($rows as $row){$active=strtolower($row['Status'])==='aktif';$result[]=array('bank'=>$row['Nama_bank'],'account'=>$row['Nomor_rekening'],'owner'=>$row['Nama_pemilik'],'status'=>$row['Status'],'statusClass'=>$active?'success':'inactive','accent'=>$this->adminMethodClass($row['Nama_bank']));}return $result;
+    }
+
+    protected function adminMethodClass($method)
+    {
+        $method=strtolower((string)$method);if(strpos($method,'qris')!==false){return 'qris';}if(strpos($method,'dana')!==false){return 'dana';}if(strpos($method,'ovo')!==false){return 'ovo';}return 'bank';
+    }
+
+    protected function adminFieldImage($photos, $type)
+    {
+        $decoded=json_decode((string)$photos,true);if(is_array($decoded)&&!empty($decoded[0])&&strpos($decoded[0],'..')===false){return app_url($decoded[0]);}$type=strtolower((string)$type);if(strpos($type,'badminton')!==false){return 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=240&auto=format&fit=crop';}return 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=240&auto=format&fit=crop';
+    }
+
     protected function summaryCards()
     {
+        return $this->adminSummaryCardsFromDatabase();
+
         return array(
             array(
                 'label' => 'Total Customer',
@@ -86,6 +306,8 @@ class AdminController extends Controller
 
     protected function monthlyRevenue()
     {
+        return $this->adminMonthlyRevenueFromDatabase();
+
         return array(
             array('month' => 'Jan', 'amount' => 'Rp3.5jt', 'x' => 0, 'y' => 81),
             array('month' => 'Feb', 'amount' => 'Rp5.9jt', 'x' => 9.1, 'y' => 69),
@@ -104,6 +326,8 @@ class AdminController extends Controller
 
     protected function bookingStatus()
     {
+        return $this->adminBookingStatusFromDatabase();
+
         return array(
             array('label' => 'Selesai', 'value' => '45%', 'count' => '234', 'color' => 'lime'),
             array('label' => 'Aktif', 'value' => '30%', 'count' => '156', 'color' => 'blue'),
@@ -114,6 +338,8 @@ class AdminController extends Controller
 
     protected function recentBookings()
     {
+        return $this->adminBookingsFromDatabase();
+
         return array(
             array('code' => 'AS-20240531-001', 'user' => 'Ahmad Fauzi', 'field' => 'Futsal A', 'date' => '31 Mei 2024', 'time' => '10:00 - 11:00', 'status' => 'Selesai', 'statusClass' => 'success', 'total' => 'Rp80.000'),
             array('code' => 'AS-20240531-002', 'user' => 'Rizal Maulana', 'field' => 'Badminton B', 'date' => '31 Mei 2024', 'time' => '14:00 - 15:00', 'status' => 'Aktif', 'statusClass' => 'active', 'total' => 'Rp60.000'),
@@ -125,6 +351,8 @@ class AdminController extends Controller
 
     protected function popularFields()
     {
+        return $this->adminPopularFieldsFromDatabase();
+
         return array(
             array('name' => 'Futsal A', 'booking' => '210', 'percent' => 28),
             array('name' => 'Badminton B', 'booking' => '180', 'percent' => 24),
@@ -136,6 +364,8 @@ class AdminController extends Controller
 
     protected function bottomMetrics()
     {
+        return $this->adminBottomMetricsFromDatabase();
+
         return array(
             array('label' => 'Pendapatan Hari Ini', 'value' => 'Rp2.450.000', 'trend' => '18.2%', 'note' => 'dari kemarin', 'icon' => 'fa-rupiah-sign', 'accent' => 'green'),
             array('label' => 'Pendapatan Bulan Ini', 'value' => 'Rp124.500.000', 'trend' => '22.5%', 'note' => 'dari bulan lalu', 'icon' => 'fa-volleyball', 'accent' => 'indigo'),
@@ -196,6 +426,7 @@ class AdminController extends Controller
             'title' => 'Manajemen Lapangan | Arena Sport',
             'activeMenu' => 'lapangan',
             'userName' => $userName,
+            'fields' => $this->adminFieldsFromDatabase(),
         ), 'layouts/admin');
     }
 
@@ -515,6 +746,8 @@ class AdminController extends Controller
 
     protected function adminReviewStats()
     {
+        return $this->adminReviewStatsFromDatabase();
+
         return array(
             array('label' => 'Total Ulasan', 'value' => '128', 'trend' => '12', 'note' => 'dari bulan lalu', 'icon' => 'fa-star', 'accent' => 'gold', 'direction' => 'up'),
             array('label' => 'Rating Rata-rata', 'value' => '4.6', 'trend' => '0.2', 'note' => 'dari bulan lalu', 'icon' => 'fa-star', 'accent' => 'blue', 'direction' => 'up'),
@@ -526,6 +759,8 @@ class AdminController extends Controller
 
     protected function adminReviews()
     {
+        return $this->adminReviewsFromDatabase();
+
         return array(
             array(
                 'initials' => 'AF',
@@ -587,6 +822,8 @@ class AdminController extends Controller
 
     protected function ratingDistribution()
     {
+        return $this->adminRatingDistributionFromDatabase();
+
         return array(
             array('label' => '5 Bintang', 'percent' => 72, 'count' => 92, 'color' => 'lime'),
             array('label' => '4 Bintang', 'percent' => 20, 'count' => 26, 'color' => 'green'),
@@ -598,6 +835,8 @@ class AdminController extends Controller
 
     protected function fieldRatings()
     {
+        return $this->adminFieldRatingsFromDatabase();
+
         return array(
             array('name' => 'Arena Futsal Parepare', 'rating' => '4.7', 'reviews' => 56, 'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=240&auto=format&fit=crop'),
             array('name' => 'Mini Soccer Victory', 'rating' => '4.6', 'reviews' => 34, 'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=240&auto=format&fit=crop'),
@@ -640,6 +879,8 @@ class AdminController extends Controller
 
     protected function transactionStats()
     {
+        return $this->adminTransactionStatsFromDatabase();
+
         return array(
             array('label' => 'Total Transaksi', 'value' => '362', 'trend' => '23', 'note' => 'dari minggu lalu', 'icon' => 'fa-wallet', 'accent' => 'green', 'direction' => 'up'),
             array('label' => 'Total Pendapatan', 'value' => 'Rp32.450.000', 'trend' => '15%', 'note' => 'dari minggu lalu', 'icon' => 'fa-money-check-dollar', 'accent' => 'blue', 'direction' => 'up'),
@@ -651,6 +892,8 @@ class AdminController extends Controller
 
     protected function transactions()
     {
+        return $this->adminTransactionsFromDatabase();
+
         return array(
             array(
                 'id' => 'TRX-2024-05-001',
@@ -819,6 +1062,8 @@ class AdminController extends Controller
 
     protected function reportStats()
     {
+        return $this->adminReportStatsFromDatabase();
+
         return array(
             array('label' => 'Total Pendapatan', 'value' => 'Rp32.450.000', 'trend' => '15%', 'note' => 'dari periode sebelumnya', 'icon' => 'fa-wallet', 'accent' => 'green'),
             array('label' => 'Total Booking', 'value' => '362', 'trend' => '18%', 'note' => 'dari periode sebelumnya', 'icon' => 'fa-calendar-check', 'accent' => 'purple'),
@@ -829,6 +1074,8 @@ class AdminController extends Controller
 
     protected function revenueReportPoints()
     {
+        return $this->adminRevenueReportFromDatabase();
+
         return array(
             array('label' => '1 Mei', 'amount' => 'Rp300.000', 'x' => 0, 'y' => 92),
             array('label' => '4 Mei', 'amount' => 'Rp800.000', 'x' => 10, 'y' => 80),
@@ -851,6 +1098,8 @@ class AdminController extends Controller
 
     protected function paymentReport()
     {
+        return $this->adminPaymentReportFromDatabase();
+
         return array(
             array('method' => 'VA BCA', 'amount' => 'Rp14.602.500', 'percent' => 45, 'color' => 'blue'),
             array('method' => 'OVO', 'amount' => 'Rp8.112.500', 'percent' => 25, 'color' => 'purple'),
@@ -862,6 +1111,8 @@ class AdminController extends Controller
 
     protected function fieldBookingReport()
     {
+        return $this->adminFieldBookingReportFromDatabase();
+
         return array(
             array('field' => 'Arena Futsal Parepare', 'short' => 'Arena Futsal<br>Parepare', 'value' => 120, 'height' => 100),
             array('field' => 'Badminton Center', 'short' => 'Badminton<br>Center', 'value' => 85, 'height' => 71),
@@ -980,6 +1231,15 @@ class AdminController extends Controller
 
     protected function notificationPreviews()
     {
+        $rows = $this->adminData()->rows('SELECT Judul, Pesan, Tipe, created_at FROM notifikasi ORDER BY created_at DESC LIMIT 6');
+        $previews = array();
+
+        foreach ($rows as $row) {
+            $previews[] = array('title' => $row['Judul'], 'description' => $row['Pesan'], 'time' => $this->adminDate(substr($row['created_at'], 0, 10)), 'icon' => 'fa-bell', 'accent' => strtolower($row['Tipe']) === 'error' ? 'red' : 'green');
+        }
+
+        return $previews;
+
         return array(
             array('title' => 'Booking Baru', 'description' => 'Booking baru untuk lapangan Futsal A pada 16 Juni 2024, 19:00 WIB.', 'time' => '2 menit lalu', 'icon' => 'fa-calendar-days', 'accent' => 'green'),
             array('title' => 'Booking Dikonfirmasi', 'description' => 'Booking Anda untuk lapangan Badminton 1 telah dikonfirmasi.', 'time' => '15 menit lalu', 'icon' => 'fa-check', 'accent' => 'blue'),
@@ -993,6 +1253,8 @@ class AdminController extends Controller
 
     protected function adminPaymentMethods()
     {
+        return $this->adminPaymentMethodsFromDatabase();
+
         return array(
             array('name' => 'Transfer Bank', 'description' => 'Pembayaran melalui transfer ke rekening bank.', 'mark' => 'VA', 'accent' => 'bank', 'enabled' => true),
             array('name' => 'E-Wallet (OVO)', 'description' => 'Pembayaran melalui OVO.', 'mark' => 'O', 'accent' => 'ovo', 'enabled' => true),
@@ -1013,6 +1275,8 @@ class AdminController extends Controller
 
     protected function adminBankAccounts()
     {
+        return $this->adminBankAccountsFromDatabase();
+
         return array(
             array('bank' => 'BCA', 'account' => '1234 5678 9012 3456', 'owner' => 'Arena Sport', 'status' => 'Aktif', 'statusClass' => 'success', 'accent' => 'bca'),
             array('bank' => 'BNI', 'account' => '9876 5432 1098 7654', 'owner' => 'Arena Sport', 'status' => 'Aktif', 'statusClass' => 'success', 'accent' => 'bni'),
@@ -1054,6 +1318,15 @@ class AdminController extends Controller
 
     protected function adminAccountProfile($name)
     {
+        $row = $this->adminData()->row('SELECT Nama, Email, Nomor_telepon, Role FROM users WHERE ID_User = ? LIMIT 1', 's', array(isset($_SESSION['id_user']) ? $_SESSION['id_user'] : ''));
+
+        if ($row) {
+            $parts = preg_split('/\s+/', trim($row['Nama']));
+            $initials = '';
+            foreach (array_slice($parts, 0, 2) as $part) { $initials .= strtoupper(substr($part, 0, 1)); }
+            return array('name' => $row['Nama'], 'initials' => $initials, 'email' => $row['Email'], 'phone' => $row['Nomor_telepon'], 'username' => strtolower(strstr($row['Email'], '@', true)), 'role' => ucfirst($row['Role']));
+        }
+
         $displayName = trim((string) $name);
 
         if ($displayName === '' || strtolower($displayName) === 'ripal' || strtolower($displayName) === 'admin arena') {
@@ -1115,12 +1388,14 @@ class AdminController extends Controller
 
     protected function systemInformation()
     {
+        $version = $this->adminData()->value('SELECT VERSION() AS value');
+
         return array(
             array('label' => 'Versi Aplikasi', 'value' => 'v1.0.0', 'icon' => 'fa-server', 'accent' => 'green'),
             array('label' => 'Versi PHP', 'value' => PHP_VERSION, 'icon' => 'fa-code', 'accent' => 'blue'),
-            array('label' => 'Database', 'value' => 'MySQL 8.0', 'icon' => 'fa-database', 'accent' => 'purple'),
-            array('label' => 'Waktu Server', 'value' => '16 Juni 2024<br>17:54 WIB', 'icon' => 'fa-clock', 'accent' => 'gold'),
-            array('label' => 'Terakhir Update', 'value' => '10 Juni 2024<br>14:30 WIB', 'icon' => 'fa-cloud-arrow-up', 'accent' => 'teal'),
+            array('label' => 'Database', 'value' => 'MariaDB ' . $version, 'icon' => 'fa-database', 'accent' => 'purple'),
+            array('label' => 'Waktu Server', 'value' => date('d/m/Y H:i') . ' WITA', 'icon' => 'fa-clock', 'accent' => 'gold'),
+            array('label' => 'Terakhir Update', 'value' => date('d/m/Y H:i') . ' WITA', 'icon' => 'fa-cloud-arrow-up', 'accent' => 'teal'),
         );
     }
 }

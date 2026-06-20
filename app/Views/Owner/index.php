@@ -1,8 +1,13 @@
 <?php
 $linePoints = array();
+$ownerBookingTotal = 0;
 
 foreach ($monthlyRevenue as $point) {
     $linePoints[] = $point['x'] . ',' . $point['y'];
+}
+
+foreach ($bookingStatus as $status) {
+    $ownerBookingTotal += isset($status['count']) ? (int) $status['count'] : 0;
 }
 
 $linePoints = implode(' ', $linePoints);
@@ -80,7 +85,7 @@ $linePoints = implode(' ', $linePoints);
         <div class="admin-booking-status owner-booking-status">
             <div class="admin-donut owner-donut">
                 <span>Total</span>
-                <strong>120</strong>
+                <strong><?php echo e($ownerBookingTotal); ?></strong>
                 <small>Booking</small>
             </div>
 

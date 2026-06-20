@@ -3,9 +3,9 @@ $typeOptions = isset($transactionTypeOptions) ? $transactionTypeOptions : array(
 $methodOptions = isset($transactionMethodOptions) ? $transactionMethodOptions : array('semua' => 'Semua Metode', 'qris' => 'QRIS', 'dana' => 'DANA', 'ovo' => 'OVO', 'bank' => 'Transfer Bank');
 $statusOptions = isset($transactionStatusOptions) ? $transactionStatusOptions : array('semua' => 'Semua Status', 'selesai' => 'Selesai', 'menunggu' => 'Menunggu', 'dibatalkan' => 'Dibatalkan');
 $transactionFilters = isset($transactionFilters) ? $transactionFilters : array(
-    'startDate' => '2024-05-01',
-    'endDate' => '2024-05-31',
-    'dateLabel' => '01 Mei 2024 - 31 Mei 2024',
+    'startDate' => date('Y-m-01'),
+    'endDate' => date('Y-m-t'),
+    'dateLabel' => date('d/m/Y', strtotime('first day of this month')) . ' - ' . date('d/m/Y', strtotime('last day of this month')),
     'type' => 'semua',
     'method' => 'semua',
     'status' => 'semua',

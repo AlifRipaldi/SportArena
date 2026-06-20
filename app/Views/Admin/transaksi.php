@@ -42,7 +42,7 @@ $paymentMarks = array(
             </label>
 
             <button class="admin-date-filter" type="button">
-                <span>01/05/2024 - 31/05/2024</span>
+                <span><?php echo e(date('d/m/Y', strtotime('first day of this month')) . ' - ' . date('d/m/Y', strtotime('last day of this month'))); ?></span>
                 <i class="fa-regular fa-calendar-days"></i>
             </button>
 

@@ -17,7 +17,7 @@ function register_user_table($conn)
 }
 
 if (isset($_POST['register'])) {
-    $id_user = "USR" . rand(100, 999);
+    $id_user = 'USR' . date('ymdHis') . random_int(10, 99);
     $nama = trim($_POST['nama']);
     $email = trim($_POST['email']);
     $pass = password_hash($_POST['password'], PASSWORD_DEFAULT);
@@ -33,6 +33,14 @@ if (isset($_POST['register'])) {
     }
 
     if ($statement && mysqli_stmt_execute($statement)) {
+        $settings = mysqli_prepare($conn, 'INSERT IGNORE INTO user_settings (ID_User) VALUES (?)');
+
+        if ($settings) {
+            mysqli_stmt_bind_param($settings, 's', $id_user);
+            mysqli_stmt_execute($settings);
+            mysqli_stmt_close($settings);
+        }
+
         echo "<script>alert('Pendaftaran Berhasil!'); window.location='login.php';</script>";
         exit;
     } else {

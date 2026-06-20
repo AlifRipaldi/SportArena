@@ -1,5 +1,14 @@
-INSERT INTO `lapangan` (`ID_Lapangan`, `Nama_lapangan`, `Jenis_olahraga`, `Lokasi`, `Harga`) VALUES
-('LPG001', 'Arena Futsal Parepare', 'Futsal', 'Jendral Sudirman', 150000),
-('LPG002', 'Badminton Center', 'Badminton', 'Andi Makkasau', 75000),
-('LPG003', 'Mini Soccer Stadium', 'Mini Soccer', 'Mattirotasi', 250000),
-('LPG004', 'Basket Court Arena', 'Basket', 'Bau Massepe', 120000);
+INSERT INTO `metode_pembayaran`
+    (`ID_Metode`, `Nama`, `Tipe`, `Biaya_admin`, `Aktif`)
+VALUES
+    ('COD', 'Bayar di Tempat', 'cash', 0, 1),
+    ('QRIS', 'QRIS', 'qris', 0, 1),
+    ('TRANSFER', 'Transfer Bank', 'bank', 0, 1)
+ON DUPLICATE KEY UPDATE
+    `Nama` = VALUES(`Nama`),
+    `Tipe` = VALUES(`Tipe`),
+    `Biaya_admin` = VALUES(`Biaya_admin`),
+    `Aktif` = VALUES(`Aktif`);
+
+-- Akun, profil pemilik, lapangan, dan jadwal sebaiknya dibuat melalui aplikasi
+-- agar password selalu di-hash dan seluruh foreign key terisi dengan benar.

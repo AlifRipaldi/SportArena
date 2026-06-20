@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
+use App\Models\ArenaData;
 use App\Models\Lapangan;
 
 class PemilikController extends Controller
@@ -125,9 +126,10 @@ class PemilikController extends Controller
     {
         $owner = $this->requireOwner();
         $selectedStatus = $this->sanitizeScheduleStatus(isset($_GET['status']) ? $_GET['status'] : 'Semua');
-        $selectedDateValue = $this->sanitizeScheduleDate(isset($_GET['date']) ? $_GET['date'] : '2025-06-16');
+        $selectedDateValue = $this->sanitizeScheduleDate(isset($_GET['date']) ? $_GET['date'] : date('Y-m-d'));
         $currentPage = isset($_GET['page']) ? (int) $_GET['page'] : 1;
         $scheduleResult = $this->getFilteredSchedule($selectedStatus, $selectedDateValue, $currentPage);
+        $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
 
         return $this->view('Owner/jadwal', array(
             'title' => 'Jadwal Booking | Arena Sport',
@@ -140,7 +142,32 @@ class PemilikController extends Controller
             'selectedDateValue' => $selectedDateValue,
             'schedule' => $scheduleResult['items'],
             'pagination' => $scheduleResult['pagination'],
+            'managedFields' => $fieldOwnerId !== '' ? $this->getAllLapangan($fieldOwnerId) : array(),
         ), 'layouts/owner');
+    }
+
+    public function storeJadwal()
+    {
+        $owner = $this->requireOwner();
+        $ownerId = $this->ownerLapanganPemilikId($owner);
+        $fieldId = isset($_POST['id_lapangan']) ? trim((string) $_POST['id_lapangan']) : '';
+        $date = isset($_POST['tanggal']) ? trim((string) $_POST['tanggal']) : '';
+        $start = isset($_POST['jam_mulai']) ? trim((string) $_POST['jam_mulai']) : '';
+        $end = isset($_POST['jam_selesai']) ? trim((string) $_POST['jam_selesai']) : '';
+        $price = isset($_POST['harga']) ? max(0, (int) $_POST['harga']) : 0;
+
+        if ($ownerId !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && $date >= date('Y-m-d') && $start < $end) {
+            $data = $this->ownerData();
+            $ownsField = (int) $data->value('SELECT COUNT(*) AS value FROM lapangan WHERE ID_Lapangan=? AND ID_Pemilik=? AND deleted_at IS NULL', 'ss', array($fieldId, $ownerId));
+
+            if ($ownsField > 0) {
+                $id = 'JWL' . date('ymdHis') . random_int(10, 99);
+                $data->execute("INSERT IGNORE INTO jadwal (ID_Jadwal,ID_Lapangan,Tanggal,Jam_Mulai,Jam_Selesai,Status,Harga) VALUES (?,?,?,?,?,'Available',?)", 'sssssi', array($id, $fieldId, $date, $start, $end, $price));
+            }
+        }
+
+        header('Location: ' . app_url('pemilik/jadwal?date=' . rawurlencode($date !== '' ? $date : date('Y-m-d'))));
+        exit;
     }
 
     public function pendapatan()
@@ -341,12 +368,395 @@ class PemilikController extends Controller
         return strtolower(str_replace(array('_', '-'), ' ', trim((string) $role)));
     }
 
+    protected function ownerData()
+    {
+        return new ArenaData();
+    }
+
+    protected function ownerUserId()
+    {
+        return isset($_SESSION['id_user']) ? trim((string) $_SESSION['id_user']) : '';
+    }
+
+    protected function ownerDatabaseId()
+    {
+        $value = $this->ownerData()->value(
+            'SELECT ID_Pemilik AS value FROM pemilik_lapangan WHERE ID_User = ? LIMIT 1',
+            's',
+            array($this->ownerUserId())
+        );
+
+        return $value !== null ? trim((string) $value) : '';
+    }
+
+    protected function ownerBookingDatabaseRows()
+    {
+        $ownerId = $this->ownerDatabaseId();
+
+        if ($ownerId === '') {
+            return array();
+        }
+
+        return $this->ownerData()->rows(
+            "SELECT b.ID_Booking, b.Status AS booking_status, b.Total_harga, b.Waktu_transaksi,
+                    u.Nama AS customer_name, u.Nomor_telepon,
+                    j.Tanggal, j.Jam_Mulai, j.Jam_Selesai,
+                    l.ID_Lapangan, l.Nama_lapangan, l.Jenis_olahraga, l.Foto,
+                    p.ID_Pembayaran, p.Jumlah, p.Metode, p.Status AS payment_status,
+                    p.Waktu_pembayaran, p.created_at AS payment_created_at
+             FROM booking b
+             INNER JOIN users u ON u.ID_User = b.ID_User
+             INNER JOIN jadwal j ON j.ID_Jadwal = b.ID_Jadwal
+             INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
+             LEFT JOIN pembayaran p ON p.ID_Pembayaran = (
+                 SELECT p2.ID_Pembayaran FROM pembayaran p2
+                 WHERE p2.ID_Booking = b.ID_Booking
+                 ORDER BY p2.created_at DESC, p2.ID_Pembayaran DESC LIMIT 1
+             )
+             WHERE l.ID_Pemilik = ?
+             ORDER BY j.Tanggal DESC, j.Jam_Mulai DESC",
+            's',
+            array($ownerId)
+        );
+    }
+
+    protected function ownerStatusPayload($bookingStatus, $paymentStatus = '')
+    {
+        $status = $this->normalizeRole($bookingStatus . ' ' . $paymentStatus);
+
+        if (strpos($status, 'batal') !== false || strpos($status, 'refund') !== false || strpos($status, 'gagal') !== false) {
+            return array('key' => 'dibatalkan', 'label' => 'Dibatalkan', 'class' => 'danger');
+        }
+
+        if (strpos($status, 'selesai') !== false || strpos($status, 'berhasil') !== false || strpos($status, 'dibayar') !== false || strpos($status, 'lunas') !== false || strpos($status, 'paid') !== false) {
+            return array('key' => 'selesai', 'label' => 'Selesai', 'class' => 'active');
+        }
+
+        if (strpos($status, 'menunggu') !== false || strpos($status, 'pending') !== false) {
+            return array('key' => 'menunggu', 'label' => 'Pending', 'class' => 'warning');
+        }
+
+        return array('key' => 'aktif', 'label' => 'Aktif', 'class' => 'success');
+    }
+
+    protected function ownerBookingsFromDatabase()
+    {
+        $bookings = array();
+
+        foreach ($this->ownerBookingDatabaseRows() as $row) {
+            $status = $this->ownerStatusPayload($row['booking_status'], isset($row['payment_status']) ? $row['payment_status'] : '');
+            $bookings[] = array(
+                'code' => $row['ID_Booking'],
+                'field' => $row['Nama_lapangan'],
+                'user' => $row['customer_name'],
+                'date' => $this->ownerFormatDatabaseDate($row['Tanggal']),
+                'time' => substr((string) $row['Jam_Mulai'], 0, 5) . ' - ' . substr((string) $row['Jam_Selesai'], 0, 5),
+                'status' => $status['label'],
+                'statusClass' => $status['class'],
+                'total' => $this->formatOwnerRupiah($row['Total_harga']),
+            );
+        }
+
+        return $bookings;
+    }
+
+    protected function ownerScheduleFromDatabase()
+    {
+        $schedule = array();
+        $ownerId = $this->ownerDatabaseId();
+        if ($ownerId === '') { return $schedule; }
+        $rows = $this->ownerData()->rows(
+            "SELECT j.ID_Jadwal,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,j.Status AS schedule_status,j.Harga,
+                    l.Nama_lapangan,l.Harga AS field_price,
+                    b.ID_Booking,b.Status AS booking_status,b.Total_harga,
+                    u.Nama AS customer_name,p.Status AS payment_status
+             FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan
+             LEFT JOIN booking b ON b.ID_Booking=(SELECT b2.ID_Booking FROM booking b2 WHERE b2.ID_Jadwal=j.ID_Jadwal ORDER BY b2.Waktu_transaksi DESC LIMIT 1)
+             LEFT JOIN users u ON u.ID_User=b.ID_User
+             LEFT JOIN pembayaran p ON p.ID_Pembayaran=(SELECT p2.ID_Pembayaran FROM pembayaran p2 WHERE p2.ID_Booking=b.ID_Booking ORDER BY p2.created_at DESC LIMIT 1)
+             WHERE l.ID_Pemilik=? AND l.deleted_at IS NULL ORDER BY j.Tanggal DESC,j.Jam_Mulai DESC",
+            's', array($ownerId)
+        );
+
+        foreach ($rows as $row) {
+            $status = !empty($row['ID_Booking'])
+                ? $this->ownerStatusPayload($row['booking_status'], isset($row['payment_status']) ? $row['payment_status'] : '')
+                : array('key' => 'aktif', 'label' => strtolower($row['schedule_status']) === 'booked' ? 'Terisi' : 'Aktif', 'class' => 'success');
+            $start = substr((string) $row['Jam_Mulai'], 0, 5);
+            $end = substr((string) $row['Jam_Selesai'], 0, 5);
+            $minutes = max(0, (int) ((strtotime($end) - strtotime($start)) / 60));
+            $schedule[] = array(
+                'tenant' => !empty($row['customer_name']) ? $row['customer_name'] : 'Tersedia',
+                'field' => $row['Nama_lapangan'],
+                'date' => $this->ownerFormatDatabaseDate($row['Tanggal']),
+                'dateValue' => $row['Tanggal'],
+                'time' => $start . ' - ' . $end,
+                'duration' => $minutes >= 60 && $minutes % 60 === 0 ? ($minutes / 60) . ' Jam' : $minutes . ' Menit',
+                'status' => $status['label'],
+                'statusClass' => $status['class'],
+                'total' => $this->formatOwnerRupiah(!empty($row['Total_harga']) ? $row['Total_harga'] : (!empty($row['Harga']) ? $row['Harga'] : $row['field_price'])),
+            );
+        }
+
+        return $schedule;
+    }
+
+    protected function ownerMonthlyRevenueFromDatabase()
+    {
+        $ownerId = $this->ownerDatabaseId();
+        $amounts = array_fill(1, 12, 0);
+
+        if ($ownerId !== '') {
+            $rows = $this->ownerData()->rows(
+                "SELECT MONTH(COALESCE(p.Waktu_pembayaran,p.created_at)) AS month_number,
+                        COALESCE(SUM(p.Jumlah),0) AS amount
+                 FROM pembayaran p
+                 INNER JOIN booking b ON b.ID_Booking = p.ID_Booking
+                 INNER JOIN jadwal j ON j.ID_Jadwal = b.ID_Jadwal
+                 INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
+                 WHERE l.ID_Pemilik = ?
+                   AND LOWER(p.Status) IN ('berhasil','dibayar','lunas','success','paid')
+                   AND YEAR(COALESCE(p.Waktu_pembayaran,p.created_at)) = YEAR(CURDATE())
+                 GROUP BY MONTH(COALESCE(p.Waktu_pembayaran,p.created_at))",
+                's',
+                array($ownerId)
+            );
+
+            foreach ($rows as $row) {
+                $amounts[(int) $row['month_number']] = (int) $row['amount'];
+            }
+        }
+
+        $max = max(1, max($amounts));
+        $points = array();
+
+        foreach ($amounts as $month => $amount) {
+            $points[] = array(
+                'month' => $this->shortOwnerMonthName($month),
+                'amount' => $this->formatOwnerRupiah($amount),
+                'x' => round((($month - 1) / 11) * 100, 2),
+                'y' => round(92 - (($amount / $max) * 82), 2),
+            );
+        }
+
+        return $points;
+    }
+
+    protected function ownerBookingStatusFromDatabase()
+    {
+        $counts = array('Selesai' => 0, 'Aktif' => 0, 'Pending' => 0, 'Dibatalkan' => 0);
+
+        foreach ($this->ownerBookingDatabaseRows() as $row) {
+            $status = $this->ownerStatusPayload($row['booking_status'], isset($row['payment_status']) ? $row['payment_status'] : '');
+            $counts[$status['label']] = isset($counts[$status['label']]) ? $counts[$status['label']] + 1 : 1;
+        }
+
+        $total = max(1, array_sum($counts));
+        $colors = array('Selesai' => 'lime', 'Aktif' => 'blue', 'Pending' => 'gold', 'Dibatalkan' => 'red');
+        $result = array();
+
+        foreach ($counts as $label => $count) {
+            $result[] = array('label' => $label, 'value' => number_format(($count / $total) * 100, 0) . '%', 'count' => (string) $count, 'color' => $colors[$label]);
+        }
+
+        return $result;
+    }
+
+    protected function ownerFieldsFromDatabase()
+    {
+        $ownerId = $this->ownerDatabaseId();
+
+        if ($ownerId === '') {
+            return array();
+        }
+
+        $rows = $this->ownerData()->rows(
+            "SELECT l.*, COALESCE(AVG(r.Rating),0) AS rating, COUNT(r.ID_Review) AS reviews
+             FROM lapangan l LEFT JOIN review r ON r.ID_Lapangan = l.ID_Lapangan
+             WHERE l.ID_Pemilik = ? AND l.deleted_at IS NULL
+             GROUP BY l.ID_Lapangan ORDER BY l.created_at DESC",
+            's',
+            array($ownerId)
+        );
+        $fields = array();
+
+        foreach ($rows as $row) {
+            $fields[] = array(
+                'name' => $row['Nama_lapangan'], 'location' => $row['Lokasi'],
+                'rating' => number_format((float) $row['rating'], 1), 'reviews' => (string) $row['reviews'],
+                'price' => $this->formatOwnerRupiah($row['Harga']), 'status' => $row['Status'],
+                'visual' => $this->lapanganVisual($row['Jenis_olahraga']),
+            );
+        }
+
+        return $fields;
+    }
+
+    protected function ownerRevenueTransactionsFromDatabase()
+    {
+        $transactions = array();
+
+        foreach ($this->ownerBookingDatabaseRows() as $row) {
+            $paymentStatus = strtolower(trim((string) (isset($row['payment_status']) ? $row['payment_status'] : '')));
+
+            if (!in_array($paymentStatus, array('berhasil', 'dibayar', 'lunas', 'success', 'paid'), true)) {
+                continue;
+            }
+
+            $amount = !empty($row['Jumlah']) ? (int) $row['Jumlah'] : (int) $row['Total_harga'];
+            $fee = (int) round($amount * 0.02);
+            $transactions[] = array(
+                'date' => substr((string) (!empty($row['Waktu_pembayaran']) ? $row['Waktu_pembayaran'] : $row['payment_created_at']), 0, 10),
+                'field' => $row['Nama_lapangan'], 'tenant' => $row['customer_name'],
+                'total' => $this->formatOwnerRupiah($amount), 'fee' => $this->formatOwnerRupiah($fee),
+                'net' => $this->formatOwnerRupiah($amount - $fee), 'status' => 'Dibayar',
+                'method' => isset($row['Metode']) ? $row['Metode'] : '-',
+                'methodIcon' => 'fa-building-columns', 'methodClass' => $this->ownerMethodClass(isset($row['Metode']) ? $row['Metode'] : ''),
+            );
+        }
+
+        return $transactions;
+    }
+
+    protected function ownerTransactionsFromDatabase()
+    {
+        $transactions = array();
+
+        foreach ($this->ownerBookingDatabaseRows() as $row) {
+            $status = $this->ownerStatusPayload($row['booking_status'], isset($row['payment_status']) ? $row['payment_status'] : '');
+            $created = !empty($row['payment_created_at']) ? $row['payment_created_at'] : $row['Waktu_transaksi'];
+            $amount = !empty($row['Jumlah']) ? (int) $row['Jumlah'] : (int) $row['Total_harga'];
+            $method = isset($row['Metode']) && trim((string) $row['Metode']) !== '' ? $row['Metode'] : '-';
+            $transactions[] = array(
+                'orderId' => !empty($row['ID_Pembayaran']) ? $row['ID_Pembayaran'] : $row['ID_Booking'],
+                'typeKey' => 'booking', 'type' => 'Booking Lapangan',
+                'date' => $this->ownerFormatDatabaseDate(substr((string) $created, 0, 10)),
+                'dateValue' => substr((string) $created, 0, 10), 'time' => substr((string) $created, 11, 5) . ' WITA',
+                'customer' => $row['customer_name'], 'phone' => $row['Nomor_telepon'],
+                'field' => $row['Nama_lapangan'], 'bookingDate' => $this->ownerFormatDatabaseDate($row['Tanggal']),
+                'bookingTime' => substr((string) $row['Jam_Mulai'], 0, 5) . ' - ' . substr((string) $row['Jam_Selesai'], 0, 5),
+                'methodKey' => $this->ownerMethodClass($method), 'method' => $method,
+                'methodClass' => $this->ownerMethodClass($method), 'methodIcon' => 'fa-building-columns',
+                'total' => $this->formatOwnerRupiah($amount), 'statusKey' => $status['key'],
+                'status' => $status['label'], 'statusClass' => $status['class'],
+            );
+        }
+
+        return $transactions;
+    }
+
+    protected function ownerReviewsFromDatabase()
+    {
+        $ownerId = $this->ownerDatabaseId();
+
+        if ($ownerId === '') {
+            return array();
+        }
+
+        $rows = $this->ownerData()->rows(
+            "SELECT r.Rating, r.Komentar, r.created_at, u.Nama, u.Email, l.Nama_lapangan
+             FROM review r INNER JOIN users u ON u.ID_User = r.ID_User
+             INNER JOIN lapangan l ON l.ID_Lapangan = r.ID_Lapangan
+             WHERE l.ID_Pemilik = ? ORDER BY r.created_at DESC",
+            's', array($ownerId)
+        );
+        $reviews = array();
+
+        foreach ($rows as $row) {
+            $name = $row['Nama'];
+            $reviews[] = array(
+                'name' => $name, 'username' => '@' . strstr((string) $row['Email'], '@', true),
+                'field' => $row['Nama_lapangan'], 'rating' => (float) $row['Rating'],
+                'review' => $row['Komentar'], 'date' => $this->ownerFormatDatabaseDate(substr((string) $row['created_at'], 0, 10)),
+                'time' => substr((string) $row['created_at'], 11, 5),
+                'avatar' => 'https://ui-avatars.com/api/?name=' . rawurlencode($name) . '&background=245b84&color=ffffff',
+            );
+        }
+
+        return $reviews;
+    }
+
+    protected function ownerReviewStatsFromDatabase()
+    {
+        $reviews = $this->ownerReviewsFromDatabase();
+        $total = count($reviews); $sum = 0; $positive = 0;
+        foreach ($reviews as $review) { $sum += $review['rating']; $positive += $review['rating'] >= 4 ? 1 : 0; }
+        $average = $total > 0 ? $sum / $total : 0; $negative = $total - $positive;
+
+        return array(
+            array('label' => 'Rating Rata-rata', 'value' => number_format($average, 1) . ' / 5', 'note' => '(' . $total . ' ulasan)', 'icon' => 'fa-star', 'accent' => 'lime', 'rating' => $average),
+            array('label' => 'Total Ulasan', 'value' => (string) $total, 'trend' => '0%', 'note' => 'data tersimpan', 'icon' => 'fa-comment-dots', 'accent' => 'blue'),
+            array('label' => 'Ulasan Positif', 'value' => (string) $positive, 'trend' => $total ? number_format(($positive / $total) * 100, 1) . '%' : '0%', 'note' => 'dari total ulasan', 'icon' => 'fa-thumbs-up', 'accent' => 'purple'),
+            array('label' => 'Ulasan Negatif', 'value' => (string) $negative, 'trend' => $total ? number_format(($negative / $total) * 100, 1) . '%' : '0%', 'note' => 'dari total ulasan', 'icon' => 'fa-thumbs-down', 'accent' => 'orange'),
+        );
+    }
+
+    protected function ownerRatingDistributionFromDatabase()
+    {
+        $counts = array(5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0);
+        foreach ($this->ownerReviewsFromDatabase() as $review) { $star = max(1, min(5, (int) round($review['rating']))); $counts[$star]++; }
+        $total = max(1, array_sum($counts)); $result = array();
+        foreach ($counts as $stars => $count) { $result[] = array('stars' => $stars, 'count' => $count, 'percent' => ($count / $total) * 100); }
+        return $result;
+    }
+
+    protected function ownerFieldRatingsFromDatabase()
+    {
+        $ownerId = $this->ownerDatabaseId();
+        if ($ownerId === '') { return array(); }
+        $rows = $this->ownerData()->rows("SELECT l.Nama_lapangan, l.Jenis_olahraga, l.Foto, COALESCE(AVG(r.Rating),0) rating, COUNT(r.ID_Review) reviews FROM lapangan l LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan WHERE l.ID_Pemilik=? AND l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY rating DESC", 's', array($ownerId));
+        $fields = array();
+        foreach ($rows as $row) { $rating=(float)$row['rating']; $fields[]=array('name'=>$row['Nama_lapangan'],'rating'=>number_format($rating,1),'reviews'=>(string)$row['reviews'],'percent'=>($rating/5)*100,'image'=>$this->ownerFieldImage($row['Foto'],$row['Jenis_olahraga'])); }
+        return $fields;
+    }
+
+    protected function ownerManagedFieldsFromDatabase()
+    {
+        $ownerId = $this->ownerDatabaseId();
+        if ($ownerId === '') { return array(); }
+        $rows = $this->ownerData()->rows('SELECT * FROM lapangan WHERE ID_Pemilik=? AND deleted_at IS NULL ORDER BY created_at DESC', 's', array($ownerId));
+        $fields = array();
+        foreach ($rows as $row) { $fields[]=array('name'=>$row['Nama_lapangan'],'type'=>$row['Jenis_olahraga'],'location'=>$row['Lokasi'],'price'=>$this->formatOwnerRupiah($row['Harga']),'status'=>$row['Status'],'image'=>$this->ownerFieldImage($row['Foto'],$row['Jenis_olahraga'])); }
+        return $fields;
+    }
+
+    protected function ownerFieldImage($photos, $type)
+    {
+        $decoded = json_decode((string) $photos, true);
+        if (is_array($decoded) && !empty($decoded[0]) && strpos($decoded[0], '..') === false) { return app_url($decoded[0]); }
+        $type = strtolower((string) $type);
+        if (strpos($type, 'badminton') !== false) { return 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=500&auto=format&fit=crop'; }
+        return 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=500&auto=format&fit=crop';
+    }
+
+    protected function ownerMethodClass($method)
+    {
+        $method = strtolower((string) $method);
+        if (strpos($method, 'qris') !== false) { return 'qris'; }
+        if (strpos($method, 'dana') !== false) { return 'dana'; }
+        if (strpos($method, 'ovo') !== false) { return 'ovo'; }
+        return 'bank';
+    }
+
+    protected function ownerFormatDatabaseDate($date)
+    {
+        try { return $this->formatOwnerReportDate(new \DateTimeImmutable((string) $date)); }
+        catch (\Throwable $exception) { return '-'; }
+    }
+
     protected function summaryCards()
     {
+        $ownerId = $this->ownerDatabaseId();
+        $data = $this->ownerData();
+        $fieldCount = $ownerId !== '' ? (int) $data->value("SELECT COUNT(*) AS value FROM lapangan WHERE ID_Pemilik = ? AND deleted_at IS NULL", 's', array($ownerId)) : 0;
+        $todayBookings = $ownerId !== '' ? (int) $data->value("SELECT COUNT(*) AS value FROM booking b INNER JOIN jadwal j ON j.ID_Jadwal = b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan WHERE l.ID_Pemilik = ? AND j.Tanggal = CURDATE()", 's', array($ownerId)) : 0;
+        $monthIncome = $ownerId !== '' ? (int) $data->value("SELECT COALESCE(SUM(p.Jumlah), 0) AS value FROM pembayaran p INNER JOIN booking b ON b.ID_Booking = p.ID_Booking INNER JOIN jadwal j ON j.ID_Jadwal = b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan WHERE l.ID_Pemilik = ? AND LOWER(p.Status) IN ('berhasil','dibayar','lunas','success','paid') AND YEAR(COALESCE(p.Waktu_pembayaran,p.created_at)) = YEAR(CURDATE()) AND MONTH(COALESCE(p.Waktu_pembayaran,p.created_at)) = MONTH(CURDATE())", 's', array($ownerId)) : 0;
+        $rating = $ownerId !== '' ? (float) $data->value("SELECT COALESCE(AVG(r.Rating), 0) AS value FROM review r INNER JOIN lapangan l ON l.ID_Lapangan = r.ID_Lapangan WHERE l.ID_Pemilik = ?", 's', array($ownerId)) : 0;
+
         return array(
             array(
                 'label' => 'Total Lapangan',
-                'value' => '3',
+                'value' => (string) $fieldCount,
                 'trend' => 'Lapangan Aktif',
                 'note' => '',
                 'icon' => 'fa-map-location-dot',
@@ -354,7 +764,7 @@ class PemilikController extends Controller
             ),
             array(
                 'label' => 'Booking Hari Ini',
-                'value' => '18',
+                'value' => (string) $todayBookings,
                 'trend' => '12%',
                 'note' => 'dari kemarin',
                 'icon' => 'fa-calendar-days',
@@ -362,7 +772,7 @@ class PemilikController extends Controller
             ),
             array(
                 'label' => 'Pendapatan Bulan Ini',
-                'value' => 'Rp4.250.000',
+                'value' => $this->formatOwnerRupiah($monthIncome),
                 'trend' => '18.6%',
                 'note' => 'dari bulan lalu',
                 'icon' => 'fa-rupiah-sign',
@@ -370,7 +780,7 @@ class PemilikController extends Controller
             ),
             array(
                 'label' => 'Rating Rata-rata',
-                'value' => '4.8',
+                'value' => number_format($rating, 1),
                 'trend' => '0.3',
                 'note' => 'dari bulan lalu',
                 'icon' => 'fa-star',
@@ -381,6 +791,8 @@ class PemilikController extends Controller
 
     protected function monthlyRevenue()
     {
+        return $this->ownerMonthlyRevenueFromDatabase();
+
         return array(
             array('month' => 'Jan', 'amount' => 'Rp2jt', 'x' => 0, 'y' => 80),
             array('month' => 'Feb', 'amount' => 'Rp3.4jt', 'x' => 9.1, 'y' => 66),
@@ -399,6 +811,8 @@ class PemilikController extends Controller
 
     protected function bookingStatus()
     {
+        return $this->ownerBookingStatusFromDatabase();
+
         return array(
             array('label' => 'Selesai', 'value' => '55%', 'count' => '66', 'color' => 'lime'),
             array('label' => 'Aktif', 'value' => '25%', 'count' => '30', 'color' => 'blue'),
@@ -409,6 +823,8 @@ class PemilikController extends Controller
 
     protected function recentBookings()
     {
+        return array_slice($this->getOwnerBookings(), 0, 5);
+
         return array(
             array('code' => 'AS-20260617-001', 'field' => 'Arena Futsal A', 'user' => 'Ahmad', 'date' => '17 Juni 2026', 'time' => '19:00 - 20:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
             array('code' => 'AS-20260617-002', 'field' => 'Arena Badminton 1', 'user' => 'Rizal', 'date' => '17 Juni 2026', 'time' => '20:00 - 21:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
@@ -420,6 +836,8 @@ class PemilikController extends Controller
 
     protected function ownerFields()
     {
+        return $this->ownerFieldsFromDatabase();
+
         return array(
             array('name' => 'Arena Futsal A', 'location' => 'Parepare', 'rating' => '4.8', 'reviews' => '120', 'price' => 'Rp80.000', 'status' => 'Aktif', 'visual' => 'futsal'),
             array('name' => 'Arena Badminton 1', 'location' => 'Parepare', 'rating' => '4.7', 'reviews' => '85', 'price' => 'Rp60.000', 'status' => 'Aktif', 'visual' => 'badminton'),
@@ -428,6 +846,15 @@ class PemilikController extends Controller
 
     protected function latestReviews()
     {
+        $rows = array_slice($this->ownerReviewRows(), 0, 3);
+        $reviews = array();
+
+        foreach ($rows as $row) {
+            $reviews[] = array('name' => $row['name'], 'time' => $row['date'], 'rating' => $row['rating'], 'text' => $row['review']);
+        }
+
+        return $reviews;
+
         return array(
             array('name' => 'Rahman', 'time' => '2 hari lalu', 'rating' => 5, 'text' => 'Lapangan bersih dan nyaman, pelayanan ramah, rekomendasi!'),
             array('name' => 'Akbar', 'time' => '3 hari lalu', 'rating' => 4, 'text' => 'Parkiran luas dan lokasi strategis, mantap!'),
@@ -759,6 +1186,8 @@ class PemilikController extends Controller
 
     protected function getOwnerBookings()
     {
+        return $this->ownerBookingsFromDatabase();
+
         return array(
             array('code' => 'AS-20260617-001', 'field' => 'Arena Futsal A', 'user' => 'Ahmad', 'date' => '17 Juni 2026', 'time' => '19:00 - 20:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
             array('code' => 'AS-20260617-002', 'field' => 'Arena Badminton 1', 'user' => 'Rizal', 'date' => '17 Juni 2026', 'time' => '20:00 - 21:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
@@ -769,6 +1198,8 @@ class PemilikController extends Controller
 
     protected function getSchedule()
     {
+        return $this->ownerScheduleFromDatabase();
+
         return array(
             array('tenant' => 'Ahmad', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
             array('tenant' => 'Rizal', 'field' => 'Arena Badminton 1', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '20:00 - 21:00', 'duration' => '1 Jam', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
@@ -850,7 +1281,7 @@ class PemilikController extends Controller
             return $date;
         }
 
-        return '2025-06-16';
+        return date('Y-m-d');
     }
 
     protected function normalizeScheduleFilter($value)
@@ -882,7 +1313,7 @@ class PemilikController extends Controller
         );
 
         if (count($parts) !== 3) {
-            return '16 Juni 2025';
+            return $this->ownerFormatDatabaseDate(date('Y-m-d'));
         }
 
         $monthNumber = (int) $parts[1];
@@ -910,7 +1341,7 @@ class PemilikController extends Controller
 
     protected function resolveOwnerRevenueRange($period, $startInput, $endInput)
     {
-        $baseDate = new \DateTimeImmutable('2025-06-30');
+        $baseDate = new \DateTimeImmutable('today');
         $start = null;
         $end = null;
 
@@ -1060,6 +1491,8 @@ class PemilikController extends Controller
 
     protected function revenueTransactions()
     {
+        return $this->ownerRevenueTransactionsFromDatabase();
+
         $names = array('Ahmad', 'Rizal', 'Akbar', 'Dewi', 'Fajar', 'Sinta', 'Bima', 'Nadia', 'Raka', 'Putri', 'Gilang', 'Maya');
         $fields = array('Arena Futsal A', 'Arena Badminton 1', 'Arena Futsal B', 'Arena Basket Indoor');
         $methods = array(
@@ -1172,7 +1605,7 @@ class PemilikController extends Controller
 
     protected function resolveOwnerReportRange($period, $startInput, $endInput)
     {
-        $baseDate = new \DateTimeImmutable('2025-06-30');
+        $baseDate = new \DateTimeImmutable('today');
         $start = $baseDate->modify('first day of this month');
         $end = $baseDate;
 
@@ -2097,11 +2530,11 @@ class PemilikController extends Controller
         $end = $this->parseOwnerReportDate(isset($_GET['tanggal_selesai']) ? $_GET['tanggal_selesai'] : '');
 
         if (!$start) {
-            $start = new \DateTimeImmutable('2024-05-01');
+            $start = new \DateTimeImmutable('first day of this month');
         }
 
         if (!$end) {
-            $end = new \DateTimeImmutable('2024-05-31');
+            $end = new \DateTimeImmutable('last day of this month');
         }
 
         if ($start > $end) {
@@ -2319,6 +2752,8 @@ class PemilikController extends Controller
 
     protected function ownerTransactionRows()
     {
+        return $this->ownerTransactionsFromDatabase();
+
         $customers = array(
             array('name' => 'Budi Santoso', 'phone' => '0812-3456-7890'),
             array('name' => 'Rizky Maulana', 'phone' => '0821-1111-2222'),
@@ -2458,6 +2893,8 @@ class PemilikController extends Controller
 
     protected function ownerReviewStats()
     {
+        return $this->ownerReviewStatsFromDatabase();
+
         return array(
             array('label' => 'Rating Rata-rata', 'value' => '4.8 / 5', 'note' => '(156 ulasan)', 'icon' => 'fa-star', 'accent' => 'lime', 'rating' => 4.8),
             array('label' => 'Total Ulasan', 'value' => '156', 'trend' => '12.3%', 'note' => 'dari bulan lalu', 'icon' => 'fa-comment-dots', 'accent' => 'blue'),
@@ -2468,6 +2905,8 @@ class PemilikController extends Controller
 
     protected function ownerRatingDistribution()
     {
+        return $this->ownerRatingDistributionFromDatabase();
+
         return array(
             array('stars' => 5, 'count' => 98, 'percent' => 62.8),
             array('stars' => 4, 'count' => 36, 'percent' => 23.1),
@@ -2479,6 +2918,8 @@ class PemilikController extends Controller
 
     protected function ownerFieldRatings()
     {
+        return $this->ownerFieldRatingsFromDatabase();
+
         return array(
             array('name' => 'Arena Futsal A', 'rating' => '4.8', 'reviews' => '85', 'percent' => 94, 'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=360&auto=format&fit=crop'),
             array('name' => 'Arena Badminton 1', 'rating' => '4.7', 'reviews' => '45', 'percent' => 88, 'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=360&auto=format&fit=crop'),
@@ -2488,6 +2929,8 @@ class PemilikController extends Controller
 
     protected function ownerReviewRows()
     {
+        return $this->ownerReviewsFromDatabase();
+
         return array(
             array('name' => 'Ahmad Rizki', 'username' => '@ahmadrzki', 'field' => 'Arena Futsal A', 'rating' => 5.0, 'review' => 'Lapangan bersih dan nyaman, pencahayaan bagus.', 'date' => '16 Juni 2025', 'time' => '19:45', 'avatar' => 'https://ui-avatars.com/api/?name=Ahmad+Rizki&background=245b84&color=ffffff'),
             array('name' => 'Dewi Sartika', 'username' => '@dewii.srt', 'field' => 'Arena Badminton 1', 'rating' => 4.5, 'review' => 'Net dan lantai bagus, hanya saja AC kurang dingin.', 'date' => '16 Juni 2025', 'time' => '17:20', 'avatar' => 'https://ui-avatars.com/api/?name=Dewi+Sartika&background=245b84&color=ffffff'),
@@ -2523,18 +2966,19 @@ class PemilikController extends Controller
             $phone = $extras['phone'];
         }
 
-        $avatar = isset($extras['avatar']) && trim((string) $extras['avatar']) !== ''
-            ? $extras['avatar']
-            : 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=320&auto=format&fit=crop';
+        $avatar = $account && !empty($account['avatar']) ? $account['avatar'] : (isset($extras['avatar']) ? $extras['avatar'] : '');
+        $location = $account && !empty($account['location']) ? $account['location'] : (isset($extras['location']) ? $extras['location'] : 'Parepare, Sulawesi Selatan');
+        $joined = $account && !empty($account['created_at']) ? $this->ownerFormatDatabaseDate(substr($account['created_at'], 0, 10)) : '-';
+        $fieldCount = count($this->ownerManagedFieldsFromDatabase());
 
         return array(
             'name' => $displayName,
             'email' => $email,
             'phone' => $phone,
-            'location' => isset($extras['location']) && trim((string) $extras['location']) !== '' ? $extras['location'] : 'Parepare, Sulawesi Selatan',
-            'joined' => '12 Maret 2024',
-            'totalFields' => '3 Lapangan',
-            'lastLogin' => '16 Juni 2025, 21:15',
+            'location' => trim((string) $location) !== '' ? $location : 'Parepare, Sulawesi Selatan',
+            'joined' => $joined,
+            'totalFields' => $fieldCount . ' Lapangan',
+            'lastLogin' => '-',
             'avatar' => $this->profileAvatarUrl($avatar),
         );
     }
@@ -2584,7 +3028,7 @@ class PemilikController extends Controller
         ));
 
         $profileSaved = $this->writeOwnerProfileExtras($ownerId, $extras);
-        $databaseSaved = $this->updateOwnerAccount($ownerId, $name, $email, $phone);
+        $databaseSaved = $this->updateOwnerAccount($ownerId, $name, $email, $phone, $location, $avatar);
 
         $_SESSION['nama_user'] = $name;
         $_SESSION['nama'] = $name;
@@ -2691,6 +3135,9 @@ class PemilikController extends Controller
             'name' => isset($row['Nama']) ? $row['Nama'] : (isset($row['name']) ? $row['name'] : ''),
             'email' => isset($row['Email']) ? $row['Email'] : (isset($row['email']) ? $row['email'] : ''),
             'phone' => isset($row['Nomor_telepon']) ? $row['Nomor_telepon'] : (isset($row['phone']) ? $row['phone'] : ''),
+            'location' => isset($row['Alamat']) ? $row['Alamat'] : '',
+            'avatar' => isset($row['Avatar']) ? $row['Avatar'] : '',
+            'created_at' => isset($row['created_at']) ? $row['created_at'] : '',
         );
 
         if ($withPassword) {
@@ -2700,7 +3147,7 @@ class PemilikController extends Controller
         return $account;
     }
 
-    protected function updateOwnerAccount($ownerId, $name, $email, $phone)
+    protected function updateOwnerAccount($ownerId, $name, $email, $phone, $location = '', $avatar = '')
     {
         $ownerId = trim((string) $ownerId);
 
@@ -2726,14 +3173,14 @@ class PemilikController extends Controller
         }
 
         if ($phoneColumn !== '') {
-            $sql = 'UPDATE `' . $table . '` SET `' . $nameColumn . '` = ?, `' . $emailColumn . '` = ?, `' . $phoneColumn . '` = ? WHERE `' . $idColumn . '` = ?';
+            $sql = 'UPDATE `' . $table . '` SET `' . $nameColumn . '` = ?, `' . $emailColumn . '` = ?, `' . $phoneColumn . '` = ?, `Alamat` = ?, `Avatar` = ? WHERE `' . $idColumn . '` = ?';
             $statement = mysqli_prepare($connection, $sql);
 
             if (!$statement) {
                 return false;
             }
 
-            mysqli_stmt_bind_param($statement, 'ssss', $name, $email, $phone, $ownerId);
+            mysqli_stmt_bind_param($statement, 'ssssss', $name, $email, $phone, $location, $avatar, $ownerId);
         } else {
             $sql = 'UPDATE `' . $table . '` SET `' . $nameColumn . '` = ?, `' . $emailColumn . '` = ? WHERE `' . $idColumn . '` = ?';
             $statement = mysqli_prepare($connection, $sql);
@@ -2768,7 +3215,7 @@ class PemilikController extends Controller
             return false;
         }
 
-        $statement = mysqli_prepare($connection, 'UPDATE `' . $table . '` SET `' . $passwordColumn . '` = ? WHERE `' . $idColumn . '` = ?');
+        $statement = mysqli_prepare($connection, 'UPDATE `' . $table . '` SET `' . $passwordColumn . '` = ?, `Must_Reset_Password` = 0 WHERE `' . $idColumn . '` = ?');
 
         if (!$statement) {
             return false;
@@ -3006,6 +3453,8 @@ class PemilikController extends Controller
 
     protected function profileManagedFields()
     {
+        return $this->ownerManagedFieldsFromDatabase();
+
         return array(
             array('name' => 'Arena Futsal A', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp80.000', 'status' => 'Aktif', 'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=360&auto=format&fit=crop'),
             array('name' => 'Arena Badminton 1', 'type' => 'Badminton', 'location' => 'Parepare', 'price' => 'Rp60.000', 'status' => 'Aktif', 'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=360&auto=format&fit=crop'),

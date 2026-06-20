@@ -1,9 +1,10 @@
 <?php
 $statusTabs = isset($statusTabs) ? $statusTabs : array('Semua', 'Aktif', 'Pending', 'Selesai', 'Dibatalkan');
 $selectedStatus = isset($selectedStatus) ? $selectedStatus : 'Semua';
-$selectedDate = isset($selectedDate) ? $selectedDate : '16 Juni 2025';
-$selectedDateValue = isset($selectedDateValue) ? $selectedDateValue : '2025-06-16';
+$selectedDate = isset($selectedDate) ? $selectedDate : date('d/m/Y');
+$selectedDateValue = isset($selectedDateValue) ? $selectedDateValue : date('Y-m-d');
 $schedule = isset($schedule) && is_array($schedule) ? $schedule : array();
+$managedFields = isset($managedFields) && is_array($managedFields) ? $managedFields : array();
 $pagination = isset($pagination) ? $pagination : array(
     'currentPage' => 1,
     'totalPages' => 1,
@@ -46,6 +47,22 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
         </div>
 
         <div class="owner-jadwal-filter-actions">
+            <details class="owner-jadwal-dropdown owner-jadwal-filter-dropdown">
+                <summary class="owner-jadwal-filter-btn">
+                    <i class="fa-solid fa-plus"></i><span>Tambah Slot</span>
+                </summary>
+                <form class="owner-jadwal-filter-panel" action="<?php echo e(app_url('pemilik/jadwal/tambah')); ?>" method="post">
+                    <label><span>Lapangan</span><select name="id_lapangan" required>
+                        <option value="">Pilih lapangan</option>
+                        <?php foreach ($managedFields as $field): ?><option value="<?php echo e($field['id']); ?>"><?php echo e($field['name']); ?></option><?php endforeach; ?>
+                    </select></label>
+                    <label><span>Tanggal</span><input type="date" name="tanggal" min="<?php echo e(date('Y-m-d')); ?>" value="<?php echo e($selectedDateValue); ?>" required></label>
+                    <label><span>Jam mulai</span><input type="time" name="jam_mulai" required></label>
+                    <label><span>Jam selesai</span><input type="time" name="jam_selesai" required></label>
+                    <label><span>Harga slot</span><input type="number" name="harga" min="0" step="1000" placeholder="0 = harga lapangan"></label>
+                    <div class="owner-jadwal-filter-panel-actions"><button type="submit">Simpan Slot</button></div>
+                </form>
+            </details>
             <details class="owner-jadwal-dropdown owner-jadwal-date-dropdown">
                 <summary class="owner-jadwal-filter-btn owner-jadwal-date">
                     <i class="fa-regular fa-calendar"></i>
@@ -62,7 +79,7 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
                     </label>
 
                     <div class="owner-jadwal-filter-panel-actions">
-                        <a href="<?php echo e($scheduleUrl(array('date' => '2025-06-16', 'page' => null))); ?>">Reset</a>
+                        <a href="<?php echo e($scheduleUrl(array('date' => date('Y-m-d'), 'page' => null))); ?>">Reset</a>
                         <button type="submit">Terapkan</button>
                     </div>
                 </form>
