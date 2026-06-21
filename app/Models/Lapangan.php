@@ -12,6 +12,7 @@ class Lapangan extends Model
             "SELECT l.*, COALESCE(AVG(r.Rating),0) AS Rating_avg, COUNT(r.ID_Review) AS Review_count,
                     (SELECT j.ID_Jadwal FROM jadwal j
                      WHERE j.ID_Lapangan=l.ID_Lapangan AND j.Tanggal>=CURDATE()
+                       AND (j.Tanggal>CURDATE() OR j.Jam_Mulai>CURTIME())
                        AND LOWER(j.Status) IN ('available','tersedia','aktif')
                      ORDER BY j.Tanggal,j.Jam_Mulai LIMIT 1) AS ID_Jadwal
              FROM lapangan l

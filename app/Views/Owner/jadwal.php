@@ -144,6 +144,7 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
                         </tr>
                     <?php else: ?>
                         <?php foreach ($schedule as $index => $booking): ?>
+                            <?php $bookingDetailPayload = json_encode($booking, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE); ?>
                             <tr>
                                 <td><?php echo e((int) $pagination['firstItem'] + $index); ?></td>
                                 <td class="owner-jadwal-name"><?php echo e($booking['tenant']); ?></td>
@@ -158,7 +159,7 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
                                 </td>
                                 <td class="owner-jadwal-total"><?php echo e($booking['total']); ?></td>
                                 <td>
-                                    <button class="btn-icon owner-jadwal-view" type="button" aria-label="Lihat detail booking <?php echo e($booking['tenant']); ?>">
+                                    <button class="btn-icon owner-jadwal-view" type="button" aria-label="Lihat detail booking <?php echo e($booking['tenant']); ?>" data-owner-schedule-detail="<?php echo e($bookingDetailPayload); ?>">
                                         <i class="fa-regular fa-eye"></i>
                                     </button>
                                 </td>
@@ -208,6 +209,77 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
             <?php endif; ?>
         </nav>
     </div>
+
+    <div class="owner-schedule-modal" data-owner-schedule-modal hidden>
+        <div class="owner-schedule-modal-backdrop" data-owner-schedule-close></div>
+
+        <section class="owner-schedule-dialog" role="dialog" aria-modal="true" aria-labelledby="ownerScheduleDetailTitle">
+            <header class="owner-schedule-dialog-head">
+                <div>
+                    <span class="owner-schedule-dialog-icon"><i class="fa-regular fa-calendar-check"></i></span>
+                    <div>
+                        <h2 id="ownerScheduleDetailTitle">Detail Jadwal</h2>
+                        <p data-owner-schedule-field="bookingCode">-</p>
+                    </div>
+                </div>
+                <button type="button" data-owner-schedule-close aria-label="Tutup detail jadwal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </header>
+
+            <div class="owner-schedule-dialog-summary">
+                <div>
+                    <small>Lapangan</small>
+                    <strong data-owner-schedule-field="field">-</strong>
+                    <span><i class="fa-regular fa-calendar"></i> <b data-owner-schedule-field="date">-</b></span>
+                </div>
+                <span class="admin-badge owner-jadwal-status" data-owner-schedule-status>-</span>
+            </div>
+
+            <dl class="owner-schedule-detail-list">
+                <div>
+                    <dt><i class="fa-solid fa-user"></i> Nama Penyewa</dt>
+                    <dd data-owner-schedule-field="tenant">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-phone"></i> Nomor Telepon</dt>
+                    <dd data-owner-schedule-field="phone">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-regular fa-envelope"></i> Email</dt>
+                    <dd data-owner-schedule-field="email">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-regular fa-clock"></i> Jam Bermain</dt>
+                    <dd data-owner-schedule-field="time">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-hourglass-half"></i> Durasi</dt>
+                    <dd data-owner-schedule-field="duration">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-money-bill-wave"></i> Total</dt>
+                    <dd class="owner-schedule-detail-total" data-owner-schedule-field="total">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-receipt"></i> Status Pembayaran</dt>
+                    <dd data-owner-schedule-field="paymentStatus">-</dd>
+                </div>
+                <div>
+                    <dt><i class="fa-solid fa-hashtag"></i> ID Jadwal</dt>
+                    <dd data-owner-schedule-field="scheduleId">-</dd>
+                </div>
+            </dl>
+
+            <footer class="owner-schedule-dialog-actions">
+                <button type="button" data-owner-schedule-close>Tutup</button>
+                <a href="<?php echo e(app_url('pemilik/booking')); ?>">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    <span>Kelola Booking</span>
+                </a>
+            </footer>
+        </section>
+    </div>
 </section>
 
 <script>
@@ -234,6 +306,88 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
                 dropdown.removeAttribute('open');
             }
         });
+    });
+}());
+</script>
+
+<script>
+(function () {
+    var modal = document.querySelector('[data-owner-schedule-modal]');
+
+    if (!modal) {
+        return;
+    }
+
+    var detailButtons = document.querySelectorAll('[data-owner-schedule-detail]');
+    var closeButtons = modal.querySelectorAll('[data-owner-schedule-close]');
+    var fieldNodes = modal.querySelectorAll('[data-owner-schedule-field]');
+    var statusBadge = modal.querySelector('[data-owner-schedule-status]');
+    var lastTrigger = null;
+
+    function setField(name, value) {
+        fieldNodes.forEach(function (node) {
+            if (node.dataset.ownerScheduleField === name) {
+                node.textContent = value || '-';
+            }
+        });
+    }
+
+    function openDetail(detail, trigger) {
+        lastTrigger = trigger;
+        setField('bookingCode', detail.bookingCode === '-' ? 'Slot belum dipesan' : detail.bookingCode);
+        setField('scheduleId', detail.scheduleId);
+        setField('tenant', detail.tenant);
+        setField('phone', detail.phone);
+        setField('email', detail.email);
+        setField('field', detail.field);
+        setField('date', detail.date);
+        setField('time', detail.time);
+        setField('duration', detail.duration);
+        setField('total', detail.total);
+        setField('paymentStatus', detail.paymentStatus);
+
+        if (statusBadge) {
+            statusBadge.className = 'admin-badge owner-jadwal-status ' + (detail.statusClass || '');
+            statusBadge.textContent = detail.status || '-';
+        }
+
+        modal.hidden = false;
+        document.body.classList.add('owner-schedule-modal-open');
+        window.setTimeout(function () {
+            var closeButton = modal.querySelector('.owner-schedule-dialog-head [data-owner-schedule-close]');
+            if (closeButton) {
+                closeButton.focus();
+            }
+        }, 0);
+    }
+
+    function closeDetail() {
+        modal.hidden = true;
+        document.body.classList.remove('owner-schedule-modal-open');
+
+        if (lastTrigger && lastTrigger.isConnected) {
+            lastTrigger.focus();
+        }
+    }
+
+    detailButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+            try {
+                openDetail(JSON.parse(button.getAttribute('data-owner-schedule-detail')), button);
+            } catch (error) {
+                return;
+            }
+        });
+    });
+
+    closeButtons.forEach(function (button) {
+        button.addEventListener('click', closeDetail);
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !modal.hidden) {
+            closeDetail();
+        }
     });
 }());
 </script>

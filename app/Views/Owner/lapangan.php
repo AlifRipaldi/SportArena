@@ -30,6 +30,9 @@ foreach ($lapangan as $field) {
         'visual' => isset($field['visual']) ? $field['visual'] : 'futsal',
         'description' => isset($field['description']) ? $field['description'] : 'Arena olahraga dengan fasilitas lengkap untuk permainan yang nyaman.',
         'hours' => isset($field['hours']) ? $field['hours'] : '06:00 - 23:00 Setiap Hari',
+        'openTime' => isset($field['openTime']) ? $field['openTime'] : '06:00',
+        'closeTime' => isset($field['closeTime']) ? $field['closeTime'] : '23:00',
+        'todaySlots' => isset($field['todaySlots']) && is_array($field['todaySlots']) ? $field['todaySlots'] : array(),
         'facilities' => isset($field['facilities']) ? $field['facilities'] : array('Parkir', 'Toilet', 'Musholla', 'WiFi', 'Kantin', 'CCTV'),
         'photos' => $photos,
         'rules' => isset($field['rules']) ? $field['rules'] : array('Jaga kebersihan area lapangan', 'Gunakan perlengkapan olahraga yang sesuai'),
@@ -277,9 +280,9 @@ foreach ($lapangan as $field) {
                             <div class="owner-field-operational-inline">
                                 <span>Jam Operasional</span>
                                 <div>
-                                    <input type="time" value="06:00" aria-label="Jam buka">
+                                    <input type="time" name="open_time" value="06:00" aria-label="Jam buka" data-owner-open-time>
                                     <i>–</i>
-                                    <input type="time" value="23:00" aria-label="Jam tutup">
+                                    <input type="time" name="close_time" value="23:00" aria-label="Jam tutup" data-owner-close-time>
                                     <b>WITA</b>
                                 </div>
                             </div>
@@ -319,9 +322,9 @@ foreach ($lapangan as $field) {
                             <div class="owner-field-operational-inline">
                                 <span>Jam Operasional</span>
                                 <div>
-                                    <input type="time" value="06:00" aria-label="Jam operasional mulai">
+                                    <input type="time" value="06:00" aria-label="Jam operasional mulai" data-owner-open-time>
                                     <i>–</i>
-                                    <input type="time" value="23:00" aria-label="Jam operasional selesai">
+                                    <input type="time" value="23:00" aria-label="Jam operasional selesai" data-owner-close-time>
                                     <b>WITA</b>
                                 </div>
                             </div>
@@ -333,12 +336,7 @@ foreach ($lapangan as $field) {
                                     <span><i class="booked"></i>Terpesan</span>
                                     <span><i class="unavailable"></i>Tidak Tersedia</span>
                                 </div>
-                                <div class="owner-field-slot-grid" aria-label="Ketersediaan jam hari ini">
-                                    <?php for ($hour = 6; $hour <= 23; $hour++): ?>
-                                        <?php $isBooked = in_array($hour, array(11, 15, 21), true); ?>
-                                        <span class="<?php echo $isBooked ? 'booked' : 'available'; ?>"><?php echo e(sprintf('%02d:00', $hour)); ?></span>
-                                    <?php endfor; ?>
-                                </div>
+                                <div class="owner-field-slot-grid" aria-label="Ketersediaan jam hari ini" data-owner-slot-grid></div>
                                 <small>Jam tersedia akan menyesuaikan dengan jadwal pemesanan yang sudah ada.</small>
                             </div>
                         </section>
@@ -473,6 +471,9 @@ foreach ($lapangan as $field) {
         var pricePreview = modal.querySelector('[data-owner-price-preview]');
         var resetLocationButton = modal.querySelector('[data-owner-reset-location]');
         var mapPin = modal.querySelector('.owner-field-map-pin');
+        var editOpenTimes = modal.querySelectorAll('[data-owner-open-time]');
+        var editCloseTimes = modal.querySelectorAll('[data-owner-close-time]');
+        var editSlotGrid = modal.querySelector('[data-owner-slot-grid]');
         var detailTitle = modal.querySelector('[data-owner-manage-detail-title]');
         var detailVisual = modal.querySelector('[data-owner-manage-detail-visual]');
         var detailName = modal.querySelector('[data-owner-manage-detail-name]');
@@ -527,6 +528,43 @@ foreach ($lapangan as $field) {
 
             if (pricePreview && editForm && editForm.elements.price) {
                 pricePreview.textContent = formatPrice(editForm.elements.price.value);
+            }
+        }
+
+        function syncOperationalInputs(inputs, value) {
+            inputs.forEach(function (input) {
+                if (input.value !== value) {
+                    input.value = value;
+                }
+            });
+        }
+
+        function renderAvailability(field) {
+            if (!editSlotGrid) {
+                return;
+            }
+
+            var openHour = parseInt(String(field.openTime || '06:00').split(':')[0], 10);
+            var closeHour = parseInt(String(field.closeTime || '23:00').split(':')[0], 10);
+            var slots = field.todaySlots && typeof field.todaySlots === 'object' ? field.todaySlots : {};
+            var currentHour = new Date().getHours();
+
+            openHour = Number.isNaN(openHour) ? 6 : Math.max(0, Math.min(23, openHour));
+            closeHour = Number.isNaN(closeHour) ? 23 : Math.max(openHour, Math.min(23, closeHour));
+            editSlotGrid.innerHTML = '';
+
+            for (var hour = openHour; hour <= closeHour; hour++) {
+                var label = String(hour).padStart(2, '0') + ':00';
+                var item = document.createElement('span');
+                var status = slots[label] || 'unavailable';
+
+                if (hour <= currentHour && status === 'available') {
+                    status = 'unavailable';
+                }
+
+                item.className = status;
+                item.textContent = label;
+                editSlotGrid.appendChild(item);
             }
         }
 
@@ -939,6 +977,8 @@ foreach ($lapangan as $field) {
             editForm.elements.price.value = priceNumber(field.priceNumber || field.price);
             editForm.elements.description.value = field.description || '';
             editForm.elements.active.checked = isActiveStatus(field.status);
+            syncOperationalInputs(editOpenTimes, field.openTime || '06:00');
+            syncOperationalInputs(editCloseTimes, field.closeTime || '23:00');
             editNewPhotoUrls.forEach(function (photo) {
                 URL.revokeObjectURL(photo.url);
             });
@@ -954,6 +994,7 @@ foreach ($lapangan as $field) {
             setText(editTitle, 'Edit ' + (field.name || 'Arena'));
             setEditStatus(field.status || 'Aktif');
             setCourtVisual(editVisual, field.visual, field.photos);
+            renderAvailability(field);
             updateEditorMeta();
         }
 
@@ -961,6 +1002,8 @@ foreach ($lapangan as $field) {
             var baseField = ownerFieldData[currentFieldId] || {};
             var draftPrice = priceNumber(editForm.elements.price.value);
             var draftStatus = editForm.elements.active.checked ? 'Aktif' : 'Nonaktif';
+            var draftOpenTime = editForm.elements.open_time ? editForm.elements.open_time.value : (baseField.openTime || '06:00');
+            var draftCloseTime = editForm.elements.close_time ? editForm.elements.close_time.value : (baseField.closeTime || '23:00');
 
             return Object.assign({}, baseField, {
                 name: editForm.elements.name.value.trim() || baseField.name || 'Arena',
@@ -970,6 +1013,9 @@ foreach ($lapangan as $field) {
                 status: draftStatus,
                 cardStatus: draftStatus,
                 description: editForm.elements.description.value.trim() || 'Belum ada deskripsi.',
+                openTime: draftOpenTime,
+                closeTime: draftCloseTime,
+                hours: draftOpenTime + ' - ' + draftCloseTime + ' Setiap Hari',
                 facilities: getSelectedFacilities(),
                 photos: draftPhotos(baseField).concat(editNewPhotoUrls)
             });
@@ -1091,14 +1137,23 @@ foreach ($lapangan as $field) {
         });
 
         if (editForm) {
-            editForm.addEventListener('input', function () {
+            editForm.addEventListener('input', function (event) {
                 if (!currentFieldId) {
                     return;
+                }
+
+                if (event.target.hasAttribute('data-owner-open-time')) {
+                    syncOperationalInputs(editOpenTimes, event.target.value);
+                }
+
+                if (event.target.hasAttribute('data-owner-close-time')) {
+                    syncOperationalInputs(editCloseTimes, event.target.value);
                 }
 
                 var draftField = getDraftField();
                 setEditStatus(draftField.status);
                 renderDetail(draftField);
+                renderAvailability(draftField);
                 updateEditorMeta();
             });
 

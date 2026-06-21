@@ -45,6 +45,9 @@ class DashboardController extends Controller
     {
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        }
 
         $fieldId = rawurldecode(trim((string) $id));
         $venue = null;
@@ -187,6 +190,10 @@ class DashboardController extends Controller
 
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
+        if (!headers_sent()) {
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        }
+
         $bookingMessage = isset($_SESSION['booking_success']) ? (string) $_SESSION['booking_success'] : '';
         $bookingError = isset($_SESSION['booking_error']) ? (string) $_SESSION['booking_error'] : '';
         unset($_SESSION['booking_success'], $_SESSION['booking_error']);
@@ -675,7 +682,7 @@ class DashboardController extends Controller
                 $data->execute('DELETE FROM favorit WHERE ID_User = ? AND ID_Lapangan = ?', 'ss', array($this->dashboardUserId(), $fieldId));
                 $_SESSION['booking_success'] = 'Lapangan dihapus dari favorit.';
             } else {
-                $saved = $data->execute('INSERT IGNORE INTO favorit (ID_User, ID_Lapangan) SELECT ?, ID_Lapangan FROM lapangan WHERE ID_Lapangan = ? AND deleted_at IS NULL', 'ss', array($this->dashboardUserId(), $fieldId));
+                $saved = $data->execute("INSERT IGNORE INTO favorit (ID_User, ID_Lapangan) SELECT ?, ID_Lapangan FROM lapangan WHERE ID_Lapangan = ? AND deleted_at IS NULL AND LOWER(TRIM(Status)) = 'aktif'", 'ss', array($this->dashboardUserId(), $fieldId));
                 $_SESSION[$saved ? 'booking_success' : 'booking_error'] = $saved ? 'Lapangan ditambahkan ke favorit.' : 'Lapangan belum dapat ditambahkan ke favorit.';
             }
         }
@@ -822,6 +829,7 @@ class DashboardController extends Controller
             "SELECT ID_Jadwal, Tanggal, Jam_mulai, Jam_selesai, Harga
              FROM jadwal
              WHERE ID_Lapangan = ? AND Tanggal >= CURDATE()
+               AND (Tanggal > CURDATE() OR Jam_mulai > CURTIME())
                AND LOWER(TRIM(Status)) IN ('available', 'tersedia', 'aktif')
              ORDER BY Tanggal ASC, Jam_mulai ASC"
         );
@@ -1260,7 +1268,7 @@ class DashboardController extends Controller
              FROM favorit f
              INNER JOIN lapangan l ON l.ID_Lapangan = f.ID_Lapangan
              LEFT JOIN review r ON r.ID_Lapangan = l.ID_Lapangan AND LOWER(r.Status) = 'tampil'
-             WHERE f.ID_User = ? AND l.deleted_at IS NULL
+             WHERE f.ID_User = ? AND l.deleted_at IS NULL AND LOWER(TRIM(l.Status)) = 'aktif'
              GROUP BY l.ID_Lapangan, l.Nama_lapangan, l.Lokasi, l.Jenis_olahraga,
                       l.Fasilitas, l.Harga, l.Foto, f.created_at
              ORDER BY f.created_at DESC",

@@ -14,6 +14,36 @@ $sportSlug = function ($name) {
 
     return $slug === '' ? 'default' : $slug;
 };
+$sportOptions = array();
+$locationOptions = array();
+
+foreach ($displayLapangan as $fieldOption) {
+    $fieldType = isset($fieldOption['Jenis_olahraga']) ? trim((string) $fieldOption['Jenis_olahraga']) : '';
+    $fieldLocation = isset($fieldOption['Lokasi']) ? trim((string) $fieldOption['Lokasi']) : '';
+
+    if ($fieldType !== '') {
+        $sportOptions[$sportSlug($fieldType)] = $fieldType;
+    }
+
+    if ($fieldLocation !== '' && !in_array($fieldLocation, $locationOptions, true)) {
+        $locationOptions[] = $fieldLocation;
+    }
+}
+
+$ownerPhoto = function ($value) {
+    $decoded = json_decode(trim((string) $value), true);
+    $photos = is_array($decoded) ? $decoded : array();
+
+    foreach ($photos as $photo) {
+        $photo = str_replace('\\', '/', trim((string) $photo));
+
+        if ($photo !== '' && strpos($photo, '..') === false && strpos($photo, 'storage/uploads/lapangan/') === 0) {
+            return app_url($photo);
+        }
+    }
+
+    return '';
+};
 ?>
 
 <section id="beranda" class="home-hero">
@@ -51,18 +81,18 @@ $sportSlug = function ($name) {
                     <span>Jenis Olahraga</span>
                     <select id="sport-type" name="jenis">
                         <option value="">Semua</option>
-                        <option value="futsal">Futsal</option>
-                        <option value="badminton">Badminton</option>
-                        <option value="mini-soccer">Mini Soccer</option>
-                        <option value="basket">Basket</option>
+                        <?php foreach ($sportOptions as $sportValue => $sportLabel): ?>
+                            <option value="<?php echo e($sportValue); ?>"><?php echo e($sportLabel); ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </label>
                 <label class="home-search-field" for="field-location">
                     <span>Lokasi</span>
                     <select id="field-location" name="lokasi">
                         <option value="">Semua Lokasi</option>
-                        <option value="parepare">Parepare</option>
-                        <option value="ujung-pandang">Ujung Pandang</option>
+                        <?php foreach ($locationOptions as $locationOption): ?>
+                            <option value="<?php echo e($locationOption); ?>"><?php echo e($locationOption); ?></option>
+                        <?php endforeach; ?>
                     </select>
                 </label>
                 <label class="home-search-field" for="booking-date">
@@ -117,7 +147,10 @@ $sportSlug = function ($name) {
         <?php foreach ($displayLapangan as $row): ?>
             <?php
             $sportKey = $sportSlug(isset($row['Jenis_olahraga']) ? $row['Jenis_olahraga'] : '');
-            $coverImage = isset($sportImages[$sportKey]) ? $sportImages[$sportKey] : $sportImages['default'];
+            $uploadedCover = $ownerPhoto(isset($row['Foto']) ? $row['Foto'] : '');
+            $coverImage = $uploadedCover !== ''
+                ? $uploadedCover
+                : (isset($sportImages[$sportKey]) ? $sportImages[$sportKey] : $sportImages['default']);
             $priceText = isset($row['Harga'])
                 ? 'Rp' . number_format((int) $row['Harga'], 0, ',', '.')
                 : 'Rp50.000';

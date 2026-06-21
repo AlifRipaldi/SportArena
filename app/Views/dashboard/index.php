@@ -108,8 +108,13 @@
                                 <span>&#9733;</span>
                                 <?php echo e($venue['rating']); ?> (<?php echo e($venue['reviews']); ?>)
                             </div>
-                            <strong><?php echo e($venue['price']); ?> <small>/jam</small></strong>
-                            <a href="<?php echo e($venueDetailUrl); ?>">Lihat jadwal</a>
+                            <div class="home-venue-footer">
+                                <strong><?php echo e($venue['price']); ?> <small>/jam</small></strong>
+                                <a class="home-venue-schedule" href="<?php echo e($venueDetailUrl); ?>">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    <span>Lihat Jadwal</span>
+                                </a>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>

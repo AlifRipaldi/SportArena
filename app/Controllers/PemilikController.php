@@ -81,6 +81,7 @@ class PemilikController extends Controller
             $data['photos'] = array_slice(array_merge($remainingPhotos, $newPhotos), 0, 5);
 
             if ($model->updateForOwner($fieldId, $fieldOwnerId, $data)) {
+                $this->saveLapanganOperationalHours($fieldId);
                 $this->deleteLapanganPhotoFiles($deletedPhotos);
             } else {
                 $this->deleteLapanganPhotoFiles($newPhotos);
@@ -469,7 +470,8 @@ class PemilikController extends Controller
             "SELECT j.ID_Jadwal,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,j.Status AS schedule_status,j.Harga,
                     l.Nama_lapangan,l.Harga AS field_price,
                     b.ID_Booking,b.Status AS booking_status,b.Total_harga,
-                    u.Nama AS customer_name,p.Status AS payment_status
+                    u.Nama AS customer_name,u.Email AS customer_email,u.Nomor_telepon AS customer_phone,
+                    p.Status AS payment_status
              FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan
              LEFT JOIN booking b ON b.ID_Booking=(SELECT b2.ID_Booking FROM booking b2 WHERE b2.ID_Jadwal=j.ID_Jadwal ORDER BY b2.Waktu_transaksi DESC LIMIT 1)
              LEFT JOIN users u ON u.ID_User=b.ID_User
@@ -486,7 +488,11 @@ class PemilikController extends Controller
             $end = substr((string) $row['Jam_Selesai'], 0, 5);
             $minutes = max(0, (int) ((strtotime($end) - strtotime($start)) / 60));
             $schedule[] = array(
+                'scheduleId' => isset($row['ID_Jadwal']) ? $row['ID_Jadwal'] : '',
+                'bookingCode' => !empty($row['ID_Booking']) ? $row['ID_Booking'] : '-',
                 'tenant' => !empty($row['customer_name']) ? $row['customer_name'] : 'Tersedia',
+                'email' => !empty($row['customer_email']) ? $row['customer_email'] : '-',
+                'phone' => !empty($row['customer_phone']) ? $row['customer_phone'] : '-',
                 'field' => $row['Nama_lapangan'],
                 'date' => $this->ownerFormatDatabaseDate($row['Tanggal']),
                 'dateValue' => $row['Tanggal'],
@@ -494,6 +500,7 @@ class PemilikController extends Controller
                 'duration' => $minutes >= 60 && $minutes % 60 === 0 ? ($minutes / 60) . ' Jam' : $minutes . ' Menit',
                 'status' => $status['label'],
                 'statusClass' => $status['class'],
+                'paymentStatus' => !empty($row['payment_status']) ? $row['payment_status'] : (!empty($row['ID_Booking']) ? 'Belum Dibayar' : '-'),
                 'total' => $this->formatOwnerRupiah(!empty($row['Total_harga']) ? $row['Total_harga'] : (!empty($row['Harga']) ? $row['Harga'] : $row['field_price'])),
             );
         }
@@ -871,9 +878,11 @@ class PemilikController extends Controller
             $priceNumber = isset($row['Harga']) ? (int) $row['Harga'] : 0;
             $type = isset($row['Jenis_olahraga']) ? $row['Jenis_olahraga'] : '';
             $status = isset($row['Status']) && trim((string) $row['Status']) !== '' ? $row['Status'] : 'Aktif';
+            $fieldId = isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '';
+            $operational = $this->lapanganOperationalSnapshot($fieldId);
 
             $fields[] = array(
-                'id' => isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '',
+                'id' => $fieldId,
                 'name' => isset($row['Nama_lapangan']) ? $row['Nama_lapangan'] : '',
                 'type' => $type,
                 'location' => isset($row['Lokasi']) ? $row['Lokasi'] : '',
@@ -885,7 +894,10 @@ class PemilikController extends Controller
                 'reviews' => '0',
                 'visual' => $this->lapanganVisual($type),
                 'description' => isset($row['Deskripsi']) && trim((string) $row['Deskripsi']) !== '' ? $row['Deskripsi'] : 'Belum ada deskripsi.',
-                'hours' => '06:00 - 23:00 Setiap Hari',
+                'hours' => $operational['openTime'] . ' - ' . $operational['closeTime'] . ' Setiap Hari',
+                'openTime' => $operational['openTime'],
+                'closeTime' => $operational['closeTime'],
+                'todaySlots' => $operational['todaySlots'],
                 'facilities' => $this->decodeLapanganFacilities(isset($row['Fasilitas']) ? $row['Fasilitas'] : ''),
                 'photos' => $this->lapanganPhotoPayload(isset($row['Foto']) ? $row['Foto'] : ''),
                 'rules' => array('Jaga kebersihan area lapangan', 'Gunakan perlengkapan olahraga yang sesuai'),
@@ -893,6 +905,116 @@ class PemilikController extends Controller
         }
 
         return $fields;
+    }
+
+    protected function lapanganOperationalSnapshot($fieldId)
+    {
+        $snapshot = array(
+            'openTime' => '06:00',
+            'closeTime' => '23:00',
+            'todaySlots' => array(),
+        );
+
+        if (trim((string) $fieldId) === '') {
+            return $snapshot;
+        }
+
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return $snapshot;
+        }
+
+        $hoursStatement = mysqli_prepare(
+            $connection,
+            'SELECT MIN(Jam_buka) AS Jam_buka, MAX(Jam_tutup) AS Jam_tutup FROM jam_operasional WHERE ID_Lapangan = ? AND Tutup = 0'
+        );
+
+        if ($hoursStatement) {
+            mysqli_stmt_bind_param($hoursStatement, 's', $fieldId);
+            mysqli_stmt_execute($hoursStatement);
+            $hoursResult = mysqli_stmt_get_result($hoursStatement);
+            $hours = $hoursResult ? mysqli_fetch_assoc($hoursResult) : null;
+
+            if ($hours && !empty($hours['Jam_buka'])) {
+                $snapshot['openTime'] = substr((string) $hours['Jam_buka'], 0, 5);
+            }
+
+            if ($hours && !empty($hours['Jam_tutup'])) {
+                $snapshot['closeTime'] = substr((string) $hours['Jam_tutup'], 0, 5);
+            }
+
+            mysqli_stmt_close($hoursStatement);
+        }
+
+        $slotStatement = mysqli_prepare(
+            $connection,
+            'SELECT Jam_Mulai, Status FROM jadwal WHERE ID_Lapangan = ? AND Tanggal = CURDATE() ORDER BY Jam_Mulai'
+        );
+
+        if ($slotStatement) {
+            mysqli_stmt_bind_param($slotStatement, 's', $fieldId);
+            mysqli_stmt_execute($slotStatement);
+            $slotResult = mysqli_stmt_get_result($slotStatement);
+
+            while ($slotResult && $slot = mysqli_fetch_assoc($slotResult)) {
+                $time = isset($slot['Jam_Mulai']) ? substr((string) $slot['Jam_Mulai'], 0, 5) : '';
+                $status = strtolower(trim(isset($slot['Status']) ? (string) $slot['Status'] : ''));
+
+                if ($time !== '') {
+                    $snapshot['todaySlots'][$time] = in_array($status, array('available', 'tersedia', 'aktif'), true)
+                        ? 'available'
+                        : 'booked';
+                }
+            }
+
+            mysqli_stmt_close($slotStatement);
+        }
+
+        return $snapshot;
+    }
+
+    protected function saveLapanganOperationalHours($fieldId)
+    {
+        $openTime = isset($_POST['open_time']) ? trim((string) $_POST['open_time']) : '';
+        $closeTime = isset($_POST['close_time']) ? trim((string) $_POST['close_time']) : '';
+
+        if (!preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $openTime)
+            || !preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $closeTime)
+            || $openTime >= $closeTime) {
+            return false;
+        }
+
+        try {
+            $connection = Database::connection();
+        } catch (\Throwable $exception) {
+            return false;
+        }
+
+        $statement = mysqli_prepare(
+            $connection,
+            'INSERT INTO jam_operasional (ID_Lapangan, Hari, Jam_buka, Jam_tutup, Tutup) VALUES (?, ?, ?, ?, 0)
+             ON DUPLICATE KEY UPDATE Jam_buka = VALUES(Jam_buka), Jam_tutup = VALUES(Jam_tutup), Tutup = 0'
+        );
+
+        if (!$statement) {
+            return false;
+        }
+
+        $saved = true;
+
+        for ($day = 0; $day <= 6; $day++) {
+            mysqli_stmt_bind_param($statement, 'siss', $fieldId, $day, $openTime, $closeTime);
+
+            if (!mysqli_stmt_execute($statement)) {
+                $saved = false;
+                break;
+            }
+        }
+
+        mysqli_stmt_close($statement);
+
+        return $saved;
     }
 
     protected function lapanganPostData($defaultStatus)
