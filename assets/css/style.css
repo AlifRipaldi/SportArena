@@ -8101,7 +8101,7 @@ body.booking-modal-open {
     object-fit: cover;
 }
 
-.settings-avatar-wrap button {
+.settings-avatar-edit {
     position: absolute;
     right: 0;
     bottom: 0;
@@ -8114,6 +8114,20 @@ body.booking-modal-open {
     background: #0a1420;
     color: #ffffff;
     cursor: pointer;
+}
+
+.settings-avatar-edit:hover,
+.settings-avatar-edit:focus-within {
+    border-color: #91e13c;
+    color: #91e13c;
+}
+
+.settings-avatar-edit input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .settings-profile-fields {
@@ -8654,10 +8668,54 @@ body.dashboard-body.light .settings-preference-list select {
     color: #111827;
 }
 
+body.dashboard-body.light .settings-line-field i,
+body.dashboard-body.light .settings-preference-list i {
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .settings-line-field input::placeholder {
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .settings-line-field input:focus {
+    box-shadow: inset 0 -1px 0 rgba(47, 185, 58, 0.65);
+}
+
 body.dashboard-body.light .settings-select-field select,
 body.dashboard-body.light .settings-preference-list select {
     border-color: rgba(37, 60, 86, 0.14);
     background: #f7fafc;
+}
+
+body.dashboard-body.light .settings-select-field select:focus,
+body.dashboard-body.light .settings-preference-list select:focus {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .settings-select-field option,
+body.dashboard-body.light .settings-preference-list option {
+    background: #ffffff;
+    color: #111827;
+}
+
+body.dashboard-body.light .settings-avatar-wrap img {
+    border-color: rgba(47, 185, 58, 0.5);
+    box-shadow: 0 10px 24px rgba(37, 60, 86, 0.14);
+}
+
+body.dashboard-body.light .settings-avatar-edit {
+    border-color: rgba(47, 185, 58, 0.35);
+    background: #ffffff;
+    color: #218f2d;
+    box-shadow: 0 7px 18px rgba(37, 60, 86, 0.18);
+}
+
+body.dashboard-body.light .settings-avatar-edit:hover,
+body.dashboard-body.light .settings-avatar-edit:focus-within {
+    border-color: #2fb93a;
+    background: #effbec;
+    color: #187c25;
 }
 
 body.dashboard-body.light .settings-radio-row span {
@@ -8668,13 +8726,41 @@ body.dashboard-body.light .settings-radio-row input:checked + span {
     box-shadow: inset 0 0 0 5px #ffffff;
 }
 
+body.dashboard-body.light .settings-security-row strong.active {
+    color: #218f2d;
+}
+
+body.dashboard-body.light .settings-security-row strong.active i {
+    background: #61c832;
+    color: #ffffff;
+}
+
 body.dashboard-body.light .settings-payment-list {
     border-color: rgba(37, 60, 86, 0.1);
+    background: #fbfdff;
 }
 
 body.dashboard-body.light .settings-payment-list a {
     border-bottom-color: rgba(37, 60, 86, 0.08);
     color: #1f2937;
+}
+
+body.dashboard-body.light .settings-payment-list a:hover {
+    background: rgba(47, 185, 58, 0.06);
+}
+
+body.dashboard-body.light .settings-payment-list i {
+    color: #64748b;
+}
+
+body.dashboard-body.light .settings-add-payment {
+    border-color: rgba(47, 185, 58, 0.36);
+    background: rgba(47, 185, 58, 0.04);
+    color: #218f2d;
+}
+
+body.dashboard-body.light .settings-add-payment:hover {
+    background: rgba(47, 185, 58, 0.1);
 }
 
 body.dashboard-body.light .settings-switch-row i {
@@ -8718,6 +8804,18 @@ body.dashboard-body.light .settings-danger-row {
 
 body.dashboard-body.light .settings-danger-row p {
     color: #7f5057;
+}
+
+body.dashboard-body.light .settings-alert.success-message {
+    border-color: rgba(47, 185, 58, 0.28);
+    background: #eefbea;
+    color: #187c25;
+}
+
+body.dashboard-body.light .settings-alert.error-message {
+    border-color: rgba(225, 64, 64, 0.25);
+    background: #fff1f2;
+    color: #c52f37;
 }
 
 body.dashboard-body.light .profile-dashboard,
@@ -8904,6 +9002,24 @@ body.dashboard-body.light .home-search-box input::placeholder,
 body.dashboard-body.light .field-search-control input::placeholder,
 body.dashboard-body.light .settings-password-input input::placeholder {
     color: #8795a8;
+}
+
+body.dashboard-body.light .field-sort-control {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #ffffff;
+    color: #475569;
+    box-shadow: 0 7px 18px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .field-sort-control select {
+    border: 0;
+    background: transparent;
+    color: #111827;
+}
+
+body.dashboard-body.light .field-sort-control:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
 }
 
 body.dashboard-body.light .settings-password-page {

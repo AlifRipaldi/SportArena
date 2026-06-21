@@ -79,7 +79,7 @@ foreach ($bookings as $bookingItem) {
                 </div>
                 <div class="booking-head-menu">
                     <button type="button" class="profile-account-menu" id="bookingAccountToggle" aria-label="Buka menu akun" aria-expanded="false" aria-controls="bookingAccountMenu">
-                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                        <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                         <span>&#8964;</span>
                     </button>
                     <div class="booking-head-popover account" id="bookingAccountMenu" hidden>

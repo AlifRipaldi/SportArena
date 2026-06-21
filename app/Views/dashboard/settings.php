@@ -42,7 +42,7 @@
                     <sup>1</sup>
                 </a>
                 <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
                     <span>&#8964;</span>
                 </a>
             </div>
@@ -56,7 +56,7 @@
             <section class="settings-alert error-message"><?php echo e($errorMessage); ?></section>
         <?php endif; ?>
 
-        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>" data-theme-url="<?php echo e(app_url('settings/theme')); ?>">
+        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>" enctype="multipart/form-data" data-theme-url="<?php echo e(app_url('settings/theme')); ?>">
             <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <section class="settings-panel settings-profile-panel">
                 <div class="settings-panel-title">
@@ -66,7 +66,11 @@
 
                 <div class="settings-profile-body">
                     <div class="settings-avatar-wrap">
-                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
+                        <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
+                        <label class="settings-avatar-edit" title="Ubah foto profil" aria-label="Ubah foto profil">
+                            <span aria-hidden="true">&#128247;</span>
+                            <input type="file" name="avatar" accept="image/png,image/jpeg" data-settings-avatar-input>
+                        </label>
                     </div>
 
                     <div class="settings-profile-fields">
@@ -107,7 +111,6 @@
                         <div class="settings-security-row">
                             <span>Password</span>
                             <strong>************</strong>
-                            <a href="<?php echo e(app_url('settings/password')); ?>">Ubah</a>
                         </div>
                         <div class="settings-security-row">
                             <span>Verifikasi Email</span>
@@ -247,7 +250,29 @@
         var form = document.querySelector('.settings-match-form');
         var choices = document.querySelectorAll('[data-theme-choice]');
 
-        if (!form || !choices.length) {
+        if (!form) {
+            return;
+        }
+
+        var avatarInput = form.querySelector('[data-settings-avatar-input]');
+        var avatarPreviews = document.querySelectorAll('[data-settings-avatar-preview]');
+
+        if (avatarInput) {
+            avatarInput.addEventListener('change', function () {
+                var file = avatarInput.files && avatarInput.files[0];
+
+                if (!file || !file.type.match(/^image\/(jpeg|png)$/)) {
+                    return;
+                }
+
+                var previewUrl = URL.createObjectURL(file);
+                avatarPreviews.forEach(function (preview) {
+                    preview.src = previewUrl;
+                });
+            });
+        }
+
+        if (!choices.length) {
             return;
         }
 

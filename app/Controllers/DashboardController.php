@@ -101,6 +101,7 @@ class DashboardController extends Controller
         $reviewMessage = isset($_SESSION['review_success']) ? (string) $_SESSION['review_success'] : '';
         $reviewError = isset($_SESSION['review_error']) ? (string) $_SESSION['review_error'] : '';
         unset($_SESSION['review_success'], $_SESSION['review_error']);
+        $profile = $this->customerAccountSettings();
 
         return $this->view('dashboard/ulasan', array(
             'title' => 'Ulasan Saya | Arena Sport',
@@ -108,7 +109,8 @@ class DashboardController extends Controller
             'activeMenu' => 'ulasan',
             'pageHeading' => 'Ulasan Saya',
             'pageSubheading' => 'Lihat dan kelola semua ulasan yang pernah kamu berikan',
-            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'userName' => $profile['name'],
+            'userAvatar' => $profile['avatar'],
             'reviewSummary' => $this->reviewSummary(),
             'reviews' => $this->reviews(),
             'reviewableBookings' => $this->customerReviewableBookings(),
@@ -197,6 +199,7 @@ class DashboardController extends Controller
         $bookingMessage = isset($_SESSION['booking_success']) ? (string) $_SESSION['booking_success'] : '';
         $bookingError = isset($_SESSION['booking_error']) ? (string) $_SESSION['booking_error'] : '';
         unset($_SESSION['booking_success'], $_SESSION['booking_error']);
+        $profile = $this->customerAccountSettings();
 
         return $this->view($view, array(
             'title' => $title,
@@ -204,7 +207,8 @@ class DashboardController extends Controller
             'activeMenu' => $activeMenu,
             'pageHeading' => $heading,
             'pageSubheading' => $subheading,
-            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'userName' => $profile['name'],
+            'userAvatar' => $profile['avatar'],
             'stats' => $this->stats(),
             'venues' => $this->venues(),
             'favorites' => $this->favorites(),
@@ -582,13 +586,16 @@ class DashboardController extends Controller
             exit;
         }
 
+        $profile = $this->customerAccountSettings();
+
         return $this->view('dashboard/riwayat', array(
             'title' => 'Riwayat Booking | Arena Sport',
             'themeMode' => $this->dashboardThemeMode(),
             'activeMenu' => 'riwayat',
             'pageHeading' => 'Riwayat',
             'pageSubheading' => 'Lihat semua riwayat booking lapangan kamu',
-            'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
+            'userName' => $profile['name'],
+            'userAvatar' => $profile['avatar'],
             'bookings' => $this->historyBookings(),
         ), 'layouts/dashboard');
     }
@@ -1481,6 +1488,7 @@ class DashboardController extends Controller
             'userPhone' => $settings['phone'],
             'userCity' => $settings['city'],
             'userRole' => $settings['role'],
+            'userAvatar' => $settings['avatar'],
             'language' => $settings['language'],
             'notifyBooking' => $settings['notifyBooking'],
             'notifySchedule' => $settings['notifySchedule'],
@@ -1629,6 +1637,45 @@ class DashboardController extends Controller
         return $saved;
     }
 
+    protected function storeCustomerProfilePhoto($userId)
+    {
+        if (empty($_FILES['avatar']) || !isset($_FILES['avatar']['error']) || $_FILES['avatar']['error'] === UPLOAD_ERR_NO_FILE) {
+            return array('ok' => true, 'path' => '', 'message' => '');
+        }
+
+        if ($_FILES['avatar']['error'] !== UPLOAD_ERR_OK) {
+            return array('ok' => false, 'path' => '', 'message' => 'Foto profil gagal diunggah.');
+        }
+
+        if ($_FILES['avatar']['size'] > 2 * 1024 * 1024) {
+            return array('ok' => false, 'path' => '', 'message' => 'Ukuran foto profil maksimal 2MB.');
+        }
+
+        $imageInfo = @getimagesize($_FILES['avatar']['tmp_name']);
+        $allowedTypes = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png');
+
+        if (!$imageInfo || !isset($allowedTypes[$imageInfo[2]])) {
+            return array('ok' => false, 'path' => '', 'message' => 'Format foto profil harus PNG atau JPG.');
+        }
+
+        $directory = dirname(__DIR__, 2) . '/storage/uploads/profiles';
+
+        if (!is_dir($directory) && !mkdir($directory, 0775, true)) {
+            return array('ok' => false, 'path' => '', 'message' => 'Folder upload foto profil belum bisa dibuat.');
+        }
+
+        $safeUserId = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $userId);
+        $safeUserId = $safeUserId !== '' ? $safeUserId : 'customer';
+        $filename = 'customer_' . $safeUserId . '_' . time() . '_' . random_int(1000, 9999) . '.' . $allowedTypes[$imageInfo[2]];
+        $target = $directory . '/' . $filename;
+
+        if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $target)) {
+            return array('ok' => false, 'path' => '', 'message' => 'Foto profil belum bisa disimpan.');
+        }
+
+        return array('ok' => true, 'path' => 'storage/uploads/profiles/' . $filename, 'message' => '');
+    }
+
     public function updateSettings()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -1672,40 +1719,55 @@ class DashboardController extends Controller
         } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errorMessage = 'Email tidak valid.';
         } else {
-            $connection = Database::connection();
-            $accountTable = $this->accountTable($connection);
-            $statement = mysqli_prepare($connection, 'UPDATE `' . $accountTable . '` SET Nama = ?, Email = ?, Nomor_telepon = ?, Kota = ? WHERE ID_User = ?');
+            $avatarUpload = $this->storeCustomerProfilePhoto($userId);
 
-            if ($statement) {
-                mysqli_stmt_bind_param($statement, 'sssss', $nama, $email, $telepon, $kota, $userId);
-
-                if (mysqli_stmt_execute($statement)) {
-                    $this->dashboardData()->execute(
-                        "INSERT INTO user_settings
-                            (ID_User, Theme_mode, Bahasa, Notifikasi_booking, Notifikasi_jadwal,
-                             Notifikasi_promo, Kota_favorit, Olahraga_favorit, Radius_pencarian)
-                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                         ON DUPLICATE KEY UPDATE
-                            Theme_mode = VALUES(Theme_mode), Bahasa = VALUES(Bahasa),
-                            Notifikasi_booking = VALUES(Notifikasi_booking),
-                            Notifikasi_jadwal = VALUES(Notifikasi_jadwal),
-                            Notifikasi_promo = VALUES(Notifikasi_promo),
-                            Kota_favorit = VALUES(Kota_favorit),
-                            Olahraga_favorit = VALUES(Olahraga_favorit),
-                            Radius_pencarian = VALUES(Radius_pencarian)",
-                        'sssiiissi',
-                        array($userId, $themeMode, $language, (int) $notifyBooking, (int) $notifySchedule, (int) $notifyOffer, $favoriteCity, $favoriteSport, (int) $searchRadius)
-                    );
-                    $_SESSION['nama_user'] = $nama;
-                    $_SESSION['email_user'] = $email;
-                    $_SESSION['telepon_user'] = $telepon;
-                    $_SESSION['kota_user'] = $kota;
-                    $message = 'Perubahan pengaturan berhasil disimpan.';
-                } else {
-                    $errorMessage = 'Tidak dapat menyimpan perubahan. Silakan coba lagi.';
-                }
+            if (!$avatarUpload['ok']) {
+                $errorMessage = $avatarUpload['message'];
             } else {
-                $errorMessage = 'Terjadi kesalahan koneksi database.';
+                $connection = Database::connection();
+                $accountTable = $this->accountTable($connection);
+                $avatarPath = $avatarUpload['path'];
+                $sql = $avatarPath !== ''
+                    ? 'UPDATE `' . $accountTable . '` SET Nama = ?, Email = ?, Nomor_telepon = ?, Kota = ?, Avatar = ? WHERE ID_User = ?'
+                    : 'UPDATE `' . $accountTable . '` SET Nama = ?, Email = ?, Nomor_telepon = ?, Kota = ? WHERE ID_User = ?';
+                $statement = mysqli_prepare($connection, $sql);
+
+                if ($statement) {
+                    if ($avatarPath !== '') {
+                        mysqli_stmt_bind_param($statement, 'ssssss', $nama, $email, $telepon, $kota, $avatarPath, $userId);
+                    } else {
+                        mysqli_stmt_bind_param($statement, 'sssss', $nama, $email, $telepon, $kota, $userId);
+                    }
+
+                    if (mysqli_stmt_execute($statement)) {
+                        $this->dashboardData()->execute(
+                            "INSERT INTO user_settings
+                                (ID_User, Theme_mode, Bahasa, Notifikasi_booking, Notifikasi_jadwal,
+                                 Notifikasi_promo, Kota_favorit, Olahraga_favorit, Radius_pencarian)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                             ON DUPLICATE KEY UPDATE
+                                Theme_mode = VALUES(Theme_mode), Bahasa = VALUES(Bahasa),
+                                Notifikasi_booking = VALUES(Notifikasi_booking),
+                                Notifikasi_jadwal = VALUES(Notifikasi_jadwal),
+                                Notifikasi_promo = VALUES(Notifikasi_promo),
+                                Kota_favorit = VALUES(Kota_favorit),
+                                Olahraga_favorit = VALUES(Olahraga_favorit),
+                                Radius_pencarian = VALUES(Radius_pencarian)",
+                            'sssiiissi',
+                            array($userId, $themeMode, $language, (int) $notifyBooking, (int) $notifySchedule, (int) $notifyOffer, $favoriteCity, $favoriteSport, (int) $searchRadius)
+                        );
+                        $_SESSION['nama_user'] = $nama;
+                        $_SESSION['email_user'] = $email;
+                        $_SESSION['telepon_user'] = $telepon;
+                        $_SESSION['kota_user'] = $kota;
+                        $_SESSION['avatar_user'] = $avatarPath !== '' ? $avatarPath : (isset($_SESSION['avatar_user']) ? $_SESSION['avatar_user'] : '');
+                        $message = 'Perubahan pengaturan berhasil disimpan.';
+                    } else {
+                        $errorMessage = 'Tidak dapat menyimpan perubahan. Silakan coba lagi.';
+                    }
+                } else {
+                    $errorMessage = 'Terjadi kesalahan koneksi database.';
+                }
             }
         }
 
@@ -1718,6 +1780,7 @@ class DashboardController extends Controller
         $_SESSION['favorite_city'] = $favoriteCity;
         $_SESSION['favorite_sport'] = $favoriteSport;
         $_SESSION['search_radius'] = $searchRadius;
+        $currentSettings = $this->customerAccountSettings();
 
         return $this->view('dashboard/settings', array(
             'title' => 'Pengaturan Akun | Arena Sport',
@@ -1729,6 +1792,7 @@ class DashboardController extends Controller
             'userPhone' => isset($_SESSION['telepon_user']) ? $_SESSION['telepon_user'] : '081234567890',
             'userCity' => isset($_SESSION['kota_user']) ? $_SESSION['kota_user'] : 'Parepare',
             'userRole' => isset($_SESSION['role_user']) ? $_SESSION['role_user'] : 'User',
+            'userAvatar' => $currentSettings['avatar'],
             'language' => $language,
             'notifyBooking' => $notifyBooking,
             'notifySchedule' => $notifySchedule,

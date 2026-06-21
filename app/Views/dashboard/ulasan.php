@@ -44,7 +44,7 @@
                     <sup>1</sup>
                 </a>
                 <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
                 </a>
             </div>
