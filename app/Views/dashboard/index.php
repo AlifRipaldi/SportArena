@@ -83,7 +83,14 @@
 
             <div class="home-venue-grid">
                 <?php foreach ($venues as $venue): ?>
-                    <article class="home-venue-card">
+                    <?php $venueDetailUrl = app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : '')); ?>
+                    <article
+                        class="home-venue-card"
+                        role="link"
+                        tabindex="0"
+                        data-venue-detail-url="<?php echo e($venueDetailUrl); ?>"
+                        aria-label="Lihat detail <?php echo e($venue['name']); ?>"
+                    >
                         <div class="home-venue-media">
                             <img src="<?php echo e($venue['image']); ?>" alt="<?php echo e($venue['name']); ?>">
                             <span>Populer</span>
@@ -102,7 +109,7 @@
                                 <?php echo e($venue['rating']); ?> (<?php echo e($venue['reviews']); ?>)
                             </div>
                             <strong><?php echo e($venue['price']); ?> <small>/jam</small></strong>
-                            <a href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : ''))); ?>">Lihat jadwal</a>
+                            <a href="<?php echo e($venueDetailUrl); ?>">Lihat jadwal</a>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -133,3 +140,27 @@
         <?php endif; ?>
     </main>
 </div>
+
+<script>
+    (function () {
+        document.querySelectorAll('[data-venue-detail-url]').forEach(function (card) {
+            function openDetail() {
+                if (card.dataset.venueDetailUrl) {
+                    window.location.href = card.dataset.venueDetailUrl;
+                }
+            }
+
+            card.addEventListener('click', function (event) {
+                if (event.target.closest('a, button, form, input')) { return; }
+                openDetail();
+            });
+
+            card.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter' || event.key === ' ') && event.target === card) {
+                    event.preventDefault();
+                    openDetail();
+                }
+            });
+        });
+    }());
+</script>

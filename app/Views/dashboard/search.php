@@ -248,11 +248,9 @@ foreach ($venues as $venue) {
                     data-dates="<?php echo e(implode('|', $availableDates)); ?>"
                     data-times="<?php echo e(implode('|', $availableTimes)); ?>"
                     data-slots="<?php echo e(implode('|', $availableSlots)); ?>"
-                    role="button"
+                    role="link"
                     tabindex="0"
-                    aria-haspopup="dialog"
-                    aria-controls="fieldDetailModal"
-                    aria-label="Lihat detail dan jadwal <?php echo e($venue['name']); ?>"
+                    aria-label="Buka halaman detail dan jadwal <?php echo e($venue['name']); ?>"
                 >
                     <div class="field-result-media">
                         <img src="<?php echo e($venue['image']); ?>" alt="<?php echo e($venue['name']); ?>">
@@ -284,9 +282,9 @@ foreach ($venues as $venue) {
                         <small>Harga Mulai Dari</small>
                         <strong><?php echo e($venue['price']); ?> <span>/jam</span></strong>
                         <div>
-                            <button type="button" class="field-detail-button" data-field-open>Lihat Detail</button>
+                            <a class="field-detail-button" data-field-open href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : ''))); ?>">Lihat Detail</a>
                             <?php if (!empty($availableSchedules)): ?>
-                                <button type="button" class="field-book-button" data-field-open data-focus-schedules>Pilih Jadwal</button>
+                                <a class="field-book-button" data-field-open data-focus-schedules href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : '') . '#customerFieldBooking')); ?>">Pilih Jadwal</a>
                             <?php else: ?>
                                 <span class="primary" aria-disabled="true">Jadwal Kosong</span>
                             <?php endif; ?>
@@ -416,7 +414,7 @@ foreach ($venues as $venue) {
 
         function openFieldDetail(card, focusSchedules) {
             if (card && card.dataset.detailUrl) {
-                window.location.href = card.dataset.detailUrl;
+                window.location.href = card.dataset.detailUrl + (focusSchedules ? '#customerFieldBooking' : '');
                 return;
             }
 

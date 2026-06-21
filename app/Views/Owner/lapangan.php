@@ -159,7 +159,7 @@ foreach ($lapangan as $field) {
 
     <section class="owner-field-manage-dialog" role="dialog" aria-modal="true" aria-labelledby="ownerFieldManageTitle">
         <article class="owner-field-edit-panel">
-            <header class="owner-field-screen-head">
+            <header class="owner-field-screen-head owner-field-editor-head">
                 <button type="button" data-owner-field-manage-close aria-label="Kembali ke daftar lapangan">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
@@ -170,91 +170,204 @@ foreach ($lapangan as $field) {
                 <span class="owner-field-edit-status" data-owner-manage-edit-status>Aktif</span>
             </header>
 
-            <div class="owner-field-court-preview" data-owner-manage-visual></div>
-
-            <form class="owner-field-edit-form" action="<?php echo e(app_url('pemilik/lapangan/update')); ?>" method="post" enctype="multipart/form-data" autocomplete="off" data-owner-field-edit-form>
+            <form class="owner-field-edit-form owner-field-editor-form" action="<?php echo e(app_url('pemilik/lapangan/update')); ?>" method="post" enctype="multipart/form-data" autocomplete="off" data-owner-field-edit-form>
                 <input type="hidden" name="id_lapangan" value="">
-                <input type="hidden" name="type" value="">
 
-                <section class="owner-field-edit-section">
-                    <h3>Informasi Arena</h3>
+                <div class="owner-field-editor-grid">
+                    <div class="owner-field-editor-column">
+                        <section class="owner-field-edit-section owner-field-editor-card">
+                            <h3>Informasi Arena</h3>
 
-                    <label>
-                        <span>Nama Arena</span>
-                        <input type="text" name="name" autocomplete="off" required>
-                    </label>
+                            <label>
+                                <span>Nama Arena</span>
+                                <input type="text" name="name" autocomplete="off" required>
+                            </label>
 
-                    <label>
-                        <span>Lokasi</span>
-                        <span class="owner-field-inline-input">
-                            <i class="fa-solid fa-location-dot"></i>
-                            <input type="text" name="location" autocomplete="off" required>
-                        </span>
-                    </label>
+                            <label>
+                                <span>Deskripsi Arena</span>
+                                <span class="owner-field-description-wrap">
+                                    <textarea name="description" rows="4" maxlength="500" data-owner-description></textarea>
+                                    <small><b data-owner-description-count>0</b>/500</small>
+                                </span>
+                            </label>
+                        </section>
 
-                    <label>
-                        <span>Harga Sewa / Jam</span>
-                        <span class="owner-field-price-edit">
-                            <strong>Rp</strong>
-                            <input type="number" name="price" min="0" required>
-                        </span>
-                    </label>
+                        <section class="owner-field-edit-section owner-field-editor-card">
+                            <h3>Lokasi Arena</h3>
 
-                    <label>
-                        <span>Deskripsi</span>
-                        <textarea name="description" rows="4"></textarea>
-                    </label>
-                </section>
+                            <label>
+                                <span>Alamat Lengkap</span>
+                                <input type="text" name="location" autocomplete="off" required>
+                            </label>
 
-                <section class="owner-field-edit-section owner-field-photo-edit-section">
-                    <h3>Foto Lapangan</h3>
-                    <div class="owner-field-edit-photo-list" data-owner-edit-photos></div>
-                    <div data-owner-edit-deleted-photos></div>
+                            <div class="owner-field-location-map" aria-label="Pratinjau lokasi arena">
+                                <span class="owner-field-map-pin"><i class="fa-solid fa-location-dot"></i></span>
+                            </div>
 
-                    <label class="owner-field-upload-drop" for="ownerEditFieldPhoto">
-                        <input id="ownerEditFieldPhoto" type="file" name="foto_lapangan[]" accept="image/png,image/jpeg" multiple data-owner-edit-photo>
-                        <i class="fa-solid fa-cloud-arrow-up"></i>
-                        <span>
-                            <strong>Tambah Foto</strong>
-                            <small>PNG, JPG maksimal 5MB per foto. Total maksimal 5 foto</small>
-                        </span>
-                    </label>
-                    <div class="owner-field-edit-new-photo-list" data-owner-edit-new-photos></div>
-                </section>
+                            <div class="owner-field-map-actions">
+                                <small>Geser pin untuk mengatur lokasi arena</small>
+                                <button type="button" data-owner-reset-location>
+                                    <i class="fa-solid fa-rotate-left"></i>
+                                    <span>Atur Ulang Lokasi</span>
+                                </button>
+                            </div>
+                        </section>
 
-                <section class="owner-field-edit-section">
-                    <fieldset class="owner-field-facility-checks owner-field-edit-facility-checks">
-                        <legend>Fasilitas</legend>
+                        <section class="owner-field-edit-section owner-field-editor-card">
+                            <fieldset class="owner-field-facility-checks owner-field-edit-facility-checks">
+                                <legend>Fasilitas</legend>
+                                <small>Pilih fasilitas yang tersedia di arena Anda</small>
 
-                        <div class="owner-field-facility-check-grid">
-                            <?php foreach ($facilityOptions as $facility): ?>
-                                <label class="owner-field-facility-check">
-                                    <input type="checkbox" name="facilities[]" value="<?php echo e($facility['name']); ?>" data-owner-edit-facility>
-                                    <span>
-                                        <i class="fa-solid <?php echo e($facility['icon']); ?>"></i>
-                                        <strong><?php echo e($facility['name']); ?></strong>
-                                    </span>
+                                <div class="owner-field-facility-check-grid">
+                                    <?php foreach ($facilityOptions as $facility): ?>
+                                        <label class="owner-field-facility-check">
+                                            <input type="checkbox" name="facilities[]" value="<?php echo e($facility['name']); ?>" data-owner-edit-facility>
+                                            <span>
+                                                <i class="fa-solid <?php echo e($facility['icon']); ?>"></i>
+                                                <strong><?php echo e($facility['name']); ?></strong>
+                                            </span>
+                                        </label>
+                                    <?php endforeach; ?>
+                                </div>
+                            </fieldset>
+                        </section>
+
+                        <section class="owner-field-edit-section owner-field-editor-card">
+                            <h3>Informasi Tambahan</h3>
+                            <div class="owner-field-additional-grid">
+                                <label>
+                                    <span>Jenis Lapangan</span>
+                                    <select name="type" required>
+                                        <option value="Badminton">Badminton</option>
+                                        <option value="Futsal">Futsal</option>
+                                        <option value="Basket">Basket</option>
+                                        <option value="Voli">Voli</option>
+                                        <option value="Tenis">Tenis</option>
+                                        <option value="Mini Soccer">Mini Soccer</option>
+                                    </select>
                                 </label>
-                            <?php endforeach; ?>
+                                <label>
+                                    <span>Lantai</span>
+                                    <select aria-label="Jenis lantai">
+                                        <option>Vinyl</option>
+                                        <option>Interlock</option>
+                                        <option>Rumput Sintetis</option>
+                                        <option>Semen</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Jumlah Lapangan</span>
+                                    <select aria-label="Jumlah lapangan">
+                                        <option>1 Lapangan</option>
+                                        <option selected>2 Lapangan</option>
+                                        <option>3 Lapangan</option>
+                                        <option>4+ Lapangan</option>
+                                    </select>
+                                </label>
+                                <label>
+                                    <span>Pencahayaan</span>
+                                    <select aria-label="Kualitas pencahayaan">
+                                        <option selected>Baik</option>
+                                        <option>Sangat Baik</option>
+                                        <option>Cukup</option>
+                                    </select>
+                                </label>
+                            </div>
+
+                            <div class="owner-field-operational-inline">
+                                <span>Jam Operasional</span>
+                                <div>
+                                    <input type="time" value="06:00" aria-label="Jam buka">
+                                    <i>–</i>
+                                    <input type="time" value="23:00" aria-label="Jam tutup">
+                                    <b>WITA</b>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div class="owner-field-edit-actions">
+                            <button type="button" class="owner-field-cancel-btn" data-owner-field-manage-close>Batal</button>
+                            <button type="submit" class="owner-field-save-btn">
+                                <i class="fa-regular fa-floppy-disk"></i>
+                                <span>Simpan Perubahan</span>
+                            </button>
                         </div>
-                    </fieldset>
-                </section>
+                    </div>
 
-                <section class="owner-field-edit-section owner-field-status-section">
-                    <h3>Status Arena</h3>
-                    <label class="owner-field-status-toggle">
-                        <span data-owner-manage-status-label>Aktif</span>
-                        <input type="checkbox" name="active">
-                        <i></i>
-                    </label>
-                </section>
+                    <div class="owner-field-editor-column owner-field-editor-aside">
+                        <section class="owner-field-edit-section owner-field-editor-card owner-field-photo-edit-section">
+                            <h3>Foto Arena</h3>
+                            <p>Kelola foto arena Anda. Foto pertama akan menjadi foto utama.</p>
 
-                <div class="owner-field-edit-actions">
-                    <button type="button" class="owner-field-cancel-btn" data-owner-field-manage-close>Batal</button>
-                    <button type="submit" class="owner-field-save-btn">
-                        <i class="fa-regular fa-floppy-disk"></i>
-                        <span>Simpan Perubahan</span>
-                    </button>
+                            <div class="owner-field-court-preview" data-owner-manage-visual></div>
+                            <div class="owner-field-edit-photo-list" data-owner-edit-photos></div>
+                            <div data-owner-edit-deleted-photos></div>
+
+                            <label class="owner-field-upload-tile" for="ownerEditFieldPhoto">
+                                <input id="ownerEditFieldPhoto" type="file" name="foto_lapangan[]" accept="image/png,image/jpeg" multiple data-owner-edit-photo>
+                                <i class="fa-solid fa-plus"></i>
+                                <span>Tambah Foto</span>
+                            </label>
+                            <div class="owner-field-edit-new-photo-list" data-owner-edit-new-photos></div>
+                            <small class="owner-field-photo-note">Maksimal 5 foto. Format JPG atau PNG, ukuran maks. 5MB.</small>
+                        </section>
+
+                        <section class="owner-field-edit-section owner-field-editor-card owner-field-availability-card">
+                            <h3>Jadwal Tersedia</h3>
+                            <p>Atur jam operasional dan lihat jam yang tersedia untuk pemesanan.</p>
+
+                            <div class="owner-field-operational-inline">
+                                <span>Jam Operasional</span>
+                                <div>
+                                    <input type="time" value="06:00" aria-label="Jam operasional mulai">
+                                    <i>–</i>
+                                    <input type="time" value="23:00" aria-label="Jam operasional selesai">
+                                    <b>WITA</b>
+                                </div>
+                            </div>
+
+                            <div class="owner-field-slot-section">
+                                <h4>Jam Tersedia (Hari Ini)</h4>
+                                <div class="owner-field-slot-legend">
+                                    <span><i class="available"></i>Tersedia</span>
+                                    <span><i class="booked"></i>Terpesan</span>
+                                    <span><i class="unavailable"></i>Tidak Tersedia</span>
+                                </div>
+                                <div class="owner-field-slot-grid" aria-label="Ketersediaan jam hari ini">
+                                    <?php for ($hour = 6; $hour <= 23; $hour++): ?>
+                                        <?php $isBooked = in_array($hour, array(11, 15, 21), true); ?>
+                                        <span class="<?php echo $isBooked ? 'booked' : 'available'; ?>"><?php echo e(sprintf('%02d:00', $hour)); ?></span>
+                                    <?php endfor; ?>
+                                </div>
+                                <small>Jam tersedia akan menyesuaikan dengan jadwal pemesanan yang sudah ada.</small>
+                            </div>
+                        </section>
+
+                        <section class="owner-field-edit-section owner-field-editor-card owner-field-price-summary">
+                            <h3>Informasi Harga</h3>
+                            <label>
+                                <span>Harga Mulai Dari</span>
+                                <span class="owner-field-price-edit">
+                                    <strong>Rp</strong>
+                                    <input type="number" name="price" min="0" required aria-label="Harga mulai per jam">
+                                </span>
+                            </label>
+                            <p><strong data-owner-price-preview>Rp0</strong><b>/jam</b></p>
+                            <small>Harga yang ditampilkan kepada pelanggan sebagai harga mulai per jam.</small>
+                        </section>
+
+                        <section class="owner-field-edit-section owner-field-editor-card owner-field-status-section">
+                            <div>
+                                <h3>Status Arena</h3>
+                                <p>Aktifkan arena agar dapat ditemukan dan dipesan pelanggan.</p>
+                            </div>
+                            <label class="owner-field-status-toggle">
+                                <span data-owner-manage-status-label>Aktif</span>
+                                <input type="checkbox" name="active">
+                                <i></i>
+                            </label>
+                        </section>
+                    </div>
                 </div>
             </form>
         </article>
@@ -355,6 +468,11 @@ foreach ($lapangan as $field) {
         var editDeletedPhotos = modal.querySelector('[data-owner-edit-deleted-photos]');
         var editPhotoInput = modal.querySelector('[data-owner-edit-photo]');
         var editNewPhotoList = modal.querySelector('[data-owner-edit-new-photos]');
+        var descriptionInput = modal.querySelector('[data-owner-description]');
+        var descriptionCount = modal.querySelector('[data-owner-description-count]');
+        var pricePreview = modal.querySelector('[data-owner-price-preview]');
+        var resetLocationButton = modal.querySelector('[data-owner-reset-location]');
+        var mapPin = modal.querySelector('.owner-field-map-pin');
         var detailTitle = modal.querySelector('[data-owner-manage-detail-title]');
         var detailVisual = modal.querySelector('[data-owner-manage-detail-visual]');
         var detailName = modal.querySelector('[data-owner-manage-detail-name]');
@@ -372,6 +490,7 @@ foreach ($lapangan as $field) {
         var currentFieldId = null;
         var lastTrigger = null;
         var removedPhotoPaths = [];
+        var editNewPhotoUrls = [];
 
         var facilityIcons = {
             Parkir: 'fa-square-parking',
@@ -399,6 +518,16 @@ foreach ($lapangan as $field) {
 
         function formatPrice(value) {
             return 'Rp' + priceNumber(value).toLocaleString('id-ID');
+        }
+
+        function updateEditorMeta() {
+            if (descriptionInput && descriptionCount) {
+                descriptionCount.textContent = String(descriptionInput.value.length);
+            }
+
+            if (pricePreview && editForm && editForm.elements.price) {
+                pricePreview.textContent = formatPrice(editForm.elements.price.value);
+            }
         }
 
         function isActiveStatus(status) {
@@ -631,17 +760,54 @@ foreach ($lapangan as $field) {
             }
 
             var files = Array.prototype.slice.call(editPhotoInput.files || []);
+            var baseField = ownerFieldData[currentFieldId] || {};
+            var availablePhotoCount = Math.max(0, 5 - draftPhotos(baseField).length);
+
+            if (files.length > availablePhotoCount) {
+                files = files.slice(0, availablePhotoCount);
+
+                if (typeof DataTransfer !== 'undefined') {
+                    var transfer = new DataTransfer();
+                    files.forEach(function (file) {
+                        transfer.items.add(file);
+                    });
+                    editPhotoInput.files = transfer.files;
+                }
+
+                window.alert('Total foto arena maksimal 5. Pilihan foto telah disesuaikan.');
+            }
+
+            editNewPhotoUrls.forEach(function (photo) {
+                URL.revokeObjectURL(photo.url);
+            });
+            editNewPhotoUrls = [];
             editNewPhotoList.innerHTML = '';
 
             if (!files.length) {
+                setCourtVisual(editVisual, baseField.visual, draftPhotos(baseField));
                 return;
             }
 
-            files.slice(0, 5).forEach(function (file) {
+            files.forEach(function (file, index) {
+                var preview = {
+                    path: 'new-photo-' + index,
+                    url: URL.createObjectURL(file)
+                };
                 var item = document.createElement('span');
-                item.textContent = file.name;
+                var image = document.createElement('img');
+                var label = document.createElement('small');
+
+                editNewPhotoUrls.push(preview);
+                item.className = 'owner-field-edit-new-photo';
+                image.src = preview.url;
+                image.alt = 'Foto baru ' + (index + 1);
+                label.textContent = file.name;
+                item.appendChild(image);
+                item.appendChild(label);
                 editNewPhotoList.appendChild(item);
             });
+
+            setCourtVisual(editVisual, baseField.visual, draftPhotos(baseField).concat(editNewPhotoUrls));
         }
 
         function iconForFacility(name) {
@@ -755,12 +921,28 @@ foreach ($lapangan as $field) {
             }
 
             editForm.elements.id_lapangan.value = field.id || '';
-            editForm.elements.type.value = field.type || '';
+            var fieldType = field.type || '';
+            var hasFieldType = Array.prototype.some.call(editForm.elements.type.options, function (option) {
+                return option.value === fieldType;
+            });
+
+            if (fieldType && !hasFieldType) {
+                var typeOption = document.createElement('option');
+                typeOption.value = fieldType;
+                typeOption.textContent = fieldType;
+                editForm.elements.type.appendChild(typeOption);
+            }
+
+            editForm.elements.type.value = fieldType;
             editForm.elements.name.value = field.name || '';
             editForm.elements.location.value = field.location || '';
             editForm.elements.price.value = priceNumber(field.priceNumber || field.price);
             editForm.elements.description.value = field.description || '';
             editForm.elements.active.checked = isActiveStatus(field.status);
+            editNewPhotoUrls.forEach(function (photo) {
+                URL.revokeObjectURL(photo.url);
+            });
+            editNewPhotoUrls = [];
             if (editPhotoInput) {
                 editPhotoInput.value = '';
             }
@@ -772,6 +954,7 @@ foreach ($lapangan as $field) {
             setText(editTitle, 'Edit ' + (field.name || 'Arena'));
             setEditStatus(field.status || 'Aktif');
             setCourtVisual(editVisual, field.visual, field.photos);
+            updateEditorMeta();
         }
 
         function getDraftField() {
@@ -788,7 +971,7 @@ foreach ($lapangan as $field) {
                 cardStatus: draftStatus,
                 description: editForm.elements.description.value.trim() || 'Belum ada deskripsi.',
                 facilities: getSelectedFacilities(),
-                photos: draftPhotos(baseField)
+                photos: draftPhotos(baseField).concat(editNewPhotoUrls)
             });
         }
 
@@ -866,6 +1049,10 @@ foreach ($lapangan as $field) {
         }
 
         function closeManage() {
+            editNewPhotoUrls.forEach(function (photo) {
+                URL.revokeObjectURL(photo.url);
+            });
+            editNewPhotoUrls = [];
             modal.hidden = true;
             document.body.classList.remove('owner-field-modal-open');
 
@@ -879,6 +1066,19 @@ foreach ($lapangan as $field) {
                 openManage(button);
             });
         });
+
+        var requestedFieldId = new URLSearchParams(window.location.search).get('edit');
+
+        if (requestedFieldId) {
+            Array.prototype.some.call(openButtons, function (button) {
+                if (button.dataset.ownerFieldMode === 'edit' && button.dataset.ownerFieldId === requestedFieldId) {
+                    openManage(button);
+                    return true;
+                }
+
+                return false;
+            });
+        }
 
         closeButtons.forEach(function (button) {
             button.addEventListener('click', closeManage);
@@ -899,6 +1099,7 @@ foreach ($lapangan as $field) {
                 var draftField = getDraftField();
                 setEditStatus(draftField.status);
                 renderDetail(draftField);
+                updateEditorMeta();
             });
 
             editForm.elements.active.addEventListener('change', function () {
@@ -931,6 +1132,43 @@ foreach ($lapangan as $field) {
                     return;
                 }
             });
+        }
+
+        if (resetLocationButton && mapPin) {
+            resetLocationButton.addEventListener('click', function () {
+                mapPin.style.left = '53%';
+                mapPin.style.top = '50%';
+            });
+
+            var map = mapPin.closest('.owner-field-location-map');
+            var draggingPin = false;
+
+            mapPin.addEventListener('pointerdown', function (event) {
+                draggingPin = true;
+                mapPin.setPointerCapture(event.pointerId);
+                mapPin.style.cursor = 'grabbing';
+            });
+
+            mapPin.addEventListener('pointermove', function (event) {
+                if (!draggingPin || !map) {
+                    return;
+                }
+
+                var bounds = map.getBoundingClientRect();
+                var left = Math.max(4, Math.min(96, ((event.clientX - bounds.left) / bounds.width) * 100));
+                var top = Math.max(12, Math.min(92, ((event.clientY - bounds.top) / bounds.height) * 100));
+
+                mapPin.style.left = left + '%';
+                mapPin.style.top = top + '%';
+            });
+
+            function stopDraggingPin() {
+                draggingPin = false;
+                mapPin.style.cursor = 'grab';
+            }
+
+            mapPin.addEventListener('pointerup', stopDraggingPin);
+            mapPin.addEventListener('pointercancel', stopDraggingPin);
         }
 
         if (focusEditButton) {

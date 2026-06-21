@@ -181,7 +181,8 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
             matches.forEach(function (schedule) {
                 var button = document.createElement('button');
                 button.type = 'button';
-                button.textContent = schedule.time;
+                button.textContent = String(schedule.time || '').split(' - ')[0];
+                button.setAttribute('aria-label', 'Pilih jam ' + schedule.time);
                 button.addEventListener('click', function () {
                     timeOptions.querySelectorAll('button').forEach(function (item) { item.classList.toggle('active', item === button); });
                     scheduleInput.value = schedule.id;

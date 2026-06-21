@@ -6677,6 +6677,16 @@ body.booking-modal-open {
     border-radius: 8px;
     background: #07111d;
     box-shadow: 0 18px 42px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.home-venue-card:hover,
+.home-venue-card:focus-visible {
+    border-color: rgba(145, 225, 60, 0.45);
+    box-shadow: 0 22px 48px rgba(0, 0, 0, 0.24);
+    transform: translateY(-3px);
+    outline: none;
 }
 
 .home-venue-media {
@@ -7182,6 +7192,8 @@ body.booking-modal-open {
     color: #07111d !important;
 }
 
+.field-result-price a:hover,
+.field-result-price a:focus-visible,
 .field-result-price button:hover,
 .field-result-price button:focus-visible {
     border-color: rgba(145, 225, 60, 0.65);
@@ -9630,7 +9642,7 @@ body.dashboard-body.light .field-detail-schedule-list button {
 
 .customer-time-options {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 9px;
 }
 
@@ -22017,3 +22029,627 @@ body.owner-field-modal-open {
 }
 .admin-flash{display:flex;align-items:center;gap:10px;margin:0 0 18px;padding:13px 16px;border:1px solid;border-radius:12px;color:#f7fbff}.admin-flash.success{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.4)}.admin-flash.error{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.4)}.admin-flash span{flex:1}.admin-flash button{border:0;background:transparent;color:inherit;font-size:22px;cursor:pointer}.admin-notification,.admin-user-button{text-decoration:none}.admin-dialog{width:min(620px,calc(100% - 28px));max-height:90vh;overflow:auto;padding:0;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:#121c2b;color:#f7fbff;box-shadow:0 24px 80px rgba(0,0,0,.55)}.admin-dialog::backdrop{background:rgba(2,8,18,.78)}.admin-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid rgba(255,255,255,.09)}.admin-dialog-head h2{margin:0;font-size:20px}.admin-dialog-close{border:0;background:transparent;color:#fff;font-size:25px;cursor:pointer}.admin-dialog-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;padding:22px}.admin-dialog-form label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#b9c5d6}.admin-dialog-form label.full{grid-column:1/-1}.admin-dialog-form input,.admin-dialog-form select,.admin-dialog-form textarea{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#0d1623;color:#fff}.admin-dialog-form textarea{min-height:92px;resize:vertical}.admin-dialog-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:5px}.admin-inline-form{display:inline}.admin-inline-form button{font:inherit}.admin-empty-filter{display:none;text-align:center;padding:18px;color:#9aa8ba}[hidden]{display:none!important}@media(max-width:640px){.admin-dialog-form{grid-template-columns:1fr}.admin-dialog-form label.full{grid-column:auto}}
 .admin-notification-wrapper{position:relative}.admin-notification-popup{position:absolute;z-index:1000;top:calc(100% + 14px);right:0;width:min(390px,calc(100vw - 28px));overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#101a28;color:#f7fbff;box-shadow:0 22px 60px rgba(0,0,0,.5)}.admin-notification-popup header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.09)}.admin-notification-popup header div{display:flex;flex-direction:column;gap:3px}.admin-notification-popup header strong{font-size:16px}.admin-notification-popup header small{color:#91a0b4}.admin-notification-popup header button{border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer}.admin-notification-popup-list{max-height:390px;overflow:auto}.admin-notification-popup-item{display:flex;gap:12px;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.07)}.admin-notification-popup-item.unread{background:rgba(123,229,125,.06)}.admin-notification-popup-icon{display:grid;place-items:center;flex:0 0 35px;height:35px;border-radius:10px;background:rgba(123,229,125,.13);color:#7be57d}.admin-notification-popup-item div{min-width:0}.admin-notification-popup-item strong{display:block;margin-bottom:4px;font-size:14px}.admin-notification-popup-item p{margin:0 0 7px;color:#b8c4d4;font-size:12px;line-height:1.45}.admin-notification-popup-item time{color:#78879b;font-size:11px}.admin-notification-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 18px;color:#91a0b4}.admin-notification-empty i{font-size:25px}@media(max-width:640px){.admin-notification-popup{position:fixed;top:72px;right:14px;left:14px;width:auto}}
+
+/* Full-page owner arena editor */
+.owner-field-manage-modal.is-edit-mode {
+    place-items: stretch;
+    padding: 0;
+    background: #071321;
+}
+
+.owner-field-manage-modal.is-edit-mode .owner-field-manage-backdrop {
+    display: none;
+}
+
+.owner-field-manage-modal.is-edit-mode .owner-field-manage-dialog {
+    width: 100%;
+    max-width: none;
+    max-height: 100vh;
+    overflow-y: auto;
+    border-radius: 0;
+}
+
+.owner-field-manage-modal.is-edit-mode .owner-field-edit-panel {
+    min-height: 100vh;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background:
+        radial-gradient(circle at 50% -20%, rgba(34, 89, 139, 0.16), transparent 38%),
+        linear-gradient(180deg, #071321 0%, #06111e 100%);
+    box-shadow: none;
+}
+
+.owner-field-editor-head {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    min-height: 82px;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 16px clamp(20px, 3vw, 48px);
+    border-bottom: 1px solid rgba(162, 190, 222, 0.09);
+    background: rgba(6, 17, 30, 0.94);
+    backdrop-filter: blur(16px);
+}
+
+.owner-field-editor-head button {
+    justify-self: start;
+    font-size: 20px;
+}
+
+.owner-field-editor-head h2 {
+    font-size: 22px;
+}
+
+.owner-field-editor-form {
+    display: block;
+    width: min(100%, 1480px);
+    margin: 0 auto;
+    padding: 28px clamp(20px, 3vw, 48px) 48px;
+}
+
+.owner-field-editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.42fr) minmax(380px, 0.92fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.owner-field-editor-column {
+    min-width: 0;
+    display: grid;
+    gap: 18px;
+}
+
+.owner-field-editor-card {
+    gap: 18px;
+    padding: 24px;
+    border: 1px solid rgba(157, 187, 220, 0.15);
+    border-radius: 10px;
+    background: rgba(8, 23, 39, 0.72);
+    box-shadow: 0 16px 42px rgba(0, 0, 0, 0.08);
+}
+
+.owner-field-editor-card h3 {
+    font-size: 18px;
+}
+
+.owner-field-editor-card > p,
+.owner-field-status-section > div > p {
+    margin: -9px 0 0;
+    color: rgba(226, 235, 245, 0.65);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.owner-field-description-wrap {
+    position: relative;
+    display: block;
+}
+
+.owner-field-description-wrap textarea {
+    display: block;
+    padding-bottom: 34px;
+}
+
+.owner-field-description-wrap small {
+    position: absolute;
+    right: 13px;
+    bottom: 10px;
+    color: rgba(226, 235, 245, 0.62);
+    font-size: 12px;
+}
+
+.owner-field-description-wrap small b {
+    font-weight: 500;
+}
+
+.owner-field-location-map {
+    position: relative;
+    min-height: 180px;
+    overflow: hidden;
+    border: 1px solid rgba(157, 187, 220, 0.13);
+    border-radius: 7px;
+    background-color: #101f31;
+    background-image:
+        linear-gradient(31deg, transparent 47%, rgba(91, 116, 145, 0.24) 48%, rgba(91, 116, 145, 0.24) 50%, transparent 51%),
+        linear-gradient(121deg, transparent 47%, rgba(91, 116, 145, 0.18) 48%, rgba(91, 116, 145, 0.18) 50%, transparent 51%),
+        linear-gradient(rgba(142, 169, 198, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(142, 169, 198, 0.08) 1px, transparent 1px);
+    background-size: 170px 130px, 190px 150px, 34px 34px, 34px 34px;
+    box-shadow: inset 0 0 60px rgba(4, 12, 22, 0.46);
+}
+
+.owner-field-location-map::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(6, 17, 30, 0.2), transparent 40%, rgba(6, 17, 30, 0.24));
+    pointer-events: none;
+}
+
+.owner-field-map-pin {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 53%;
+    display: grid;
+    place-items: center;
+    color: #70dd3d;
+    cursor: grab;
+    font-size: 30px;
+    touch-action: none;
+    transform: translate(-50%, -85%);
+    filter: drop-shadow(0 8px 8px rgba(0, 0, 0, 0.4));
+}
+
+.owner-field-map-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.owner-field-map-actions small {
+    color: rgba(226, 235, 245, 0.65);
+    font-size: 12px;
+}
+
+.owner-field-map-actions button {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid rgba(157, 187, 220, 0.17);
+    border-radius: 7px;
+    padding: 0 13px;
+    background: rgba(255, 255, 255, 0.025);
+    color: rgba(247, 251, 255, 0.82);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+}
+
+.owner-field-editor-card .owner-field-facility-checks > small {
+    margin-top: -11px;
+    color: rgba(226, 235, 245, 0.62);
+    font-size: 13px;
+}
+
+.owner-field-editor-card .owner-field-facility-check-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.owner-field-editor-card .owner-field-facility-check span {
+    min-height: 58px;
+    display: flex;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 11px 14px;
+    text-align: left;
+}
+
+.owner-field-editor-card .owner-field-facility-check i {
+    width: 24px;
+    color: rgba(235, 242, 249, 0.78);
+    font-size: 20px;
+    text-align: center;
+}
+
+.owner-field-editor-card .owner-field-facility-check span::after {
+    top: 5px;
+    right: 5px;
+    width: 16px;
+    height: 16px;
+    background: transparent;
+    color: #78e640;
+    font-size: 12px;
+}
+
+.owner-field-editor-card .owner-field-facility-check input:checked + span {
+    border-color: #65ca32;
+    background: rgba(84, 184, 40, 0.06);
+}
+
+.owner-field-additional-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.owner-field-editor-card select,
+.owner-field-operational-inline input[type="time"] {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid rgba(180, 206, 236, 0.15);
+    border-radius: 7px;
+    outline: none;
+    padding: 0 14px;
+    background: #0a192a;
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    color-scheme: dark;
+}
+
+.owner-field-editor-card select:focus,
+.owner-field-operational-inline input[type="time"]:focus {
+    border-color: rgba(143, 227, 50, 0.52);
+    box-shadow: 0 0 0 3px rgba(143, 227, 50, 0.1);
+}
+
+.owner-field-operational-inline {
+    display: grid;
+    gap: 9px;
+    color: rgba(247, 251, 255, 0.82);
+    font-size: 14px;
+}
+
+.owner-field-operational-inline > div {
+    display: grid;
+    grid-template-columns: minmax(100px, 1fr) auto minmax(100px, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.owner-field-operational-inline i {
+    color: rgba(247, 251, 255, 0.55);
+    font-style: normal;
+}
+
+.owner-field-operational-inline b {
+    min-height: 32px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 10px;
+    border-radius: 5px;
+    background: rgba(89, 191, 47, 0.24);
+    color: #a2ee75;
+    font-size: 12px;
+}
+
+.owner-field-editor-form .owner-field-edit-actions {
+    padding: 0;
+    border: 0;
+}
+
+.owner-field-editor-aside .owner-field-court-preview {
+    min-height: 250px;
+    aspect-ratio: 16 / 9;
+    border: 1px solid rgba(157, 187, 220, 0.14);
+    border-radius: 8px;
+}
+
+.owner-field-photo-edit-section {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.owner-field-photo-edit-section > h3,
+.owner-field-photo-edit-section > p,
+.owner-field-photo-edit-section > .owner-field-court-preview,
+.owner-field-photo-edit-section > [data-owner-edit-deleted-photos],
+.owner-field-photo-edit-section > .owner-field-edit-new-photo-list,
+.owner-field-photo-edit-section > .owner-field-photo-note {
+    grid-column: 1 / -1;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-list {
+    grid-column: 1 / span 4;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item {
+    min-height: 72px;
+    border-radius: 7px;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item:first-child {
+    border-color: #66d031;
+    box-shadow: 0 0 0 1px #66d031;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item:first-child::after {
+    content: "Utama";
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    border-radius: 4px;
+    padding: 4px 6px;
+    background: rgba(81, 185, 43, 0.92);
+    color: white;
+    font-size: 9px;
+    font-weight: 800;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item img {
+    height: 72px;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item button {
+    top: 5px;
+    right: 5px;
+    bottom: auto;
+    width: 25px;
+    min-height: 25px;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(5, 17, 30, 0.82);
+}
+
+.owner-field-photo-edit-section .owner-field-edit-photo-item button span {
+    display: none;
+}
+
+.owner-field-upload-tile {
+    min-height: 74px;
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 7px;
+    border: 1px solid rgba(157, 187, 220, 0.16);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.018);
+    color: rgba(226, 235, 245, 0.7);
+    cursor: pointer;
+    font-size: 11px;
+    text-align: center;
+}
+
+.owner-field-upload-tile input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.owner-field-upload-tile i {
+    font-size: 18px;
+}
+
+.owner-field-upload-tile:hover {
+    border-color: rgba(143, 227, 50, 0.5);
+    color: #9bec6e;
+}
+
+.owner-field-photo-note,
+.owner-field-slot-section > small,
+.owner-field-price-summary > small {
+    color: rgba(226, 235, 245, 0.58);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.owner-field-edit-new-photo-list span {
+    font-size: 11px;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-new-photo-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-new-photo {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+    overflow: hidden;
+    border: 1px solid rgba(143, 227, 50, 0.3);
+    border-radius: 7px;
+    padding: 4px;
+    background: rgba(143, 227, 50, 0.05);
+}
+
+.owner-field-photo-edit-section .owner-field-edit-new-photo img {
+    width: 100%;
+    height: 68px;
+    display: block;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.owner-field-photo-edit-section .owner-field-edit-new-photo small {
+    overflow: hidden;
+    padding: 0 4px 3px;
+    color: rgba(247, 251, 255, 0.72);
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.owner-field-availability-card {
+    gap: 20px;
+}
+
+.owner-field-slot-section {
+    display: grid;
+    gap: 12px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(157, 187, 220, 0.11);
+}
+
+.owner-field-slot-section h4 {
+    margin: 0;
+    color: #fff;
+    font-size: 16px;
+}
+
+.owner-field-slot-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.owner-field-slot-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: rgba(226, 235, 245, 0.72);
+    font-size: 12px;
+}
+
+.owner-field-slot-legend i {
+    width: 11px;
+    height: 11px;
+    border-radius: 2px;
+}
+
+.owner-field-slot-legend i.available {
+    background: #64cf32;
+}
+
+.owner-field-slot-legend i.booked {
+    background: #ed4c45;
+}
+
+.owner-field-slot-legend i.unavailable {
+    background: #526275;
+}
+
+.owner-field-slot-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.owner-field-slot-grid span {
+    min-height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid;
+    border-radius: 5px;
+    color: #f7fbff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.owner-field-slot-grid span.available {
+    border-color: rgba(88, 203, 49, 0.65);
+    background: rgba(45, 126, 40, 0.52);
+}
+
+.owner-field-slot-grid span.booked {
+    border-color: rgba(244, 71, 67, 0.72);
+    background: rgba(143, 35, 38, 0.62);
+}
+
+.owner-field-price-summary > label {
+    max-width: 290px;
+}
+
+.owner-field-price-summary > p {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    margin: 0;
+}
+
+.owner-field-price-summary > p strong {
+    color: #6bdd3b;
+    font-size: 24px;
+}
+
+.owner-field-price-summary > p b {
+    color: #6bdd3b;
+    font-size: 12px;
+}
+
+.owner-field-editor-form .owner-field-status-section {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@media (max-width: 1100px) {
+    .owner-field-editor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .owner-field-editor-aside {
+        grid-row: 2;
+    }
+
+    .owner-field-editor-card .owner-field-facility-check-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .owner-field-editor-head {
+        grid-template-columns: 34px minmax(0, 1fr) auto;
+        padding: 13px 16px;
+    }
+
+    .owner-field-editor-head h2 {
+        overflow: hidden;
+        font-size: 17px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .owner-field-editor-head p {
+        font-size: 12px;
+    }
+
+    .owner-field-editor-head .owner-field-edit-status {
+        grid-column: auto;
+        justify-self: end;
+        min-height: 30px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+
+    .owner-field-editor-form {
+        padding: 16px 12px 32px;
+    }
+
+    .owner-field-editor-card {
+        padding: 18px 16px;
+    }
+
+    .owner-field-additional-grid,
+    .owner-field-editor-form .owner-field-edit-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .owner-field-editor-card .owner-field-facility-check-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .owner-field-photo-edit-section {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .owner-field-photo-edit-section .owner-field-edit-photo-list {
+        grid-column: 1 / -1;
+    }
+
+    .owner-field-upload-tile {
+        grid-column: span 2;
+    }
+
+    .owner-field-map-actions {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .owner-field-operational-inline > div {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .owner-field-operational-inline b {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+
+    .owner-field-slot-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .owner-field-editor-form .owner-field-status-section {
+        grid-template-columns: 1fr;
+    }
+}
