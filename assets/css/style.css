@@ -9991,17 +9991,173 @@ body.dashboard-body.light .field-detail-schedule-list button {
 .customer-review-grid p { color: #bac6d1; font-size: 13px; line-height: 1.6; }
 .customer-review-grid small { color: #778596; }
 
-body.dashboard-body.light .customer-field-page { color: #111827; }
+body.dashboard-body.light .customer-field-page {
+    color: #172033;
+}
+
+body.dashboard-body.light .customer-field-breadcrumb a {
+    color: #48a91f;
+}
+
+body.dashboard-body.light .customer-field-breadcrumb span {
+    color: #8290a3;
+}
+
 body.dashboard-body.light .customer-field-breadcrumb strong,
 body.dashboard-body.light .customer-field-summary h1,
 body.dashboard-body.light .customer-field-summary h2,
 body.dashboard-body.light .customer-field-info-card h2,
 body.dashboard-body.light .customer-field-location-card h2,
-body.dashboard-body.light .customer-field-reviews h2 { color: #111827; }
+body.dashboard-body.light .customer-field-reviews h2 {
+    color: #101828;
+}
+
+body.dashboard-body.light .customer-field-address,
+body.dashboard-body.light .customer-field-rating,
+body.dashboard-body.light .customer-field-summary section > p {
+    color: #66758a;
+}
+
+body.dashboard-body.light .customer-field-address span {
+    color: #48a91f;
+}
+
+body.dashboard-body.light .customer-field-tags span {
+    border-color: #dce4ed;
+    background: #f8fafc;
+    color: #475569;
+}
+
+body.dashboard-body.light .customer-field-facilities span {
+    color: #536176;
+}
+
+body.dashboard-body.light .customer-field-facilities i {
+    color: #48a91f;
+}
+
 body.dashboard-body.light .customer-field-booking-card,
 body.dashboard-body.light .customer-field-info-card,
 body.dashboard-body.light .customer-field-location-card,
-body.dashboard-body.light .customer-field-reviews { background: #ffffff; border-color: rgba(15, 23, 42, 0.1); }
+body.dashboard-body.light .customer-field-reviews {
+    border-color: #dce3eb;
+    background: #ffffff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.045);
+}
+
+body.dashboard-body.light .customer-field-booking-card > p {
+    color: #64748b;
+}
+
+body.dashboard-body.light .customer-field-booking-card > strong {
+    color: #58bd27;
+}
+
+body.dashboard-body.light .customer-field-booking-card > span {
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .customer-field-booking-card hr {
+    background: #e8edf3;
+}
+
+body.dashboard-body.light .customer-field-booking-card form > label,
+body.dashboard-body.light .customer-booking-label {
+    color: #1e293b;
+}
+
+body.dashboard-body.light .customer-field-booking-card input[type="date"] {
+    border-color: #d8e0e9;
+    background: #f8fafc;
+    color: #263449;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .customer-field-booking-card input[type="date"]:focus {
+    border-color: #65c936;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(101, 201, 54, 0.14);
+}
+
+body.dashboard-body.light .customer-time-options button {
+    border-color: #d8e0e9;
+    background: #f8fafc;
+    color: #344054;
+}
+
+body.dashboard-body.light .customer-time-options button:hover,
+body.dashboard-body.light .customer-time-options button.active {
+    border-color: #58bd27;
+    background: #effce8;
+    color: #2f8915;
+    box-shadow: 0 0 0 2px rgba(88, 189, 39, 0.1);
+}
+
+body.dashboard-body.light .customer-booking-hint {
+    color: #718096;
+}
+
+body.dashboard-body.light .customer-book-now {
+    color: #13220d;
+}
+
+body.dashboard-body.light .customer-book-now:disabled {
+    background: #d9efce;
+    color: #71816b;
+    opacity: 1;
+}
+
+body.dashboard-body.light .customer-view-schedule {
+    border-color: #dce3eb;
+    background: #ffffff;
+    color: #344054;
+}
+
+body.dashboard-body.light .customer-view-schedule:hover {
+    border-color: #9bcf81;
+    background: #f7fcf4;
+    color: #318516;
+}
+
+body.dashboard-body.light .customer-field-info-card dt {
+    color: #718096;
+}
+
+body.dashboard-body.light .customer-field-info-card dd {
+    color: #334155;
+    font-weight: 700;
+}
+
+body.dashboard-body.light .customer-field-info-card dl > div {
+    border-bottom-color: #edf1f5;
+}
+
+body.dashboard-body.light .customer-field-location-card > p {
+    color: #536176;
+}
+
+body.dashboard-body.light .customer-review-empty,
+body.dashboard-body.light .customer-booking-empty {
+    color: #718096;
+}
+
+body.dashboard-body.light .customer-review-empty strong,
+body.dashboard-body.light .customer-booking-empty strong {
+    color: #263449;
+}
+
+body.dashboard-body.light .customer-review-grid article {
+    border-color: #e1e7ee;
+    background: #f8fafc;
+}
+
+body.dashboard-body.light .customer-review-grid p {
+    color: #536176;
+}
+
+body.dashboard-body.light .customer-review-grid small {
+    color: #718096;
+}
 
 @media (max-width: 1180px) {
     .customer-field-grid {
