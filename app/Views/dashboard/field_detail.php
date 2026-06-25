@@ -100,7 +100,7 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
                     <button type="button" class="customer-view-schedule" id="customerViewSchedule">Lihat Jadwal</button>
                 </form>
             <?php else: ?>
-                <div class="customer-booking-empty"><span>&#128197;</span><strong>Jadwal belum tersedia</strong><p>Coba periksa kembali nanti.</p></div>
+                <div class="customer-booking-empty"><span>&#128197;</span><strong>Jadwal mendatang belum tersedia</strong><p>Semua slot yang tersimpan sudah lewat. Coba cek kembali nanti atau cari lapangan lain.</p></div>
                 <a class="customer-view-schedule" href="<?php echo e(app_url('dashboard/lapangan')); ?>">Cari Lapangan Lain</a>
             <?php endif; ?>
         </aside>
@@ -110,7 +110,7 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
             <dl>
                 <div><dt>Jenis Lapangan</dt><dd><?php echo e($venue['type']); ?></dd></div>
                 <div><dt>Status</dt><dd>Aktif</dd></div>
-                <div><dt>Jadwal Tersedia</dt><dd><?php echo count($schedules); ?> slot</dd></div>
+                <div><dt>Jadwal Mendatang</dt><dd><?php echo count($schedules); ?> slot</dd></div>
                 <div><dt>Harga Mulai</dt><dd><?php echo e($venue['price']); ?> / jam</dd></div>
                 <div><dt>Jam Operasional</dt><dd><?php echo e($hoursLabel); ?></dd></div>
             </dl>

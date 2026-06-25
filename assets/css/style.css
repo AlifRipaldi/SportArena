@@ -3025,18 +3025,19 @@ body.dashboard-body {
 .dashboard-brand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 26px;
     padding: 0 10px;
     text-transform: uppercase;
 }
 
 .dashboard-logo-mark {
-    width: 44px;
-    height: 44px;
+    flex: 0 0 58px;
+    width: 58px;
+    height: 42px;
     display: grid;
     place-items: center;
-    border-radius: 12px;
+    border-radius: 0;
     background: transparent;
     overflow: hidden;
 }
@@ -4585,6 +4586,62 @@ body.dashboard-body {
     gap: 8px;
 }
 
+.favorite-empty-state {
+    min-height: 210px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10px;
+    padding: 34px 24px;
+    border: 1px solid rgba(190, 215, 238, 0.08);
+    border-radius: 8px;
+    background:
+        linear-gradient(135deg, rgba(145, 225, 60, 0.035), transparent 32%),
+        #07111d;
+    color: #c8d2dc;
+    text-align: center;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
+}
+
+.favorite-empty-state > span {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(114, 203, 44, 0.15);
+    color: #91e13c;
+    font-size: 30px;
+}
+
+.favorite-empty-state strong {
+    color: #ffffff;
+    font-size: 18px;
+}
+
+.favorite-empty-state p {
+    max-width: 390px;
+    margin: 0;
+    color: #aeb9c5;
+    font-size: 13px;
+}
+
+.favorite-empty-state a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    padding: 0 16px;
+    border: 1px solid rgba(145, 225, 60, 0.34);
+    border-radius: 7px;
+    background: rgba(145, 225, 60, 0.06);
+    color: #91e13c;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
 .favorite-match-card {
     display: grid;
     grid-template-columns: 248px minmax(0, 1fr) 272px 54px;
@@ -4810,6 +4867,98 @@ body.dashboard-body {
 
 .favorite-footnote span {
     color: #dce6ef;
+}
+
+body.dashboard-body.light .favorite-toolbar {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .favorite-sort-control {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f8fbff;
+    color: #475569;
+    box-shadow: 0 8px 18px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .favorite-sort-control span {
+    color: #334155;
+}
+
+body.dashboard-body.light .favorite-sort-control select {
+    border: 0;
+    background: transparent;
+    color: #111827;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .favorite-sort-control:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .favorite-summary-panel {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .favorite-summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #31a33e;
+    font-size: 30px;
+}
+
+body.dashboard-body.light .favorite-clear-button {
+    border-color: rgba(225, 64, 64, 0.24);
+    background: #fff1f2;
+    color: #dc2626;
+}
+
+body.dashboard-body.light .favorite-clear-button:hover,
+body.dashboard-body.light .favorite-clear-button:focus-visible {
+    outline: 2px solid rgba(225, 64, 64, 0.12);
+    outline-offset: 2px;
+    border-color: rgba(225, 64, 64, 0.38);
+}
+
+body.dashboard-body.light .favorite-empty-state {
+    border-color: rgba(37, 60, 86, 0.12);
+    background:
+        linear-gradient(135deg, rgba(47, 185, 58, 0.04), transparent 34%),
+        #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .favorite-empty-state > span {
+    background: #dcfce7;
+    color: #31a33e;
+}
+
+body.dashboard-body.light .favorite-empty-state strong {
+    color: #111827;
+}
+
+body.dashboard-body.light .favorite-empty-state p {
+    color: #64748b;
+}
+
+body.dashboard-body.light .favorite-empty-state a {
+    border-color: rgba(47, 185, 58, 0.26);
+    background: rgba(47, 185, 58, 0.06);
+    color: #1f8f2e;
+}
+
+body.dashboard-body.light .favorite-footnote {
+    color: #64748b;
+}
+
+body.dashboard-body.light .favorite-footnote span {
+    color: #94a3b8;
 }
 
 @media (max-width: 1260px) {
@@ -7090,8 +7239,8 @@ body.booking-modal-open {
 }
 
 .profile-dashboard .dashboard-logo-mark {
-    width: 52px;
-    height: 52px;
+    width: 58px;
+    height: 42px;
 }
 
 .profile-dashboard .dashboard-brand strong {
@@ -8907,6 +9056,49 @@ body.dashboard-body.light .home-stat-card strong {
     color: #111827;
 }
 
+body.dashboard-body.light .home-dashboard .dashboard-main.home-main {
+    padding-top: 38px;
+}
+
+body.dashboard-body.light .home-topbar {
+    margin-bottom: 24px;
+}
+
+body.dashboard-body.light .home-search-row {
+    margin-bottom: 28px;
+}
+
+body.dashboard-body.light .home-search-box {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #ffffff;
+    color: #334155;
+    box-shadow: 0 10px 26px rgba(37, 60, 86, 0.06);
+}
+
+body.dashboard-body.light .home-search-box > span {
+    color: #2563eb;
+}
+
+body.dashboard-body.light .home-search-box:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .home-filter-button {
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+    color: #ffffff;
+    box-shadow: 0 14px 28px rgba(47, 185, 58, 0.2);
+}
+
+body.dashboard-body.light .home-stat-grid {
+    margin-bottom: 30px;
+}
+
+body.dashboard-body.light .home-stat-card {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+}
+
 body.dashboard-body.light .home-stat-card.green .home-stat-icon {
     background: #5fb818;
     color: #ffffff;
@@ -8941,6 +9133,51 @@ body.dashboard-body.light .home-stat-card.purple a {
 
 body.dashboard-body.light .home-stat-card.orange a {
     color: #e8761e;
+}
+
+body.dashboard-body.light .home-section-head {
+    margin-bottom: 16px;
+}
+
+body.dashboard-body.light .home-section-head a {
+    color: #239a31;
+    font-weight: 700;
+}
+
+body.dashboard-body.light .home-venue-card {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+}
+
+body.dashboard-body.light .home-venue-card:hover,
+body.dashboard-body.light .home-venue-card:focus-visible {
+    border-color: rgba(47, 185, 58, 0.32);
+    box-shadow: 0 22px 48px rgba(37, 60, 86, 0.16);
+}
+
+body.dashboard-body.light .home-venue-media button {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(7, 17, 29, 0.42);
+    color: #ffffff;
+    backdrop-filter: blur(8px);
+}
+
+body.dashboard-body.light .home-venue-body h3 {
+    color: #111827;
+}
+
+body.dashboard-body.light .home-venue-body p span {
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .home-venue-body strong {
+    color: #4fcd22;
+}
+
+body.dashboard-body.light .home-venue-body strong small {
+    color: #94a3b8;
 }
 
 body.dashboard-body.light .home-venue-schedule {
@@ -9002,6 +9239,15 @@ body.dashboard-body.light .home-search-box input::placeholder,
 body.dashboard-body.light .field-search-control input::placeholder,
 body.dashboard-body.light .settings-password-input input::placeholder {
     color: #8795a8;
+}
+
+body.dashboard-body.light .home-search-box {
+    background: #ffffff;
+    box-shadow: 0 10px 26px rgba(37, 60, 86, 0.06);
+}
+
+body.dashboard-body.light .home-search-box input {
+    background: transparent;
 }
 
 body.dashboard-body.light .field-sort-control {
@@ -10141,9 +10387,35 @@ body.dashboard-body.light .customer-booking-empty {
     color: #718096;
 }
 
+body.dashboard-body.light .customer-booking-empty {
+    min-height: 188px;
+    padding: 24px 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f8fbff;
+}
+
+body.dashboard-body.light .customer-booking-empty > span {
+    display: inline-grid;
+    width: 46px;
+    height: 46px;
+    place-items: center;
+    margin-bottom: 14px;
+    border-radius: 8px;
+    background: #eaf5ff;
+    box-shadow: inset 0 -10px 18px rgba(59, 130, 246, 0.08);
+}
+
 body.dashboard-body.light .customer-review-empty strong,
 body.dashboard-body.light .customer-booking-empty strong {
     color: #263449;
+}
+
+body.dashboard-body.light .customer-booking-empty p {
+    max-width: 280px;
+    margin-inline: auto;
+    line-height: 1.55;
+    color: #64748b;
 }
 
 body.dashboard-body.light .customer-review-grid article {
@@ -10471,6 +10743,122 @@ body.dashboard-body.light .review-card-actions button,
 body.dashboard-body.light .booking-code-row button,
 body.dashboard-body.light .history-code-row button {
     color: #1f2937;
+}
+
+body.dashboard-body.light .booking-toolbar {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .booking-sort-control {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f8fbff;
+    color: #475569;
+    box-shadow: 0 8px 18px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .booking-sort-control span {
+    color: #334155;
+}
+
+body.dashboard-body.light .booking-sort-control select {
+    border: 0;
+    background: transparent;
+    color: #111827;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .booking-sort-control:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .booking-filter-tabs button small {
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .booking-filter-tabs button.active small {
+    background: #dcfce7;
+    color: #31a33e;
+}
+
+body.dashboard-body.light .booking-info-banner > span,
+body.dashboard-body.light .booking-empty-state > span {
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 24px;
+}
+
+body.dashboard-body.light .booking-info-banner > button {
+    border-color: rgba(47, 185, 58, 0.26);
+    background: rgba(47, 185, 58, 0.06);
+    color: #1f8f2e;
+}
+
+body.dashboard-body.light .booking-match-meta span {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #f8fbff;
+    color: #64748b;
+}
+
+body.dashboard-body.light .booking-code-row small {
+    color: #64748b;
+}
+
+body.dashboard-body.light .booking-code-row strong {
+    color: #42b924;
+}
+
+body.dashboard-body.light .booking-code-row button {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #f8fbff;
+    color: #334155;
+}
+
+body.dashboard-body.light .booking-status-pill.upcoming {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+body.dashboard-body.light .booking-status-pill.pending {
+    background: #fef3c7;
+    color: #a66d00;
+}
+
+body.dashboard-body.light .booking-status-pill.completed {
+    background: #dbeafe;
+    color: #1769c2;
+}
+
+body.dashboard-body.light .booking-status-pill.cancelled {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+body.dashboard-body.light .booking-row-arrow {
+    color: #94a3b8;
+}
+
+body.dashboard-body.light .booking-empty-state {
+    border-style: solid;
+    border-color: rgba(37, 60, 86, 0.12);
+    background:
+        linear-gradient(135deg, rgba(47, 185, 58, 0.035), transparent 34%),
+        #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .booking-empty-state a {
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(47, 185, 58, 0.18);
 }
 
 /* --- USER CHANGE PASSWORD PAGE --- */
@@ -10842,6 +11230,127 @@ body.dashboard-body.light .history-code-row button {
     color: #ffffff;
 }
 
+.review-compose-panel {
+    margin-bottom: 14px;
+    padding: 26px 28px;
+    border-color: rgba(190, 215, 238, 0.1);
+    background:
+        linear-gradient(135deg, rgba(145, 225, 60, 0.035), transparent 34%),
+        #07111d;
+}
+
+.review-compose-panel .profile-panel-header {
+    margin-bottom: 20px;
+}
+
+.review-form {
+    display: grid;
+    gap: 18px;
+}
+
+.review-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(190px, 0.45fr);
+    gap: 16px;
+}
+
+.review-field {
+    min-width: 0;
+    display: grid;
+    gap: 8px;
+    color: #b7c4d2;
+    font-size: 13px;
+}
+
+.review-field span {
+    color: #c9d5df;
+    font-weight: 700;
+}
+
+.review-field-comment {
+    grid-column: 1 / -1;
+}
+
+.review-field select,
+.review-field textarea {
+    width: 100%;
+    border: 1px solid rgba(190, 215, 238, 0.13);
+    border-radius: 7px;
+    outline: 0;
+    background-color: #0a1725;
+    color: #ffffff;
+    font: inherit;
+    font-size: 14px;
+    color-scheme: dark;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.review-field select {
+    min-height: 50px;
+    appearance: none;
+    padding: 0 42px 0 14px;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #dce6ef 50%),
+        linear-gradient(135deg, #dce6ef 50%, transparent 50%);
+    background-position:
+        calc(100% - 18px) 21px,
+        calc(100% - 12px) 21px;
+    background-repeat: no-repeat;
+    background-size: 6px 6px, 6px 6px;
+    cursor: pointer;
+}
+
+.review-field select option {
+    background: #07111d;
+    color: #ffffff;
+}
+
+.review-field textarea {
+    min-height: 124px;
+    padding: 13px 14px;
+    line-height: 1.55;
+    resize: vertical;
+}
+
+.review-field textarea::placeholder {
+    color: #7f8fa3;
+}
+
+.review-field select:focus,
+.review-field textarea:focus {
+    border-color: rgba(145, 225, 60, 0.56);
+    box-shadow: 0 0 0 3px rgba(145, 225, 60, 0.1);
+    background-color: #0c1a2a;
+}
+
+.review-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.review-form-actions small {
+    color: #8d9bab;
+    font-size: 12px;
+}
+
+.review-form-actions .profile-panel-action {
+    width: auto;
+    min-width: 178px;
+    margin-top: 0;
+    border-color: transparent;
+    background: linear-gradient(135deg, #9cec43, #65c827);
+    color: #07111d;
+    box-shadow: 0 12px 24px rgba(83, 188, 41, 0.15);
+}
+
+.review-form-actions .profile-panel-action:hover,
+.review-form-actions .profile-panel-action:focus-visible {
+    outline: 2px solid rgba(145, 225, 60, 0.2);
+    outline-offset: 2px;
+}
+
 .review-summary-panel {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -10935,6 +11444,62 @@ body.dashboard-body.light .history-code-row button {
 .review-list {
     display: grid;
     gap: 8px;
+}
+
+.review-empty-state {
+    min-height: 212px;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 10px;
+    padding: 34px 24px;
+    border: 1px solid rgba(190, 215, 238, 0.08);
+    border-radius: 8px;
+    background:
+        linear-gradient(135deg, rgba(145, 225, 60, 0.035), transparent 32%),
+        #07111d;
+    color: #c8d2dc;
+    text-align: center;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.14);
+}
+
+.review-empty-state > span {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(114, 203, 44, 0.15);
+    color: #91e13c;
+    font-size: 28px;
+}
+
+.review-empty-state strong {
+    color: #ffffff;
+    font-size: 18px;
+}
+
+.review-empty-state p {
+    max-width: 360px;
+    margin: 0;
+    color: #aeb9c5;
+    font-size: 13px;
+}
+
+.review-empty-state a {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 4px;
+    padding: 0 16px;
+    border: 1px solid rgba(145, 225, 60, 0.34);
+    border-radius: 7px;
+    background: rgba(145, 225, 60, 0.06);
+    color: #91e13c;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
 }
 
 .review-match-card {
@@ -11125,6 +11690,147 @@ body.dashboard-body.light .history-code-row button {
     color: #cbd5df;
 }
 
+body.dashboard-body.light .review-compose-panel,
+body.dashboard-body.light .review-empty-state {
+    border-color: rgba(37, 60, 86, 0.12);
+    background:
+        linear-gradient(135deg, rgba(47, 185, 58, 0.04), transparent 34%),
+        #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .review-field,
+body.dashboard-body.light .review-form-actions small,
+body.dashboard-body.light .review-empty-state p {
+    color: #64748b;
+}
+
+body.dashboard-body.light .review-field span,
+body.dashboard-body.light .review-empty-state strong {
+    color: #111827;
+}
+
+body.dashboard-body.light .review-field select,
+body.dashboard-body.light .review-field textarea {
+    border-color: rgba(37, 60, 86, 0.14);
+    background-color: #f8fbff;
+    color: #111827;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .review-field select {
+    background-image:
+        linear-gradient(45deg, transparent 50%, #475569 50%),
+        linear-gradient(135deg, #475569 50%, transparent 50%);
+}
+
+body.dashboard-body.light .review-field select option {
+    background: #ffffff;
+    color: #111827;
+}
+
+body.dashboard-body.light .review-field textarea::placeholder {
+    color: #8795a8;
+}
+
+body.dashboard-body.light .review-field select:focus,
+body.dashboard-body.light .review-field textarea:focus {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+    background-color: #ffffff;
+}
+
+body.dashboard-body.light .review-form-actions .profile-panel-action {
+    border-color: transparent;
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+    color: #ffffff;
+}
+
+body.dashboard-body.light .review-empty-state a {
+    border-color: rgba(47, 185, 58, 0.26);
+    background: rgba(47, 185, 58, 0.06);
+    color: #1f8f2e;
+}
+
+body.dashboard-body.light .review-toolbar {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .review-sort {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f8fbff;
+    color: #475569;
+    box-shadow: 0 8px 18px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .review-sort span {
+    color: #334155;
+}
+
+body.dashboard-body.light .review-sort select {
+    border: 0;
+    background: transparent;
+    color: #111827;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .review-sort:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .review-compose-panel .profile-panel-header h2 span {
+    color: #2fb93a;
+}
+
+body.dashboard-body.light .review-summary-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+body.dashboard-body.light .review-summary-card {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #ffffff;
+}
+
+body.dashboard-body.light .review-summary-card p,
+body.dashboard-body.light .review-summary-card small {
+    color: #64748b;
+}
+
+body.dashboard-body.light .review-summary-icon {
+    background: #dcfce7;
+    color: #31a33e;
+}
+
+body.dashboard-body.light .review-summary-card.total .review-summary-icon {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+body.dashboard-body.light .review-summary-card.positive .review-summary-icon {
+    background: #dcfce7;
+    color: #31a33e;
+}
+
+body.dashboard-body.light .review-summary-card.negative .review-summary-icon {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+body.dashboard-body.light .review-summary-stars {
+    color: #f59e0b;
+}
+
+body.dashboard-body.light .review-summary-stars i {
+    color: #f59e0b;
+    opacity: 0.42;
+}
+
 @media (max-width: 1260px) {
     .review-summary-panel {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -11150,6 +11856,14 @@ body.dashboard-body.light .history-code-row button {
         width: 100%;
         margin-top: 0;
         margin-bottom: 14px;
+    }
+
+    .review-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .review-field-comment {
+        grid-column: auto;
     }
 
     .review-match-card {
@@ -11187,6 +11901,19 @@ body.dashboard-body.light .history-code-row button {
 
     .review-tabs button {
         min-width: 148px;
+    }
+
+    .review-compose-panel {
+        padding: 20px 18px;
+    }
+
+    .review-form-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .review-form-actions .profile-panel-action {
+        width: 100%;
     }
 
     .review-match-media img {
@@ -11546,6 +12273,85 @@ body.dashboard-body.light .history-code-row button {
 .history-empty-note a {
     color: #91e13c;
     text-decoration: none;
+}
+
+body.dashboard-body.light .history-toolbar {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #ffffff;
+    box-shadow: 0 18px 42px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .history-sort-control {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #f8fbff;
+    color: #475569;
+    box-shadow: 0 8px 18px rgba(37, 60, 86, 0.08);
+}
+
+body.dashboard-body.light .history-sort-control span {
+    color: #334155;
+}
+
+body.dashboard-body.light .history-sort-control select {
+    border: 0;
+    background: transparent;
+    color: #111827;
+    color-scheme: light;
+}
+
+body.dashboard-body.light .history-sort-control:focus-within {
+    border-color: rgba(47, 185, 58, 0.55);
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.1);
+}
+
+body.dashboard-body.light .history-info-banner > span {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: #dbeafe;
+    color: #2563eb;
+    font-size: 24px;
+}
+
+body.dashboard-body.light .history-match-meta span {
+    border-color: rgba(37, 60, 86, 0.1);
+    background: #f8fbff;
+    color: #64748b;
+}
+
+body.dashboard-body.light .history-code-row small {
+    color: #64748b;
+}
+
+body.dashboard-body.light .history-code-row strong {
+    color: #42b924;
+}
+
+body.dashboard-body.light .history-code-row button {
+    border-color: rgba(37, 60, 86, 0.12);
+    background: #f8fbff;
+    color: #334155;
+}
+
+body.dashboard-body.light .history-status-pill.completed {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+body.dashboard-body.light .history-status-pill.canceled {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+body.dashboard-body.light .history-payment-panel a {
+    border-color: transparent;
+    background: linear-gradient(135deg, #75d83a, #2fb93a);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(47, 185, 58, 0.18);
+}
+
+body.dashboard-body.light .history-row-arrow {
+    color: #94a3b8;
 }
 
 @media (max-width: 1180px) {
@@ -23120,7 +23926,8 @@ body.owner-field-modal-open {
     gap: 8px;
 }
 
-.owner-field-slot-grid span {
+.owner-field-slot-grid span,
+.owner-field-slot-grid button {
     min-height: 34px;
     display: grid;
     place-items: center;
@@ -23129,22 +23936,32 @@ body.owner-field-modal-open {
     color: #f7fbff;
     font-size: 12px;
     font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
 }
 
-.owner-field-slot-grid span.available {
+.owner-field-slot-grid span.available,
+.owner-field-slot-grid button.available {
     border-color: rgba(88, 203, 49, 0.65);
     background: rgba(45, 126, 40, 0.52);
 }
 
-.owner-field-slot-grid span.booked {
+.owner-field-slot-grid span.booked,
+.owner-field-slot-grid button.booked {
     border-color: rgba(244, 71, 67, 0.72);
     background: rgba(143, 35, 38, 0.62);
 }
 
-.owner-field-slot-grid span.unavailable {
+.owner-field-slot-grid span.unavailable,
+.owner-field-slot-grid button.unavailable {
     border-color: rgba(112, 130, 151, 0.28);
     background: rgba(61, 75, 92, 0.42);
     color: rgba(226, 235, 245, 0.52);
+}
+
+.owner-field-slot-grid button:disabled {
+    cursor: not-allowed;
+    opacity: 0.82;
 }
 
 .owner-field-price-summary > label {

@@ -2,7 +2,7 @@
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
             <div class="dashboard-logo-mark">
-                <img src="<?php echo e(app_asset('img/logo.png')); ?>" alt="Arena Sport Logo">
+                <img src="<?php echo e(app_asset('img/logo-mark.png')); ?>" alt="Arena Sport Logo">
             </div>
             <div>
                 <strong>Arena</strong>
@@ -66,19 +66,41 @@
         </section>
 
         <?php if (!empty($reviewableBookings)): ?>
-            <section class="profile-panel" aria-label="Tulis ulasan baru">
-                <div class="profile-panel-header"><h2><span>&#9998;</span>Tulis Ulasan</h2></div>
-                <form class="login-form" method="post" action="<?php echo e(app_url('dashboard/ulasan/tambah')); ?>">
+            <section class="profile-panel review-compose-panel" aria-label="Tulis ulasan baru">
+                <div class="profile-panel-header">
+                    <h2><span>&#9998;</span>Tulis Ulasan</h2>
+                </div>
+                <form class="review-form" method="post" action="<?php echo e(app_url('dashboard/ulasan/tambah')); ?>">
                     <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
-                    <label><span>Booking</span><select name="id_booking" required>
-                        <option value="">Pilih booking yang selesai</option>
-                        <?php foreach ($reviewableBookings as $booking): ?>
-                            <option value="<?php echo e($booking['ID_Booking']); ?>"><?php echo e($booking['Nama_lapangan'] . ' — ' . $booking['Tanggal']); ?></option>
-                        <?php endforeach; ?>
-                    </select></label>
-                    <label><span>Rating</span><select name="rating" required><option value="5">5 - Sangat Baik</option><option value="4">4 - Baik</option><option value="3">3 - Cukup</option><option value="2">2 - Kurang</option><option value="1">1 - Buruk</option></select></label>
-                    <label><span>Komentar</span><textarea name="komentar" rows="3" maxlength="2000" required></textarea></label>
-                    <button class="profile-panel-action" type="submit">Kirim Ulasan</button>
+                    <div class="review-form-grid">
+                        <label class="review-field review-field-booking">
+                            <span>Booking</span>
+                            <select name="id_booking" required>
+                                <option value="">Pilih booking yang selesai</option>
+                                <?php foreach ($reviewableBookings as $booking): ?>
+                                    <option value="<?php echo e($booking['ID_Booking']); ?>"><?php echo e($booking['Nama_lapangan']); ?> &mdash; <?php echo e($booking['Tanggal']); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="review-field">
+                            <span>Rating</span>
+                            <select name="rating" required>
+                                <option value="5">5 - Sangat Baik</option>
+                                <option value="4">4 - Baik</option>
+                                <option value="3">3 - Cukup</option>
+                                <option value="2">2 - Kurang</option>
+                                <option value="1">1 - Buruk</option>
+                            </select>
+                        </label>
+                        <label class="review-field review-field-comment">
+                            <span>Komentar</span>
+                            <textarea name="komentar" rows="4" maxlength="2000" placeholder="Ceritakan pengalaman bermainmu di lapangan ini" required></textarea>
+                        </label>
+                    </div>
+                    <div class="review-form-actions">
+                        <small>Maksimal 2000 karakter</small>
+                        <button class="profile-panel-action" type="submit">Kirim Ulasan</button>
+                    </div>
                 </form>
             </section>
         <?php endif; ?>
@@ -122,6 +144,13 @@
         </section>
 
         <section class="review-list" aria-label="Daftar ulasan">
+            <article class="review-empty-state" id="reviewEmptyState"<?php if (!empty($reviews)): ?> hidden<?php endif; ?>>
+                <span>&#9734;</span>
+                <strong>Belum ada ulasan</strong>
+                <p>Ulasan dari booking selesai akan tampil di sini.</p>
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>">Lihat Booking</a>
+            </article>
+
             <?php foreach ($reviews as $review): ?>
                 <?php
                     $rating = (float) $review['rating'];
@@ -174,6 +203,7 @@
         var cards = list ? Array.prototype.slice.call(list.querySelectorAll('.review-match-card')) : [];
         var filters = Array.prototype.slice.call(document.querySelectorAll('[data-review-filter]'));
         var sort = document.getElementById('reviewSortControl');
+        var empty = document.getElementById('reviewEmptyState');
         var activeFilter = 'all';
         if (!list || !sort) { return; }
         function applyReviewView() {
@@ -182,10 +212,15 @@
                 if (sort.value === 'rating-low') { return Number(a.dataset.reviewRating) - Number(b.dataset.reviewRating); }
                 return b.dataset.reviewDate.localeCompare(a.dataset.reviewDate);
             });
+            var visible = 0;
             cards.forEach(function (card) {
                 list.appendChild(card);
                 card.hidden = activeFilter === 'top' && Number(card.dataset.reviewRating) < 4;
+                if (!card.hidden) { visible++; }
             });
+            if (empty) {
+                empty.hidden = visible !== 0;
+            }
         }
         filters.forEach(function (button) {
             button.addEventListener('click', function () {

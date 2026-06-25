@@ -33,6 +33,11 @@ if ($id_jadwal) {
              INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
              INNER JOIN pemilik_lapangan p ON p.ID_Pemilik = l.ID_Pemilik
              WHERE j.ID_Jadwal = ? AND l.deleted_at IS NULL AND LOWER(l.Status) = 'aktif'
+               AND NOT EXISTS (
+                   SELECT 1 FROM booking b
+                   WHERE b.ID_Jadwal = j.ID_Jadwal
+                     AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')
+               )
              LIMIT 1 FOR UPDATE"
         );
 

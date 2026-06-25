@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Models\ArenaData;
+use App\Models\Jadwal;
 use App\Models\Lapangan;
 
 class PemilikController extends Controller
@@ -129,8 +130,13 @@ class PemilikController extends Controller
         $selectedStatus = $this->sanitizeScheduleStatus(isset($_GET['status']) ? $_GET['status'] : 'Semua');
         $selectedDateValue = $this->sanitizeScheduleDate(isset($_GET['date']) ? $_GET['date'] : date('Y-m-d'));
         $currentPage = isset($_GET['page']) ? (int) $_GET['page'] : 1;
-        $scheduleResult = $this->getFilteredSchedule($selectedStatus, $selectedDateValue, $currentPage);
         $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
+
+        if ($fieldOwnerId !== '') {
+            (new Jadwal())->ensureForOwnerDate($fieldOwnerId, $selectedDateValue);
+        }
+
+        $scheduleResult = $this->getFilteredSchedule($selectedStatus, $selectedDateValue, $currentPage);
 
         return $this->view('Owner/jadwal', array(
             'title' => 'Jadwal Booking | Arena Sport',
@@ -168,6 +174,31 @@ class PemilikController extends Controller
         }
 
         header('Location: ' . app_url('pemilik/jadwal?date=' . rawurlencode($date !== '' ? $date : date('Y-m-d'))));
+        exit;
+    }
+
+    public function updateJadwal()
+    {
+        $owner = $this->requireOwner();
+        $ownerId = $this->ownerLapanganPemilikId($owner);
+        $fieldId = isset($_POST['id_lapangan']) ? trim((string) $_POST['id_lapangan']) : '';
+        $date = isset($_POST['tanggal']) ? trim((string) $_POST['tanggal']) : date('Y-m-d');
+        $start = isset($_POST['jam_mulai']) ? trim((string) $_POST['jam_mulai']) : '';
+        $status = isset($_POST['status']) ? trim((string) $_POST['status']) : '';
+        $result = array('ok' => false, 'message' => 'Status jadwal belum dapat diperbarui.');
+
+        if ($ownerId !== '') {
+            $result = (new Jadwal())->setOwnerSlotStatus($ownerId, $fieldId, $date, $start, $status);
+        }
+
+        if ($this->expectsJsonResponse()) {
+            http_response_code(!empty($result['ok']) ? 200 : 422);
+            header('Content-Type: application/json');
+            echo json_encode($result);
+            return;
+        }
+
+        header('Location: ' . app_url('pemilik/jadwal?date=' . rawurlencode($date)));
         exit;
     }
 
@@ -374,6 +405,14 @@ class PemilikController extends Controller
         return new ArenaData();
     }
 
+    protected function expectsJsonResponse()
+    {
+        $requestedWith = isset($_SERVER['HTTP_X_REQUESTED_WITH']) ? strtolower((string) $_SERVER['HTTP_X_REQUESTED_WITH']) : '';
+        $accept = isset($_SERVER['HTTP_ACCEPT']) ? strtolower((string) $_SERVER['HTTP_ACCEPT']) : '';
+
+        return $requestedWith === 'xmlhttprequest' || strpos($accept, 'application/json') !== false;
+    }
+
     protected function ownerUserId()
     {
         return isset($_SESSION['id_user']) ? trim((string) $_SESSION['id_user']) : '';
@@ -461,34 +500,54 @@ class PemilikController extends Controller
         return $bookings;
     }
 
-    protected function ownerScheduleFromDatabase()
+    protected function ownerScheduleFromDatabase($dateValue = null)
     {
         $schedule = array();
         $ownerId = $this->ownerDatabaseId();
         if ($ownerId === '') { return $schedule; }
+        $dateFilter = $dateValue !== null ? $this->sanitizeScheduleDate($dateValue) : '';
+        $params = array($ownerId);
+        $types = 's';
+        $dateSql = '';
+
+        if ($dateFilter !== '') {
+            $dateSql = ' AND j.Tanggal = ?';
+            $params[] = $dateFilter;
+            $types .= 's';
+        }
+
         $rows = $this->ownerData()->rows(
             "SELECT j.ID_Jadwal,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,j.Status AS schedule_status,j.Harga,
-                    l.Nama_lapangan,l.Harga AS field_price,
+                    l.ID_Lapangan,l.Nama_lapangan,l.Harga AS field_price,
                     b.ID_Booking,b.Status AS booking_status,b.Total_harga,
                     u.Nama AS customer_name,u.Email AS customer_email,u.Nomor_telepon AS customer_phone,
                     p.Status AS payment_status
              FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan
-             LEFT JOIN booking b ON b.ID_Booking=(SELECT b2.ID_Booking FROM booking b2 WHERE b2.ID_Jadwal=j.ID_Jadwal ORDER BY b2.Waktu_transaksi DESC LIMIT 1)
+             LEFT JOIN booking b ON b.ID_Booking=(
+                 SELECT b2.ID_Booking FROM booking b2
+                 WHERE b2.ID_Jadwal=j.ID_Jadwal
+                   AND LOWER(TRIM(b2.Status)) NOT IN ('dibatalkan','cancelled','batal')
+                 ORDER BY b2.Waktu_transaksi DESC LIMIT 1
+             )
              LEFT JOIN users u ON u.ID_User=b.ID_User
              LEFT JOIN pembayaran p ON p.ID_Pembayaran=(SELECT p2.ID_Pembayaran FROM pembayaran p2 WHERE p2.ID_Booking=b.ID_Booking ORDER BY p2.created_at DESC LIMIT 1)
-             WHERE l.ID_Pemilik=? AND l.deleted_at IS NULL ORDER BY j.Tanggal DESC,j.Jam_Mulai DESC",
-            's', array($ownerId)
+             WHERE l.ID_Pemilik=? AND l.deleted_at IS NULL" . $dateSql . " ORDER BY j.Tanggal DESC,j.Jam_Mulai DESC",
+            $types, $params
         );
 
         foreach ($rows as $row) {
             $status = !empty($row['ID_Booking'])
                 ? $this->ownerStatusPayload($row['booking_status'], isset($row['payment_status']) ? $row['payment_status'] : '')
-                : array('key' => 'aktif', 'label' => strtolower($row['schedule_status']) === 'booked' ? 'Terisi' : 'Aktif', 'class' => 'success');
+                : $this->ownerScheduleStatusPayload($row['schedule_status']);
             $start = substr((string) $row['Jam_Mulai'], 0, 5);
             $end = substr((string) $row['Jam_Selesai'], 0, 5);
             $minutes = max(0, (int) ((strtotime($end) - strtotime($start)) / 60));
             $schedule[] = array(
                 'scheduleId' => isset($row['ID_Jadwal']) ? $row['ID_Jadwal'] : '',
+                'fieldId' => isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '',
+                'scheduleDate' => isset($row['Tanggal']) ? $row['Tanggal'] : '',
+                'scheduleStart' => $start,
+                'slotEditable' => empty($row['ID_Booking']),
                 'bookingCode' => !empty($row['ID_Booking']) ? $row['ID_Booking'] : '-',
                 'tenant' => !empty($row['customer_name']) ? $row['customer_name'] : 'Tersedia',
                 'email' => !empty($row['customer_email']) ? $row['customer_email'] : '-',
@@ -506,6 +565,17 @@ class PemilikController extends Controller
         }
 
         return $schedule;
+    }
+
+    protected function ownerScheduleStatusPayload($status)
+    {
+        $status = strtolower(trim((string) $status));
+
+        if (in_array($status, array('available', 'tersedia', 'aktif'), true)) {
+            return array('key' => 'tersedia', 'label' => 'Tersedia', 'class' => 'success');
+        }
+
+        return array('key' => 'tidak_tersedia', 'label' => 'Tidak Tersedia', 'class' => 'warning');
     }
 
     protected function ownerMonthlyRevenueFromDatabase()
@@ -947,29 +1017,9 @@ class PemilikController extends Controller
             mysqli_stmt_close($hoursStatement);
         }
 
-        $slotStatement = mysqli_prepare(
-            $connection,
-            'SELECT Jam_Mulai, Status FROM jadwal WHERE ID_Lapangan = ? AND Tanggal = CURDATE() ORDER BY Jam_Mulai'
-        );
-
-        if ($slotStatement) {
-            mysqli_stmt_bind_param($slotStatement, 's', $fieldId);
-            mysqli_stmt_execute($slotStatement);
-            $slotResult = mysqli_stmt_get_result($slotStatement);
-
-            while ($slotResult && $slot = mysqli_fetch_assoc($slotResult)) {
-                $time = isset($slot['Jam_Mulai']) ? substr((string) $slot['Jam_Mulai'], 0, 5) : '';
-                $status = strtolower(trim(isset($slot['Status']) ? (string) $slot['Status'] : ''));
-
-                if ($time !== '') {
-                    $snapshot['todaySlots'][$time] = in_array($status, array('available', 'tersedia', 'aktif'), true)
-                        ? 'available'
-                        : 'booked';
-                }
-            }
-
-            mysqli_stmt_close($slotStatement);
-        }
+        $jadwal = new Jadwal();
+        $jadwal->ensureForFieldDate($fieldId, date('Y-m-d'));
+        $snapshot['todaySlots'] = $jadwal->slotMapForFieldDate($fieldId, date('Y-m-d'));
 
         return $snapshot;
     }
@@ -1318,9 +1368,9 @@ class PemilikController extends Controller
         );
     }
 
-    protected function getSchedule()
+    protected function getSchedule($dateValue = null)
     {
-        return $this->ownerScheduleFromDatabase();
+        return $this->ownerScheduleFromDatabase($dateValue);
 
         return array(
             array('tenant' => 'Ahmad', 'field' => 'Arena Futsal A', 'date' => '16 Juni 2025', 'dateValue' => '2025-06-16', 'time' => '19:00 - 20:00', 'duration' => '1 Jam', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
@@ -1347,7 +1397,7 @@ class PemilikController extends Controller
     {
         $filtered = array();
 
-        foreach ($this->getSchedule() as $booking) {
+        foreach ($this->getSchedule($selectedDateValue) as $booking) {
             $matchesStatus = $selectedStatus === 'Semua' || $booking['status'] === $selectedStatus;
             $matchesDate = $booking['dateValue'] === $selectedDateValue;
 
@@ -1413,7 +1463,7 @@ class PemilikController extends Controller
 
     protected function scheduleStatusTabs()
     {
-        return array('Semua', 'Aktif', 'Pending', 'Selesai', 'Dibatalkan');
+        return array('Semua', 'Tersedia', 'Aktif', 'Pending', 'Selesai', 'Dibatalkan', 'Tidak Tersedia');
     }
 
     protected function formatScheduleDate($date)

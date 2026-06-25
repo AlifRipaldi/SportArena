@@ -451,6 +451,8 @@ foreach ($lapangan as $field) {
 
         var ownerFieldData = <?php echo json_encode($fieldPayloads, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
         var deleteAction = <?php echo json_encode(app_url('pemilik/lapangan/hapus'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+        var scheduleUpdateUrl = <?php echo json_encode(app_url('pemilik/jadwal/update'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+        var todayDate = <?php echo json_encode(date('Y-m-d'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
         var closeButtons = modal.querySelectorAll('[data-owner-field-manage-close]');
         var deleteButtons = document.querySelectorAll('[data-owner-field-delete]');
         var editPanel = modal.querySelector('.owner-field-edit-panel');
@@ -553,19 +555,89 @@ foreach ($lapangan as $field) {
             closeHour = Number.isNaN(closeHour) ? 23 : Math.max(openHour, Math.min(23, closeHour));
             editSlotGrid.innerHTML = '';
 
-            for (var hour = openHour; hour <= closeHour; hour++) {
+            for (var hour = openHour; hour < closeHour; hour++) {
                 var label = String(hour).padStart(2, '0') + ':00';
-                var item = document.createElement('span');
-                var status = slots[label] || 'unavailable';
+                var item = document.createElement('button');
+                var status = slots[label] || 'available';
+                var isPast = hour <= currentHour;
 
-                if (hour <= currentHour && status === 'available') {
+                if (isPast && status === 'available') {
                     status = 'unavailable';
                 }
 
+                item.type = 'button';
                 item.className = status;
                 item.textContent = label;
+                item.dataset.slotTime = label;
+                item.dataset.slotStatus = status;
+                item.setAttribute('aria-label', 'Jam ' + label + ' ' + status);
+
+                if (status === 'booked' || isPast) {
+                    item.disabled = true;
+                    item.title = status === 'booked' ? 'Sudah dipesan customer' : 'Waktu sudah lewat';
+                } else {
+                    item.title = status === 'available' ? 'Klik untuk jadikan tidak tersedia' : 'Klik untuk jadikan tersedia';
+                    item.addEventListener('click', function () {
+                        toggleOwnerSlot(this.dataset.slotTime, this.dataset.slotStatus, this);
+                    });
+                }
+
                 editSlotGrid.appendChild(item);
             }
+        }
+
+        function setSlotButtonState(button, status) {
+            button.classList.remove('available', 'booked', 'unavailable');
+            button.classList.add(status);
+            button.dataset.slotStatus = status;
+            button.disabled = false;
+            button.title = status === 'available' ? 'Klik untuk jadikan tidak tersedia' : 'Klik untuk jadikan tersedia';
+            button.setAttribute('aria-label', 'Jam ' + button.dataset.slotTime + ' ' + status);
+        }
+
+        function toggleOwnerSlot(time, currentStatus, button) {
+            if (!currentFieldId || !time || currentStatus === 'booked' || !button) {
+                return;
+            }
+
+            var nextStatus = currentStatus === 'available' ? 'Blocked' : 'Available';
+            var body = new URLSearchParams();
+            body.set('id_lapangan', currentFieldId);
+            body.set('tanggal', todayDate);
+            body.set('jam_mulai', time);
+            body.set('status', nextStatus);
+
+            button.disabled = true;
+
+            fetch(scheduleUpdateUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: body.toString()
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok || !data.ok) {
+                        throw new Error(data.message || 'Status jadwal belum dapat diperbarui.');
+                    }
+
+                    return data;
+                });
+            }).then(function (data) {
+                var state = data.state || (nextStatus === 'Available' ? 'available' : 'unavailable');
+
+                if (ownerFieldData[currentFieldId]) {
+                    ownerFieldData[currentFieldId].todaySlots = ownerFieldData[currentFieldId].todaySlots || {};
+                    ownerFieldData[currentFieldId].todaySlots[time] = state;
+                }
+
+                setSlotButtonState(button, state);
+            }).catch(function (error) {
+                alert(error.message || 'Status jadwal belum dapat diperbarui.');
+                setSlotButtonState(button, currentStatus);
+            });
         }
 
         function isActiveStatus(status) {

@@ -2,7 +2,7 @@
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
             <div class="dashboard-logo-mark">
-                <img src="<?php echo e(app_asset('img/logo.png')); ?>" alt="Arena Sport Logo">
+                <img src="<?php echo e(app_asset('img/logo-mark.png')); ?>" alt="Arena Sport Logo">
             </div>
             <div>
                 <strong>Arena</strong>
@@ -73,10 +73,12 @@
                 <h2><?php echo e(count($favorites)); ?> Lapangan Favorit</h2>
                 <p>Temukan dan booking lapangan favoritmu kapan saja dengan mudah.</p>
             </div>
-            <form method="post" action="<?php echo e(app_url('dashboard/favorit/hapus-semua')); ?>" onsubmit="return window.confirm('Hapus semua lapangan favorit?');">
-                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
-                <button type="submit" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
-            </form>
+            <?php if (!empty($favorites)): ?>
+                <form method="post" action="<?php echo e(app_url('dashboard/favorit/hapus-semua')); ?>" onsubmit="return window.confirm('Hapus semua lapangan favorit?');">
+                    <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
+                    <button type="submit" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
+                </form>
+            <?php endif; ?>
         </section>
 
         <section id="favorite-list" class="favorite-match-list" aria-label="Daftar lapangan favorit">
@@ -124,7 +126,12 @@
                     </div>
                 </article>
             <?php endforeach; ?>
-            <p id="favoriteEmptyState" hidden>Tidak ada lapangan favorit pada kategori ini.</p>
+            <article class="favorite-empty-state" id="favoriteEmptyState" hidden>
+                <span>&#9825;</span>
+                <strong>Tidak ada lapangan favorit pada kategori ini</strong>
+                <p>Kamu bisa menambahkan lapangan ke favorit dari halaman detail lapangan.</p>
+                <a href="<?php echo e(app_url('dashboard/lapangan')); ?>">Cari Lapangan</a>
+            </article>
         </section>
 
         <section class="favorite-footnote">

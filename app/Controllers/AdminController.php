@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Models\ArenaData;
+use App\Models\Jadwal;
 
 class AdminController extends Controller
 {
@@ -104,7 +105,7 @@ class AdminController extends Controller
 
         try {
             $data = $this->adminData();
-            $schedule = $data->row("SELECT j.Harga,l.Harga AS field_price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE j.ID_Jadwal=? AND LOWER(j.Status) IN ('available','tersedia') AND l.deleted_at IS NULL FOR UPDATE", 's', array($scheduleId));
+            $schedule = $data->row("SELECT j.Harga,l.Harga AS field_price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE j.ID_Jadwal=? AND LOWER(j.Status) IN ('available','tersedia') AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.ID_Jadwal=j.ID_Jadwal AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')) AND l.deleted_at IS NULL FOR UPDATE", 's', array($scheduleId));
             $isCustomer = (int) $data->value("SELECT COUNT(*) value FROM users WHERE ID_User=? AND LOWER(Role)='customer' AND LOWER(Status)='aktif'", 's', array($userId));
             if (!$schedule || $isCustomer < 1) {
                 throw new \RuntimeException('Customer atau jadwal tidak valid.');
@@ -550,6 +551,18 @@ class AdminController extends Controller
         return new ArenaData();
     }
 
+    protected function ensureAdminSchedules()
+    {
+        $rows = $this->adminData()->rows("SELECT ID_Lapangan FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL");
+        $jadwal = new Jadwal();
+
+        foreach ($rows as $row) {
+            if (!empty($row['ID_Lapangan'])) {
+                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'), 30);
+            }
+        }
+    }
+
     protected function adminRupiah($amount)
     {
         return 'Rp' . number_format(max(0, (int) $amount), 0, ',', '.');
@@ -891,6 +904,7 @@ class AdminController extends Controller
         }
 
         $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+        $this->ensureAdminSchedules();
 
         return $this->view('Admin/booking', array(
             'title' => 'Manajemen Booking | Arena Sport',
@@ -898,7 +912,7 @@ class AdminController extends Controller
             'userName' => $userName,
             'recentBookings' => $this->recentBookings(),
             'bookingCustomers' => $this->adminData()->rows("SELECT ID_User id,Nama name FROM users WHERE LOWER(Role)='customer' AND LOWER(Status)='aktif' ORDER BY Nama"),
-            'availableSchedules' => $this->adminData()->rows("SELECT j.ID_Jadwal id,l.Nama_lapangan field,j.Tanggal date,j.Jam_Mulai start,j.Jam_Selesai end,IF(j.Harga>0,j.Harga,l.Harga) price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE LOWER(j.Status) IN ('available','tersedia') AND j.Tanggal>=CURDATE() AND l.deleted_at IS NULL ORDER BY j.Tanggal,j.Jam_Mulai"),
+            'availableSchedules' => $this->adminData()->rows("SELECT j.ID_Jadwal id,l.Nama_lapangan field,j.Tanggal date,j.Jam_Mulai start,j.Jam_Selesai end,IF(j.Harga>0,j.Harga,l.Harga) price FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE LOWER(j.Status) IN ('available','tersedia') AND j.Tanggal>=CURDATE() AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.ID_Jadwal=j.ID_Jadwal AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')) AND l.deleted_at IS NULL ORDER BY j.Tanggal,j.Jam_Mulai"),
         ), 'layouts/admin');
     }
 

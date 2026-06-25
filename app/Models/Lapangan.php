@@ -8,12 +8,18 @@ class Lapangan extends Model
     {
         $limit = max(1, (int) $limit);
         $rows = array();
+        $this->ensurePopularSchedules();
         $result = mysqli_query($this->db(),
             "SELECT l.*, COALESCE(AVG(r.Rating),0) AS Rating_avg, COUNT(r.ID_Review) AS Review_count,
                     (SELECT j.ID_Jadwal FROM jadwal j
                      WHERE j.ID_Lapangan=l.ID_Lapangan AND j.Tanggal>=CURDATE()
                        AND (j.Tanggal>CURDATE() OR j.Jam_Mulai>CURTIME())
                        AND LOWER(j.Status) IN ('available','tersedia','aktif')
+                       AND NOT EXISTS (
+                           SELECT 1 FROM booking b
+                           WHERE b.ID_Jadwal=j.ID_Jadwal
+                             AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')
+                       )
                      ORDER BY j.Tanggal,j.Jam_Mulai LIMIT 1) AS ID_Jadwal
              FROM lapangan l
              LEFT JOIN review r ON r.ID_Lapangan=l.ID_Lapangan AND LOWER(r.Status)='tampil'
@@ -31,6 +37,26 @@ class Lapangan extends Model
         }
 
         return $rows;
+    }
+
+    protected function ensurePopularSchedules()
+    {
+        $result = mysqli_query(
+            $this->db(),
+            "SELECT ID_Lapangan FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL"
+        );
+
+        if (!$result) {
+            return;
+        }
+
+        $jadwal = new Jadwal();
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            if (!empty($row['ID_Lapangan'])) {
+                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'), 30);
+            }
+        }
     }
 
     public function allByOwner($ownerId)

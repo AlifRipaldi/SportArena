@@ -5,6 +5,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Database;
 use App\Models\ArenaData;
+use App\Models\Jadwal;
 
 class DashboardController extends Controller
 {
@@ -373,6 +374,11 @@ class DashboardController extends Controller
              INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan
              INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=l.ID_Pemilik
              WHERE j.ID_Jadwal=? AND LOWER(TRIM(j.Status)) IN ('available','tersedia','aktif')
+               AND NOT EXISTS (
+                   SELECT 1 FROM booking b
+                   WHERE b.ID_Jadwal = j.ID_Jadwal
+                     AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')
+               )
                AND LOWER(TRIM(l.Status))='aktif' AND l.deleted_at IS NULL
              LIMIT 1 FOR UPDATE"
         );
@@ -488,7 +494,7 @@ class DashboardController extends Controller
                 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || count($parts) !== 2) { throw new \RuntimeException('Jadwal baru tidak valid.'); }
                 $start = $parts[0] . ':00'; $end = $parts[1] . ':00';
                 if (strtotime($date . ' ' . $start) <= time()) { throw new \RuntimeException('Jadwal baru harus berada di waktu mendatang.'); }
-                $target = mysqli_prepare($connection, "SELECT ID_Jadwal FROM jadwal WHERE ID_Lapangan=? AND Tanggal=? AND Jam_Mulai=? AND Jam_Selesai=? AND LOWER(Status) IN ('available','tersedia','aktif') LIMIT 1 FOR UPDATE");
+                $target = mysqli_prepare($connection, "SELECT ID_Jadwal FROM jadwal WHERE ID_Lapangan=? AND Tanggal=? AND Jam_Mulai=? AND Jam_Selesai=? AND LOWER(Status) IN ('available','tersedia','aktif') AND NOT EXISTS (SELECT 1 FROM booking b WHERE b.ID_Jadwal=jadwal.ID_Jadwal AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')) LIMIT 1 FOR UPDATE");
                 mysqli_stmt_bind_param($target, 'ssss', $booking['ID_Lapangan'], $date, $start, $end);
                 mysqli_stmt_execute($target);
                 $targetResult = mysqli_stmt_get_result($target);
@@ -833,14 +839,20 @@ class DashboardController extends Controller
         $venues = array();
         $scheduleStatement = mysqli_prepare(
             $connection,
-            "SELECT ID_Jadwal, Tanggal, Jam_mulai, Jam_selesai, Harga
+            "SELECT ID_Jadwal, Tanggal, Jam_Mulai AS Jam_mulai, Jam_Selesai AS Jam_selesai, Harga
              FROM jadwal
              WHERE ID_Lapangan = ? AND Tanggal >= CURDATE()
-               AND (Tanggal > CURDATE() OR Jam_mulai > CURTIME())
+               AND (Tanggal > CURDATE() OR Jam_Mulai > CURTIME())
                AND LOWER(TRIM(Status)) IN ('available', 'tersedia', 'aktif')
-             ORDER BY Tanggal ASC, Jam_mulai ASC"
+               AND NOT EXISTS (
+                   SELECT 1 FROM booking b
+                   WHERE b.ID_Jadwal = jadwal.ID_Jadwal
+                     AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')
+               )
+             ORDER BY Tanggal ASC, Jam_Mulai ASC"
         );
         $index = 0;
+        $scheduleModel = new Jadwal();
 
         while ($row = mysqli_fetch_assoc($result)) {
             $fieldId = isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : '';
@@ -853,6 +865,7 @@ class DashboardController extends Controller
             $availableSchedules = array();
 
             if ($scheduleStatement && $fieldId !== '') {
+                $scheduleModel->ensureForField($fieldId, date('Y-m-d'), 30);
                 mysqli_stmt_bind_param($scheduleStatement, 's', $fieldId);
                 mysqli_stmt_execute($scheduleStatement);
                 $scheduleResult = mysqli_stmt_get_result($scheduleStatement);

@@ -61,7 +61,7 @@ foreach ($venues as $venue) {
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
             <div class="dashboard-logo-mark">
-                <img src="<?php echo e(app_asset('img/logo.png')); ?>" alt="Arena Sport Logo">
+                <img src="<?php echo e(app_asset('img/logo-mark.png')); ?>" alt="Arena Sport Logo">
             </div>
             <div>
                 <strong>Arena</strong>
@@ -162,12 +162,7 @@ foreach ($venues as $venue) {
                         <span>Waktu</span>
                         <div>
                             <i>&#9201;</i>
-                            <select id="fieldTimeFilter">
-                                <option value="">Pilih Waktu</option>
-                                <?php foreach ($filterTimes as $time): ?>
-                                    <option value="<?php echo e($time); ?>"><?php echo e($time); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <input id="fieldTimeFilter" type="time" aria-label="Masukkan waktu bermain">
                         </div>
                     </label>
                     <label class="field-search-control price">
@@ -500,6 +495,23 @@ foreach ($venues as $venue) {
             });
         }
 
+        function timeMatchesSlot(selectedTime, slot) {
+            var selected = String(selectedTime || '').trim();
+            var slotValue = String(slot || '').trim();
+
+            if (!selected || !slotValue) {
+                return false;
+            }
+
+            var range = slotValue.match(/^(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})$/);
+
+            if (!range) {
+                return slotValue === selected;
+            }
+
+            return selected >= range[1] && selected < range[2];
+        }
+
         function priceLabel() {
             var minimum = numberValue(controls.minPrice);
             var maximum = numberValue(controls.maxPrice);
@@ -536,7 +548,7 @@ foreach ($venues as $venue) {
             }
 
             if (controls.time.value) {
-                values.push({ key: 'time', label: controls.time.value });
+                values.push({ key: 'time', label: 'Waktu: ' + controls.time.value });
             }
 
             if (priceLabel()) {
@@ -604,7 +616,7 @@ foreach ($venues as $venue) {
                 return false;
             }
 
-            if (selectedTime && availableTimes.indexOf(selectedTime) === -1) {
+            if (selectedTime && !availableTimes.some(function (time) { return timeMatchesSlot(selectedTime, time); })) {
                 return false;
             }
 
@@ -622,8 +634,18 @@ foreach ($venues as $venue) {
                     return false;
                 }
 
-                if (availableSlots.length > 0 && selectedTime && availableSlots.indexOf(controls.date.value + '@' + selectedTime) === -1) {
-                    return false;
+                if (availableSlots.length > 0 && selectedTime) {
+                    var hasMatchingSlot = availableSlots.some(function (slot) {
+                        var separator = slot.indexOf('@');
+
+                        return separator !== -1
+                            && slot.slice(0, separator) === controls.date.value
+                            && timeMatchesSlot(selectedTime, slot.slice(separator + 1));
+                    });
+
+                    if (!hasMatchingSlot) {
+                        return false;
+                    }
                 }
 
                 if (availableDates.length === 0 && availableDays.indexOf(String(selectedDate.getDay())) === -1) {

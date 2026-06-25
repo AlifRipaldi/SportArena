@@ -41,6 +41,7 @@ $router->post('/pemilik/lapangan/hapus', [PemilikController::class, 'deleteLapan
 $router->get('/pemilik/booking', [PemilikController::class, 'booking']);
 $router->get('/pemilik/jadwal', [PemilikController::class, 'jadwal']);
 $router->post('/pemilik/jadwal/tambah', [PemilikController::class, 'storeJadwal']);
+$router->post('/pemilik/jadwal/update', [PemilikController::class, 'updateJadwal']);
 $router->get('/pemilik/pendapatan', [PemilikController::class, 'pendapatan']);
 $router->get('/pemilik/pendapatan/download', [PemilikController::class, 'downloadPendapatan']);
 $router->get('/pemilik/transaksi', [PemilikController::class, 'transaksi']);

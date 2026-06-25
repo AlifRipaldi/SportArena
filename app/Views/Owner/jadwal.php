@@ -159,9 +159,27 @@ $scheduleUrl = function (array $params) use ($selectedStatus, $selectedDateValue
                                 </td>
                                 <td class="owner-jadwal-total"><?php echo e($booking['total']); ?></td>
                                 <td>
-                                    <button class="btn-icon owner-jadwal-view" type="button" aria-label="Lihat detail booking <?php echo e($booking['tenant']); ?>" data-owner-schedule-detail="<?php echo e($bookingDetailPayload); ?>">
-                                        <i class="fa-regular fa-eye"></i>
-                                    </button>
+                                    <div class="owner-table-actions">
+                                        <?php if (!empty($booking['slotEditable'])): ?>
+                                            <?php
+                                            $nextStatus = $booking['status'] === 'Tersedia' ? 'Blocked' : 'Available';
+                                            $toggleLabel = $booking['status'] === 'Tersedia' ? 'Jadikan tidak tersedia' : 'Jadikan tersedia';
+                                            $toggleIcon = $booking['status'] === 'Tersedia' ? 'fa-ban' : 'fa-check';
+                                            ?>
+                                            <form class="admin-inline-form" action="<?php echo e(app_url('pemilik/jadwal/update')); ?>" method="post">
+                                                <input type="hidden" name="id_lapangan" value="<?php echo e($booking['fieldId']); ?>">
+                                                <input type="hidden" name="tanggal" value="<?php echo e($booking['scheduleDate']); ?>">
+                                                <input type="hidden" name="jam_mulai" value="<?php echo e($booking['scheduleStart']); ?>">
+                                                <input type="hidden" name="status" value="<?php echo e($nextStatus); ?>">
+                                                <button class="btn-icon" type="submit" aria-label="<?php echo e($toggleLabel . ' ' . $booking['field'] . ' jam ' . $booking['time']); ?>" title="<?php echo e($toggleLabel); ?>">
+                                                    <i class="fa-solid <?php echo e($toggleIcon); ?>"></i>
+                                                </button>
+                                            </form>
+                                        <?php endif; ?>
+                                        <button class="btn-icon owner-jadwal-view" type="button" aria-label="Lihat detail booking <?php echo e($booking['tenant']); ?>" data-owner-schedule-detail="<?php echo e($bookingDetailPayload); ?>">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
