@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Core\Controller;
+use App\Models\Booking;
+use App\Models\Lapangan;
 
 class PemilikController extends Controller
 {
@@ -22,6 +24,42 @@ class PemilikController extends Controller
             'ownerFields' => $this->ownerFields(),
             'latestReviews' => $this->latestReviews(),
         ), 'layouts/owner');
+    }
+
+    protected function ratingForType($type)
+    {
+        $ratings = array(
+            'Futsal' => '4.8',
+            'Badminton' => '4.7',
+            'Mini Soccer' => '4.6',
+            'Basketball' => '4.5',
+        );
+
+        return isset($ratings[$type]) ? $ratings[$type] : '4.5';
+    }
+
+    protected function reviewCountForType($type)
+    {
+        $counts = array(
+            'Futsal' => '120',
+            'Badminton' => '85',
+            'Mini Soccer' => '70',
+            'Basketball' => '60',
+        );
+
+        return isset($counts[$type]) ? $counts[$type] : '40';
+    }
+
+    protected function visualForType($type)
+    {
+        $visuals = array(
+            'Futsal' => 'futsal',
+            'Badminton' => 'badminton',
+            'Mini Soccer' => 'mini-soccer',
+            'Basketball' => 'basketball',
+        );
+
+        return isset($visuals[$type]) ? $visuals[$type] : 'lapangan';
     }
 
     public function lapangan()
@@ -126,6 +164,13 @@ class PemilikController extends Controller
         $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
 
         if (!$this->isOwnerRole($role)) {
+            $normalized = $this->normalizeRole($role);
+
+            if (in_array($normalized, array('admin', 'administrator', 'superadmin'), true)) {
+                header('Location: ' . app_url('admin/dashboard'));
+                exit;
+            }
+
             header('Location: ' . app_url('dashboard'));
             exit;
         }
@@ -148,10 +193,13 @@ class PemilikController extends Controller
 
     protected function summaryCards()
     {
+        $lapangan = new Lapangan();
+        $booking = new Booking();
+
         return array(
             array(
                 'label' => 'Total Lapangan',
-                'value' => '3',
+                'value' => (string) $lapangan->countAll(),
                 'trend' => 'Lapangan Aktif',
                 'note' => '',
                 'icon' => 'fa-map-location-dot',
@@ -159,17 +207,17 @@ class PemilikController extends Controller
             ),
             array(
                 'label' => 'Booking Hari Ini',
-                'value' => '18',
-                'trend' => '12%',
-                'note' => 'dari kemarin',
+                'value' => (string) $booking->countTodayBookings(),
+                'trend' => 'dibanding kemarin',
+                'note' => 'Periksa jadwal terbaru',
                 'icon' => 'fa-calendar-days',
                 'accent' => 'blue',
             ),
             array(
                 'label' => 'Pendapatan Bulan Ini',
-                'value' => 'Rp4.250.000',
-                'trend' => '18.6%',
-                'note' => 'dari bulan lalu',
+                'value' => 'Rp' . number_format($booking->sumMonthlyRevenue(), 0, ',', '.'),
+                'trend' => 'performa stabil',
+                'note' => 'dari bulan ini',
                 'icon' => 'fa-rupiah-sign',
                 'accent' => 'green',
             ),
@@ -225,10 +273,28 @@ class PemilikController extends Controller
 
     protected function ownerFields()
     {
-        return array(
-            array('name' => 'Arena Futsal A', 'location' => 'Parepare', 'rating' => '4.8', 'reviews' => '120', 'price' => 'Rp80.000', 'status' => 'Aktif', 'visual' => 'futsal'),
-            array('name' => 'Arena Badminton 1', 'location' => 'Parepare', 'rating' => '4.7', 'reviews' => '85', 'price' => 'Rp60.000', 'status' => 'Aktif', 'visual' => 'badminton'),
-        );
+        $lapangan = (new Lapangan())->all(2);
+        $items = array();
+
+        foreach ($lapangan as $row) {
+            $items[] = array(
+                'name' => $row['Nama_lapangan'],
+                'location' => $row['Lokasi'],
+                'rating' => $this->ratingForType($row['Jenis_olahraga']),
+                'reviews' => $this->reviewCountForType($row['Jenis_olahraga']),
+                'price' => 'Rp' . number_format((int) $row['Harga'], 0, ',', '.'),
+                'status' => 'Aktif',
+                'visual' => $this->visualForType($row['Jenis_olahraga']),
+            );
+        }
+
+        if (empty($items)) {
+            return array(
+                array('name' => 'Belum ada lapangan', 'location' => '-', 'rating' => '0', 'reviews' => '0', 'price' => 'Rp0', 'status' => 'Tidak aktif', 'visual' => 'futsal'),
+            );
+        }
+
+        return $items;
     }
 
     protected function latestReviews()
@@ -242,21 +308,30 @@ class PemilikController extends Controller
 
     protected function getAllLapangan()
     {
-        return array(
-            array('id' => '1', 'name' => 'Arena Futsal A', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp80.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.8', 'reviews' => '120', 'visual' => 'futsal'),
-            array('id' => '2', 'name' => 'Arena Badminton 1', 'type' => 'Badminton', 'location' => 'Parepare', 'price' => 'Rp60.000', 'status' => 'Aktif', 'cardStatus' => 'Aktif', 'rating' => '4.7', 'reviews' => '85', 'visual' => 'badminton'),
-            array('id' => '3', 'name' => 'Arena Futsal B', 'type' => 'Futsal', 'location' => 'Parepare', 'price' => 'Rp75.000', 'status' => 'Nonaktif', 'cardStatus' => 'Aktif', 'rating' => '4.5', 'reviews' => '60', 'visual' => 'futsal-alt'),
-        );
+        $rows = (new Lapangan())->all();
+        $items = array();
+
+        foreach ($rows as $row) {
+            $items[] = array(
+                'id' => isset($row['ID_Lapangan']) ? $row['ID_Lapangan'] : uniqid(),
+                'name' => $row['Nama_lapangan'],
+                'type' => $row['Jenis_olahraga'],
+                'location' => $row['Lokasi'],
+                'price' => 'Rp' . number_format((int) $row['Harga'], 0, ',', '.'),
+                'status' => 'Aktif',
+                'cardStatus' => 'Aktif',
+                'rating' => $this->ratingForType($row['Jenis_olahraga']),
+                'reviews' => $this->reviewCountForType($row['Jenis_olahraga']),
+                'visual' => $this->visualForType($row['Jenis_olahraga']),
+            );
+        }
+
+        return $items;
     }
 
     protected function getOwnerBookings()
     {
-        return array(
-            array('code' => 'AS-20260617-001', 'field' => 'Arena Futsal A', 'user' => 'Ahmad', 'date' => '17 Juni 2026', 'time' => '19:00 - 20:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp80.000'),
-            array('code' => 'AS-20260617-002', 'field' => 'Arena Badminton 1', 'user' => 'Rizal', 'date' => '17 Juni 2026', 'time' => '20:00 - 21:00', 'status' => 'Pending', 'statusClass' => 'warning', 'total' => 'Rp60.000'),
-            array('code' => 'AS-20260618-003', 'field' => 'Arena Futsal B', 'user' => 'Akbar', 'date' => '18 Juni 2026', 'time' => '16:00 - 17:00', 'status' => 'Selesai', 'statusClass' => 'active', 'total' => 'Rp80.000'),
-            array('code' => 'AS-20260618-004', 'field' => 'Arena Badminton 2', 'user' => 'Dewi', 'date' => '18 Juni 2026', 'time' => '18:00 - 19:00', 'status' => 'Aktif', 'statusClass' => 'success', 'total' => 'Rp60.000'),
-        );
+        return (new Booking())->recentAll(6);
     }
 
     protected function getSchedule()

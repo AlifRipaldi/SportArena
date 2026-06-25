@@ -4,47 +4,28 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Database;
+use App\Models\Booking;
+use App\Models\Lapangan;
 
 class DashboardController extends Controller
 {
     public function dashboard()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->renderDashboard('dashboard/index', 'dashboard', 'Dashboard | Arena Sport', 'Dashboard', 'Ringkasan aktivitas dan pesanan Anda saat ini.');
     }
 
     public function search()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->renderDashboard('dashboard/search', 'lapangan', 'Cari Lapangan | Arena Sport', 'Cari Lapangan', 'Temukan lapangan terbaik di sekitar kamu.');
     }
 
     public function ulasan()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->view('dashboard/ulasan', array(
             'title' => 'Ulasan Saya | Arena Sport',
@@ -59,14 +40,7 @@ class DashboardController extends Controller
 
     public function profil()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->view('dashboard/profil', array(
             'title' => 'Profil Saya | Arena Sport',
@@ -82,6 +56,8 @@ class DashboardController extends Controller
 
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
+        $this->requireUser();
+
         return $this->view($view, array(
             'title' => $title,
             'activeMenu' => $activeMenu,
@@ -90,61 +66,21 @@ class DashboardController extends Controller
             'userName' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : 'Pengguna Arena',
             'stats' => $this->stats(),
             'venues' => $this->venues(),
-            'favorites' => $this->favorites(),
             'nextBooking' => $this->nextBooking(),
             'bookings' => $this->bookings(),
         ), 'layouts/dashboard');
     }
 
-    protected function bookings()
+    protected function currentUserId()
     {
-        return array(
-            array(
-                'type' => 'Futsal',
-                'venue' => 'Arena Futsal Parepare',
-                'location' => 'Jl. Mattirotasi No. 12, Parepare',
-                'date' => '22 Mei 2024',
-                'time' => '10:00 - 11:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-220524-00123',
-                'price' => 'Rp82.000',
-                'status' => 'Mendatang',
-                'statusClass' => 'upcoming',
-                'button' => 'Ubah Booking',
-                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=500&auto=format&fit=crop',
-            ),
-            array(
-                'type' => 'Badminton',
-                'venue' => 'Lapangan Badminton Center',
-                'location' => 'Jl. Bau Massepe No. 45, Parepare',
-                'date' => '18 Mei 2024',
-                'time' => '08:00 - 09:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-180524-00098',
-                'price' => 'Rp60.000',
-                'status' => 'Mendatang',
-                'statusClass' => 'upcoming',
-                'button' => 'Ubah Booking',
-                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=500&auto=format&fit=crop',
-            ),
-            array(
-                'type' => 'Mini Soccer',
-                'venue' => 'Mini Soccer Victory',
-                'location' => 'Jl. Jend. Sudirman, Parepare',
-                'date' => '25 Mei 2024',
-                'time' => '17:00 - 18:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-250524-00045',
-                'price' => 'Rp100.000',
-                'status' => 'Menunggu Pembayaran',
-                'statusClass' => 'pending',
-                'button' => 'Bayar Sekarang',
-                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=500&auto=format&fit=crop',
-            ),
-        );
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        return isset($_SESSION['id_user']) ? $_SESSION['id_user'] : null;
     }
 
-    public function booking()
+    protected function requireUser()
     {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
@@ -154,20 +90,67 @@ class DashboardController extends Controller
             header('Location: ' . app_url('public/login.php'));
             exit;
         }
+
+        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
+
+        if (!$this->isUserRole($role)) {
+            $redirectRole = $this->normalizeRole($role);
+
+            if (in_array($redirectRole, array('admin', 'administrator', 'superadmin'), true)) {
+                header('Location: ' . app_url('admin/dashboard'));
+                exit;
+            }
+
+            if (in_array($redirectRole, array('owner', 'pemilik', 'pemilik lapangan', 'mitra'), true)) {
+                header('Location: ' . app_url('pemilik/dashboard'));
+                exit;
+            }
+
+            header('Location: ' . app_url('public/login.php'));
+            exit;
+        }
+
+        return true;
+    }
+
+    protected function isUserRole($role)
+    {
+        return in_array($this->normalizeRole($role), array('user', 'customer', 'pelanggan'), true);
+    }
+
+    protected function normalizeRole($role)
+    {
+        return strtolower(str_replace(array('_', '-'), ' ', trim((string) $role)));
+    }
+
+    protected function bookings()
+    {
+        $userId = $this->currentUserId();
+        return (new Booking())->upcomingByUser($userId, 6);
+    }
+
+    protected function historyBookings()
+    {
+        $userId = $this->currentUserId();
+        return (new Booking())->pastByUser($userId, 8);
+    }
+
+    protected function nextBooking()
+    {
+        $userId = $this->currentUserId();
+        return (new Booking())->nextUpcomingByUser($userId);
+    }
+
+    public function booking()
+    {
+        $this->requireUser();
 
         return $this->renderDashboard('dashboard/booking', 'booking', 'Booking Saya | Arena Sport', 'Booking Saya', 'Kelola semua booking lapangan kamu');
     }
 
     public function riwayat()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->view('dashboard/riwayat', array(
             'title' => 'Riwayat Booking | Arena Sport',
@@ -179,112 +162,64 @@ class DashboardController extends Controller
         ), 'layouts/dashboard');
     }
 
-    protected function historyBookings()
-    {
-        return array(
-            array(
-                'type' => 'Futsal',
-                'venue' => 'Arena Futsal Parepare',
-                'location' => 'Jl. Mattirotasi No. 12, Parepare',
-                'date' => '22 Mei 2024',
-                'time' => '10:00 - 11:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-220524-00123',
-                'price' => 'Rp82.000',
-                'status' => 'Selesai',
-                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=700&auto=format&fit=crop',
-            ),
-            array(
-                'type' => 'Badminton',
-                'venue' => 'Lapangan Badminton Center',
-                'location' => 'Jl. Bau Massepe No. 45, Parepare',
-                'date' => '18 Mei 2024',
-                'time' => '08:00 - 09:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-180524-00098',
-                'price' => 'Rp60.000',
-                'status' => 'Selesai',
-                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=700&auto=format&fit=crop',
-            ),
-            array(
-                'type' => 'Mini Soccer',
-                'venue' => 'Mini Soccer Victory',
-                'location' => 'Jl. Jend. Sudirman, Parepare',
-                'date' => '10 Mei 2024',
-                'time' => '17:00 - 18:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-100524-00056',
-                'price' => 'Rp100.000',
-                'status' => 'Selesai',
-                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=700&auto=format&fit=crop',
-            ),
-            array(
-                'type' => 'Basketball',
-                'venue' => 'Arena Basketball Court',
-                'location' => 'Jl. Andi Makkasau No. 7, Parepare',
-                'date' => '5 Mei 2024',
-                'time' => '14:00 - 15:00',
-                'duration' => '1 Jam',
-                'code' => 'AS-050524-00032',
-                'price' => 'Rp70.000',
-                'status' => 'Dibatalkan',
-                'image' => 'https://images.unsplash.com/photo-1546519638-68711109d298?q=80&w=700&auto=format&fit=crop',
-            ),
-        );
-    }
-
     public function favorit()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->renderDashboard('dashboard/favorit', 'favorit', 'Favorit | Arena Sport', 'Favorit', 'Lapangan favorit yang ingin kamu mainkan');
     }
 
     protected function stats()
     {
+        $userId = $this->currentUserId();
+        $bookingModel = new Booking();
+        $lapanganModel = new Lapangan();
+
         return array(
-            array('label' => 'Booking Aktif', 'value' => '12', 'icon' => '&#128197;', 'accent' => 'green'),
-            array('label' => 'Selesai', 'value' => '28', 'icon' => '&#10003;', 'accent' => 'blue'),
-            array('label' => 'Favorit', 'value' => '5', 'icon' => '&#9825;', 'accent' => 'purple'),
-            array('label' => 'Rating Anda', 'value' => '4.8', 'icon' => '&#9734;', 'accent' => 'orange'),
+            array(
+                'label' => 'Booking Aktif',
+                'value' => (string) $bookingModel->countUpcomingByUser($userId),
+                'icon' => '&#128197;',
+                'accent' => 'green',
+            ),
+            array(
+                'label' => 'Selesai',
+                'value' => (string) $bookingModel->countPastByUser($userId),
+                'icon' => '&#10003;',
+                'accent' => 'blue',
+            ),
+            array(
+                'label' => 'Lapangan Tersedia',
+                'value' => (string) $lapanganModel->countAll(),
+                'icon' => '&#x1F3DF;',
+                'accent' => 'purple',
+            ),
+            array(
+                'label' => 'Rating Anda',
+                'value' => '4.8',
+                'icon' => '&#9734;',
+                'accent' => 'orange',
+            ),
         );
     }
 
     protected function venues()
     {
-        return array(
-            array(
-                'name' => 'Arena Futsal Parepare',
-                'location' => 'Jl. Mattirotasi No. 12, Parepare',
-                'rating' => '4.8',
-                'reviews' => '120 ulasan',
-                'price' => 'Rp80.000',
-                'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop',
-            ),
-            array(
-                'name' => 'Lapangan Badminton Center',
-                'location' => 'Jl. Bau Massepe No. 45, Parepare',
-                'rating' => '4.6',
-                'reviews' => '85 ulasan',
-                'price' => 'Rp60.000',
-                'image' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=900&auto=format&fit=crop',
-            ),
-            array(
-                'name' => 'Mini Soccer Victory',
-                'location' => 'Jl. Jend. Sudirman, Parepare',
-                'rating' => '4.7',
-                'reviews' => '98 ulasan',
-                'price' => 'Rp100.000',
-                'image' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=900&auto=format&fit=crop',
-            ),
-        );
+        $rows = (new Lapangan())->popular(4);
+        $fields = array();
+
+        foreach ($rows as $row) {
+            $fields[] = array(
+                'name' => $row['Nama_lapangan'],
+                'location' => $row['Lokasi'],
+                'rating' => $this->ratingForType($row['Jenis_olahraga']),
+                'reviews' => $this->reviewCountForType($row['Jenis_olahraga']),
+                'price' => 'Rp' . number_format($row['Harga'], 0, ',', '.'),
+                'image' => $this->venueImageForType($row['Jenis_olahraga']),
+            );
+        }
+
+        return $fields;
     }
 
     protected function favorites()
@@ -337,16 +272,40 @@ class DashboardController extends Controller
         );
     }
 
-    protected function nextBooking()
+    protected function ratingForType($type)
     {
-        return array(
-            'venue' => 'Arena Futsal Parepare',
-            'date' => '10 Juni 2026',
-            'time' => '10:00 - 11:00',
-            'duration' => '1 Jam',
-            'status' => 'Akan Datang',
-            'image' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=500&auto=format&fit=crop',
+        $ratings = array(
+            'Futsal' => '4.8',
+            'Badminton' => '4.6',
+            'Mini Soccer' => '4.7',
+            'Basketball' => '4.5',
         );
+
+        return isset($ratings[$type]) ? $ratings[$type] : '4.6';
+    }
+
+    protected function reviewCountForType($type)
+    {
+        $counts = array(
+            'Futsal' => '120',
+            'Badminton' => '85',
+            'Mini Soccer' => '98',
+            'Basketball' => '76',
+        );
+
+        return isset($counts[$type]) ? $counts[$type] : '80';
+    }
+
+    protected function venueImageForType($type)
+    {
+        $images = array(
+            'Futsal' => 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop',
+            'Badminton' => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?q=80&w=900&auto=format&fit=crop',
+            'Mini Soccer' => 'https://images.unsplash.com/photo-1526232761682-d26e03ac148e?q=80&w=900&auto=format&fit=crop',
+            'Basketball' => 'https://images.unsplash.com/photo-1521093721353-fcc2b798fbd5?q=80&w=900&auto=format&fit=crop',
+        );
+
+        return isset($images[$type]) ? $images[$type] : 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?q=80&w=900&auto=format&fit=crop';
     }
 
     protected function reviewSummary()
@@ -420,14 +379,7 @@ class DashboardController extends Controller
 
     public function settings()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         return $this->view('dashboard/settings', array(
             'title' => 'Pengaturan Akun | Arena Sport',
@@ -450,14 +402,7 @@ class DashboardController extends Controller
 
     public function updateSettings()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
+        $this->requireUser();
 
         $message = '';
         $errorMessage = '';
