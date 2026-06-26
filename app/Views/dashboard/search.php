@@ -278,11 +278,7 @@ foreach ($venues as $venue) {
                         <strong><?php echo e($venue['price']); ?> <span>/jam</span></strong>
                         <div>
                             <a class="field-detail-button" data-field-open href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : ''))); ?>">Lihat Detail</a>
-                            <?php if (!empty($availableSchedules)): ?>
-                                <a class="field-book-button" data-field-open data-focus-schedules href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : '') . '#customerFieldBooking')); ?>">Pilih Jadwal</a>
-                            <?php else: ?>
-                                <span class="primary" aria-disabled="true">Jadwal Kosong</span>
-                            <?php endif; ?>
+                            <a class="field-book-button" data-field-open data-focus-schedules href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : '') . '#customerFieldBooking')); ?>">Pilih Jadwal</a>
                         </div>
                     </div>
                 </article>
@@ -630,10 +626,6 @@ foreach ($venues as $venue) {
                     return false;
                 }
 
-                if (availableDates.length > 0 && availableDates.indexOf(controls.date.value) === -1) {
-                    return false;
-                }
-
                 if (availableSlots.length > 0 && selectedTime) {
                     var hasMatchingSlot = availableSlots.some(function (slot) {
                         var separator = slot.indexOf('@');
@@ -643,7 +635,7 @@ foreach ($venues as $venue) {
                             && timeMatchesSlot(selectedTime, slot.slice(separator + 1));
                     });
 
-                    if (!hasMatchingSlot) {
+                    if (!hasMatchingSlot && availableDates.indexOf(controls.date.value) !== -1) {
                         return false;
                     }
                 }

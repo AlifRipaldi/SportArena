@@ -4,6 +4,7 @@ $photos = isset($venue['images']) && is_array($venue['images']) && !empty($venue
     : array($venue['image']);
 $features = isset($venue['features']) && is_array($venue['features']) ? $venue['features'] : array();
 $schedules = isset($venue['availableSchedules']) && is_array($venue['availableSchedules']) ? $venue['availableSchedules'] : array();
+$defaultScheduleDate = !empty($schedules) && !empty($schedules[0]['date']) ? $schedules[0]['date'] : date('Y-m-d');
 $latitude = isset($venue['latitude']) ? (float) $venue['latitude'] : 0;
 $longitude = isset($venue['longitude']) ? (float) $venue['longitude'] : 0;
 $openTime = '';
@@ -87,22 +88,17 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
             <p>Harga Mulai Dari</p>
             <strong id="customerBookingPrice"><?php echo e($venue['price']); ?></strong><span>/jam</span>
             <hr>
-            <?php if (!empty($schedules)): ?>
-                <form method="post" action="<?php echo e(app_url('dashboard/booking/tambah')); ?>" id="customerFieldBookingForm">
-                    <input type="hidden" name="booking_token" value="<?php echo e($bookingCsrfToken); ?>">
-                    <input type="hidden" name="id_jadwal" id="customerScheduleId" value="">
-                    <label for="customerBookingDate">Pilih Tanggal</label>
-                    <input type="date" id="customerBookingDate" min="<?php echo e($schedules[0]['date']); ?>" value="<?php echo e($schedules[0]['date']); ?>">
-                    <span class="customer-booking-label">Pilih Jam</span>
-                    <div class="customer-time-options" id="customerTimeOptions"></div>
-                    <p class="customer-booking-hint" id="customerBookingHint">Pilih salah satu jam yang tersedia.</p>
-                    <button type="submit" class="customer-book-now" id="customerBookNow" disabled>Pesan Sekarang</button>
-                    <button type="button" class="customer-view-schedule" id="customerViewSchedule">Lihat Jadwal</button>
-                </form>
-            <?php else: ?>
-                <div class="customer-booking-empty"><span>&#128197;</span><strong>Jadwal mendatang belum tersedia</strong><p>Semua slot yang tersimpan sudah lewat. Coba cek kembali nanti atau cari lapangan lain.</p></div>
-                <a class="customer-view-schedule" href="<?php echo e(app_url('dashboard/lapangan')); ?>">Cari Lapangan Lain</a>
-            <?php endif; ?>
+            <form method="post" action="<?php echo e(app_url('dashboard/booking/tambah')); ?>" id="customerFieldBookingForm">
+                <input type="hidden" name="booking_token" value="<?php echo e($bookingCsrfToken); ?>">
+                <input type="hidden" name="id_jadwal" id="customerScheduleId" value="">
+                <label for="customerBookingDate">Pilih Tanggal</label>
+                <input type="date" id="customerBookingDate" min="<?php echo e(date('Y-m-d')); ?>" value="<?php echo e($defaultScheduleDate); ?>">
+                <span class="customer-booking-label">Pilih Jam</span>
+                <div class="customer-time-options" id="customerTimeOptions"></div>
+                <p class="customer-booking-hint" id="customerBookingHint">Pilih salah satu jam yang tersedia.</p>
+                <button type="submit" class="customer-book-now" id="customerBookNow" disabled>Pesan Sekarang</button>
+                <button type="button" class="customer-view-schedule" id="customerViewSchedule">Lihat Jadwal</button>
+            </form>
         </aside>
 
         <section class="customer-field-info-card">
@@ -149,6 +145,8 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
     (function () {
         var photos = <?php echo json_encode(array_values($photos), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
         var schedules = <?php echo json_encode(array_values($schedules), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE); ?>;
+        var scheduleApiUrl = <?php echo json_encode(app_url('dashboard/lapangan/' . rawurlencode($venue['id']) . '/jadwal'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES); ?>;
+        var loadedScheduleDates = {};
         var photoIndex = 0;
         var mainPhoto = document.getElementById('customerFieldMainPhoto');
         var photoCount = document.getElementById('customerFieldPhotoCount');
@@ -171,8 +169,33 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
         var hint = document.getElementById('customerBookingHint');
         var price = document.getElementById('customerBookingPrice');
 
+        schedules.forEach(function (schedule) {
+            if (schedule && schedule.date) {
+                loadedScheduleDates[schedule.date] = true;
+            }
+        });
+
+        function setBookingIdle(message) {
+            timeOptions.textContent = '';
+            scheduleInput.value = '';
+            bookButton.disabled = true;
+            hint.textContent = message;
+        }
+
+        function replaceSchedulesForDate(date, items) {
+            schedules = schedules.filter(function (schedule) {
+                return schedule.date !== date;
+            }).concat(items || []);
+            loadedScheduleDates[date] = true;
+        }
+
         function renderTimes() {
             if (!dateInput || !timeOptions) { return; }
+            if (!loadedScheduleDates[dateInput.value]) {
+                loadSchedulesForDate(dateInput.value);
+                return;
+            }
+
             var matches = schedules.filter(function (schedule) { return schedule.date === dateInput.value; });
             timeOptions.textContent = '';
             scheduleInput.value = '';
@@ -193,6 +216,29 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
                 timeOptions.appendChild(button);
             });
         }
+
+        function loadSchedulesForDate(date) {
+            if (!date) { return; }
+            setBookingIdle('Memuat jadwal...');
+            fetch(scheduleApiUrl + '?date=' + encodeURIComponent(date), {
+                headers: { 'Accept': 'application/json' }
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    if (!response.ok || !data.ok) {
+                        throw new Error(data.message || 'Jadwal belum dapat dimuat.');
+                    }
+
+                    return data;
+                });
+            }).then(function (data) {
+                replaceSchedulesForDate(date, data.schedules || []);
+                renderTimes();
+            }).catch(function (error) {
+                loadedScheduleDates[date] = true;
+                setBookingIdle(error.message || 'Jadwal belum dapat dimuat.');
+            });
+        }
+
         if (dateInput) { dateInput.addEventListener('change', renderTimes); renderTimes(); }
         var viewSchedule = document.getElementById('customerViewSchedule');
         if (viewSchedule) { viewSchedule.addEventListener('click', function () { dateInput.focus(); dateInput.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); }

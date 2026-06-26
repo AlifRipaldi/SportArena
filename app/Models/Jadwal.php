@@ -6,8 +6,9 @@ class Jadwal extends Model
 {
     protected $defaultOpenTime = '06:00';
     protected $defaultCloseTime = '23:00';
+    protected $defaultPreloadDays = 14;
 
-    public function ensureForField($fieldId, $startDate = null, $days = 30)
+    public function ensureForField($fieldId, $startDate = null, $days = null)
     {
         $field = $this->fieldRow($fieldId);
 
@@ -22,7 +23,7 @@ class Jadwal extends Model
             $cursor = new \DateTimeImmutable(date('Y-m-d'));
         }
 
-        $days = max(1, (int) $days);
+        $days = $days === null ? $this->defaultPreloadDays : max(1, (int) $days);
 
         for ($index = 0; $index < $days; $index++) {
             $dates[] = $cursor->modify('+' . $index . ' days')->format('Y-m-d');
@@ -42,12 +43,45 @@ class Jadwal extends Model
         return $this->ensureFieldDates($field, array($date));
     }
 
+    public function ensureForOwner($ownerId, $startDate = null, $days = null)
+    {
+        $ownerId = trim((string) $ownerId);
+
+        if ($ownerId === '') {
+            return 0;
+        }
+
+        $cursor = $this->parseDate($startDate ?: date('Y-m-d'));
+
+        if (!$cursor) {
+            $cursor = new \DateTimeImmutable(date('Y-m-d'));
+        }
+
+        if ($cursor->format('Y-m-d') < date('Y-m-d')) {
+            $cursor = new \DateTimeImmutable(date('Y-m-d'));
+        }
+
+        $days = $days === null ? $this->defaultPreloadDays : max(1, (int) $days);
+        $dates = array();
+
+        for ($index = 0; $index < $days; $index++) {
+            $dates[] = $cursor->modify('+' . $index . ' days')->format('Y-m-d');
+        }
+
+        return $this->ensureForOwnerDates($ownerId, $dates);
+    }
+
     public function ensureForOwnerDate($ownerId, $date)
     {
         if (trim((string) $ownerId) === '' || !$this->isValidDate($date) || $date < date('Y-m-d')) {
             return 0;
         }
 
+        return $this->ensureForOwnerDates($ownerId, array($date));
+    }
+
+    protected function ensureForOwnerDates($ownerId, array $dates)
+    {
         $statement = mysqli_prepare(
             $this->db(),
             'SELECT ID_Lapangan, Harga FROM lapangan WHERE ID_Pemilik = ? AND deleted_at IS NULL'
@@ -57,13 +91,14 @@ class Jadwal extends Model
             return 0;
         }
 
+        $ownerId = trim((string) $ownerId);
         mysqli_stmt_bind_param($statement, 's', $ownerId);
         mysqli_stmt_execute($statement);
         $result = mysqli_stmt_get_result($statement);
         $created = 0;
 
         while ($result && $field = mysqli_fetch_assoc($result)) {
-            $created += $this->ensureFieldDates($field, array($date));
+            $created += $this->ensureFieldDates($field, $dates);
         }
 
         mysqli_stmt_close($statement);

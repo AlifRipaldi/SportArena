@@ -12,6 +12,7 @@ $router->get('/index.php', [HomeController::class, 'index']);
 $router->get('/lapangan', [HomeController::class, 'index']);
 $router->get('/dashboard', [DashboardController::class, 'dashboard']);
 $router->get('/dashboard/lapangan', [DashboardController::class, 'search']);
+$router->get('/dashboard/lapangan/{id}/jadwal', [DashboardController::class, 'fieldSchedules']);
 $router->get('/dashboard/lapangan/{id}', [DashboardController::class, 'fieldDetail']);
 $router->post('/dashboard/booking/tambah', [DashboardController::class, 'storeBooking']);
 $router->get('/dashboard/booking', [DashboardController::class, 'booking']);

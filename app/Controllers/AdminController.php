@@ -201,6 +201,7 @@ class AdminController extends Controller
     public function jadwal()
     {
         $admin = $this->requireAdmin();
+        $this->ensureAdminSchedules();
         $fieldId = trim(isset($_GET['field']) ? (string) $_GET['field'] : '');
         $sql = "SELECT j.ID_Jadwal,j.ID_Lapangan,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,j.Status,j.Harga,l.Nama_lapangan FROM jadwal j INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan WHERE l.deleted_at IS NULL";
         $types = '';
@@ -485,7 +486,7 @@ class AdminController extends Controller
             'maintenance_mode' => '0', 'user_registration' => '1', 'auto_approval' => '1', 'email_notification' => '1', 'dark_theme' => '1',
             'notification_in_app' => '1', 'notification_email' => '1', 'notification_new_booking' => '1', 'notification_confirmed' => '1', 'notification_cancelled' => '1', 'notification_reminder' => '1', 'notification_review' => '1', 'notification_promo' => '0', 'notification_security' => '1',
             'payment_timeout' => '60 Menit', 'admin_fee' => '2,5 %', 'minimum_payment' => 'Rp 10.000',
-            'login_notification' => '1', 'two_factor' => '0', 'automatic_logout' => '1', 'login_history' => '1',
+            'login_notification' => '1', 'automatic_logout' => '1', 'login_history' => '1',
         );
         $path = $this->adminPreferenceFile();
         if (!is_file($path)) {
@@ -505,7 +506,12 @@ class AdminController extends Controller
             exit('Jenis export tidak ditemukan.');
         }
 
-        $rows = $this->adminExportRows($type);
+        $filters = null;
+        if ($type === 'laporan' || $this->hasAdminReportFilterInput($_GET)) {
+            $filters = $this->adminNormalizeReportField($this->adminReportFilters($_GET), $this->adminReportFieldOptions());
+        }
+
+        $rows = $this->adminExportRows($type, $filters);
         $filename = 'arena-sport-' . $type . '-' . date('Ymd-His') . '.csv';
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -521,23 +527,72 @@ class AdminController extends Controller
         exit;
     }
 
-    protected function adminExportRows($type)
+    protected function adminExportRows($type, $filters = null)
     {
         if ($type === 'booking') {
+            if ($filters !== null) {
+                $where = $this->adminReportBookingWhere($filters, 'b', 'l');
+                return $this->adminData()->rows(
+                    'SELECT b.ID_Booking,u.Nama AS Customer,l.Nama_lapangan AS Lapangan,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,b.Total_harga,b.Status FROM booking b INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $where['sql'] . ' ORDER BY b.Waktu_transaksi DESC',
+                    $where['types'],
+                    $where['params']
+                );
+            }
+
             return $this->adminData()->rows('SELECT b.ID_Booking,u.Nama AS Customer,l.Nama_lapangan AS Lapangan,j.Tanggal,j.Jam_Mulai,j.Jam_Selesai,b.Total_harga,b.Status FROM booking b INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ORDER BY b.Waktu_transaksi DESC');
         }
         if ($type === 'users') {
+            if ($filters !== null) {
+                return $this->adminData()->rows(
+                    "SELECT ID_User,Nama,Email,Nomor_telepon,Role,Status,created_at FROM users WHERE LOWER(Role)<>'admin' AND DATE(created_at) BETWEEN ? AND ? ORDER BY created_at DESC",
+                    'ss',
+                    array($filters['start'], $filters['end'])
+                );
+            }
+
             return $this->adminData()->rows("SELECT ID_User,Nama,Email,Nomor_telepon,Role,Status,created_at FROM users WHERE LOWER(Role)<>'admin' ORDER BY created_at DESC");
         }
         if ($type === 'lapangan') {
+            if ($filters !== null) {
+                $where = $this->adminReportFieldWhere($filters, 'l');
+                return $this->adminData()->rows(
+                    'SELECT l.ID_Lapangan,l.Nama_lapangan,l.Lokasi,l.Jenis_olahraga,l.Harga,l.Status,p.nama_usaha AS Pemilik FROM lapangan l INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=l.ID_Pemilik ' . $where['sql'] . ' ORDER BY l.created_at DESC',
+                    $where['types'],
+                    $where['params']
+                );
+            }
+
             return $this->adminData()->rows('SELECT l.ID_Lapangan,l.Nama_lapangan,l.Lokasi,l.Jenis_olahraga,l.Harga,l.Status,p.nama_usaha AS Pemilik FROM lapangan l INNER JOIN pemilik_lapangan p ON p.ID_Pemilik=l.ID_Pemilik WHERE l.deleted_at IS NULL ORDER BY l.created_at DESC');
         }
         if ($type === 'ulasan') {
             return $this->adminData()->rows('SELECT r.ID_Review,u.Nama AS Pengguna,l.Nama_lapangan AS Lapangan,r.Rating,r.Komentar,r.Balasan,r.created_at FROM review r INNER JOIN users u ON u.ID_User=r.ID_User INNER JOIN lapangan l ON l.ID_Lapangan=r.ID_Lapangan ORDER BY r.created_at DESC');
         }
         if ($type === 'transaksi') {
+            if ($filters !== null) {
+                $where = $this->adminReportPaymentWhere($filters, 'p', 'l');
+                return $this->adminData()->rows(
+                    'SELECT p.ID_Pembayaran,p.ID_Booking,u.Nama AS Pengguna,l.Nama_lapangan AS Lapangan,p.Metode,p.Jumlah,p.Status,COALESCE(p.Waktu_pembayaran,p.created_at) AS Waktu FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $where['sql'] . ' ORDER BY p.created_at DESC',
+                    $where['types'],
+                    $where['params']
+                );
+            }
+
             return $this->adminData()->rows('SELECT p.ID_Pembayaran,p.ID_Booking,u.Nama AS Pengguna,l.Nama_lapangan AS Lapangan,p.Metode,p.Jumlah,p.Status,COALESCE(p.Waktu_pembayaran,p.created_at) AS Waktu FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN users u ON u.ID_User=b.ID_User INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ORDER BY p.created_at DESC');
         }
+
+        if ($filters !== null) {
+            $rows = array(
+                array('Metrik' => 'Periode', 'Nilai' => $filters['startLabel'] . ' - ' . $filters['endLabel']),
+                array('Metrik' => 'Lapangan', 'Nilai' => $this->adminReportFieldLabel($filters['field'])),
+            );
+
+            foreach ($this->adminReportStatsFromDatabase($filters) as $stat) {
+                $rows[] = array('Metrik' => $stat['label'], 'Nilai' => $stat['value']);
+            }
+
+            return $rows;
+        }
+
         return array(
             array('Metrik' => 'Total Booking', 'Nilai' => (string) $this->adminData()->value('SELECT COUNT(*) value FROM booking')),
             array('Metrik' => 'Total Pengguna', 'Nilai' => (string) $this->adminData()->value('SELECT COUNT(*) value FROM users')),
@@ -558,7 +613,7 @@ class AdminController extends Controller
 
         foreach ($rows as $row) {
             if (!empty($row['ID_Lapangan'])) {
-                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'), 30);
+                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'));
             }
         }
     }
@@ -571,6 +626,246 @@ class AdminController extends Controller
     protected function adminDate($date)
     {
         return $this->adminFormatDate($date);
+    }
+
+    protected function hasAdminReportFilterInput($source)
+    {
+        return is_array($source) && (
+            isset($source['start']) || isset($source['end']) || isset($source['field'])
+        );
+    }
+
+    protected function adminReportFilters($source = null)
+    {
+        $source = is_array($source) ? $source : array();
+        $defaultStart = date('Y-m-01');
+        $defaultEnd = date('Y-m-t');
+        $start = $this->adminReportDateValue(isset($source['start']) ? $source['start'] : '', $defaultStart);
+        $end = $this->adminReportDateValue(isset($source['end']) ? $source['end'] : '', $defaultEnd);
+
+        if (strtotime($start) > strtotime($end)) {
+            $swap = $start;
+            $start = $end;
+            $end = $swap;
+        }
+
+        $field = trim(isset($source['field']) ? (string) $source['field'] : '');
+        $field = preg_replace('/[^A-Za-z0-9_\-]/', '', $field);
+
+        return array(
+            'start' => $start,
+            'end' => $end,
+            'field' => $field,
+            'startLabel' => date('d/m/Y', strtotime($start)),
+            'endLabel' => date('d/m/Y', strtotime($end)),
+            'periodLabel' => date('d/m/Y', strtotime($start)) . ' - ' . date('d/m/Y', strtotime($end)),
+            'monthLabel' => date('m/Y', strtotime($start)) === date('m/Y', strtotime($end)) ? date('m/Y', strtotime($start)) : date('d/m/Y', strtotime($start)) . ' - ' . date('d/m/Y', strtotime($end)),
+        );
+    }
+
+    protected function adminReportDateValue($value, $fallback)
+    {
+        $value = trim((string) $value);
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            return $fallback;
+        }
+
+        $timestamp = strtotime($value);
+        return $timestamp ? date('Y-m-d', $timestamp) : $fallback;
+    }
+
+    protected function adminReportFieldOptions()
+    {
+        return $this->adminData()->rows("SELECT ID_Lapangan id,Nama_lapangan name FROM lapangan WHERE deleted_at IS NULL ORDER BY Nama_lapangan");
+    }
+
+    protected function adminNormalizeReportField(array $filters, array $fields)
+    {
+        if ($filters['field'] === '') {
+            $filters['fieldLabel'] = 'Semua Lapangan';
+            return $filters;
+        }
+
+        foreach ($fields as $field) {
+            if ((string) $field['id'] === (string) $filters['field']) {
+                $filters['fieldLabel'] = $field['name'];
+                return $filters;
+            }
+        }
+
+        $filters['field'] = '';
+        $filters['fieldLabel'] = 'Semua Lapangan';
+        return $filters;
+    }
+
+    protected function adminReportQuery(array $filters)
+    {
+        $query = array('start' => $filters['start'], 'end' => $filters['end']);
+        if ($filters['field'] !== '') {
+            $query['field'] = $filters['field'];
+        }
+
+        return http_build_query($query);
+    }
+
+    protected function adminReportPaymentWhere(array $filters, $paymentAlias = 'p', $fieldAlias = 'l')
+    {
+        $conditions = array(
+            "LOWER(" . $paymentAlias . ".Status) IN ('berhasil','dibayar','lunas','success','paid')",
+            'DATE(COALESCE(' . $paymentAlias . '.Waktu_pembayaran,' . $paymentAlias . '.created_at)) BETWEEN ? AND ?',
+        );
+        $types = 'ss';
+        $params = array($filters['start'], $filters['end']);
+
+        if ($filters['field'] !== '' && $fieldAlias !== '') {
+            $conditions[] = $fieldAlias . '.ID_Lapangan=?';
+            $types .= 's';
+            $params[] = $filters['field'];
+        }
+
+        return array('sql' => 'WHERE ' . implode(' AND ', $conditions), 'types' => $types, 'params' => $params);
+    }
+
+    protected function adminReportBookingWhere(array $filters, $bookingAlias = 'b', $fieldAlias = 'l')
+    {
+        $conditions = array('DATE(' . $bookingAlias . '.Waktu_transaksi) BETWEEN ? AND ?');
+        $types = 'ss';
+        $params = array($filters['start'], $filters['end']);
+
+        if ($filters['field'] !== '' && $fieldAlias !== '') {
+            $conditions[] = $fieldAlias . '.ID_Lapangan=?';
+            $types .= 's';
+            $params[] = $filters['field'];
+        }
+
+        return array('sql' => 'WHERE ' . implode(' AND ', $conditions), 'types' => $types, 'params' => $params);
+    }
+
+    protected function adminReportFieldWhere(array $filters, $fieldAlias = 'l')
+    {
+        $conditions = array($fieldAlias . '.deleted_at IS NULL');
+        $types = '';
+        $params = array();
+
+        if ($filters['field'] !== '') {
+            $conditions[] = $fieldAlias . '.ID_Lapangan=?';
+            $types .= 's';
+            $params[] = $filters['field'];
+        }
+
+        return array('sql' => 'WHERE ' . implode(' AND ', $conditions), 'types' => $types, 'params' => $params);
+    }
+
+    protected function adminReportFieldLabel($fieldId)
+    {
+        $fieldId = trim((string) $fieldId);
+        if ($fieldId === '') {
+            return 'Semua Lapangan';
+        }
+
+        $name = $this->adminData()->value('SELECT Nama_lapangan value FROM lapangan WHERE ID_Lapangan=? AND deleted_at IS NULL LIMIT 1', 's', array($fieldId));
+        return $name ? (string) $name : 'Semua Lapangan';
+    }
+
+    protected function adminReportDateTicks(array $filters)
+    {
+        $start = strtotime($filters['start']);
+        $end = strtotime($filters['end']);
+        if (!$start || !$end || $start === $end) {
+            return array($this->adminReportShortDate($filters['start']));
+        }
+
+        $ticks = array();
+        for ($index = 0; $index < 5; $index++) {
+            $time = (int) round($start + (($end - $start) * ($index / 4)));
+            $ticks[] = $this->adminReportShortDate(date('Y-m-d', $time));
+        }
+
+        return $ticks;
+    }
+
+    protected function adminReportShortDate($date)
+    {
+        $timestamp = strtotime($date);
+        if (!$timestamp) {
+            return (string) $date;
+        }
+
+        $months = array(1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 6 => 'Jun', 7 => 'Jul', 8 => 'Agu', 9 => 'Sep', 10 => 'Okt', 11 => 'Nov', 12 => 'Des');
+        return date('j', $timestamp) . ' ' . $months[(int) date('n', $timestamp)];
+    }
+
+    protected function adminRevenueAxisLabels(array $points)
+    {
+        $max = 0;
+        foreach ($points as $point) {
+            $max = max($max, isset($point['rawAmount']) ? (int) $point['rawAmount'] : (int) preg_replace('/[^0-9]/', '', isset($point['amount']) ? $point['amount'] : '0'));
+        }
+
+        $top = $this->adminNiceMoneyTop($max);
+        $labels = array();
+        for ($index = 5; $index >= 0; $index--) {
+            $labels[] = $this->adminRupiahShort((int) round(($top / 5) * $index));
+        }
+
+        return $labels;
+    }
+
+    protected function adminBookingAxisLabels(array $fields)
+    {
+        $max = 0;
+        foreach ($fields as $field) {
+            $max = max($max, isset($field['value']) ? (int) $field['value'] : 0);
+        }
+
+        $top = $this->adminNiceCountTop($max);
+        $labels = array();
+        for ($index = 6; $index >= 0; $index--) {
+            $labels[] = (string) (int) round(($top / 6) * $index);
+        }
+
+        return $labels;
+    }
+
+    protected function adminNiceMoneyTop($max)
+    {
+        $max = max(100000, (int) $max);
+        $magnitude = pow(10, floor(log10($max)));
+        $normalized = $max / $magnitude;
+
+        if ($normalized <= 1) {
+            $nice = 1;
+        } elseif ($normalized <= 2) {
+            $nice = 2;
+        } elseif ($normalized <= 5) {
+            $nice = 5;
+        } else {
+            $nice = 10;
+        }
+
+        return (int) ($nice * $magnitude);
+    }
+
+    protected function adminNiceCountTop($max)
+    {
+        $max = max(1, (int) $max);
+        return max(6, (int) ceil($max / 6) * 6);
+    }
+
+    protected function adminRupiahShort($amount)
+    {
+        $amount = max(0, (int) $amount);
+        if ($amount >= 1000000) {
+            $value = $amount / 1000000;
+            return 'Rp' . rtrim(rtrim(number_format($value, 1, ',', '.'), '0'), ',') . 'jt';
+        }
+
+        if ($amount >= 1000) {
+            $value = $amount / 1000;
+            return 'Rp' . rtrim(rtrim(number_format($value, 1, ',', '.'), '0'), ',') . 'rb';
+        }
+
+        return 'Rp' . number_format($amount, 0, ',', '.');
     }
 
     protected function adminBookingRows()
@@ -734,25 +1029,184 @@ class AdminController extends Controller
         );
     }
 
-    protected function adminReportStatsFromDatabase()
+    protected function adminReportStatsFromDatabase($filters = null)
     {
-        $data=$this->adminData();$income=(int)$data->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid')");$bookings=(int)$data->value('SELECT COUNT(*) value FROM booking');$users=(int)$data->value("SELECT COUNT(*) value FROM users WHERE created_at >= DATE_FORMAT(CURDATE(),'%Y-%m-01')");$fields=(int)$data->value("SELECT COUNT(*) value FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL");
-        return array(array('label'=>'Total Pendapatan','value'=>$this->adminRupiah($income),'trend'=>'0%','note'=>'seluruh periode','icon'=>'fa-wallet','accent'=>'green'),array('label'=>'Total Booking','value'=>(string)$bookings,'trend'=>'0%','note'=>'seluruh periode','icon'=>'fa-calendar-check','accent'=>'purple'),array('label'=>'Total Pengguna Baru','value'=>(string)$users,'trend'=>'0%','note'=>'bulan ini','icon'=>'fa-user-plus','accent'=>'blue'),array('label'=>'Total Lapangan Aktif','value'=>(string)$fields,'trend'=>'0%','note'=>'saat ini','icon'=>'fa-table-cells-large','accent'=>'gold'));
+        $data = $this->adminData();
+
+        if ($filters === null) {
+            $income = (int) $data->value("SELECT COALESCE(SUM(Jumlah),0) value FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid')");
+            $bookings = (int) $data->value('SELECT COUNT(*) value FROM booking');
+            $users = (int) $data->value("SELECT COUNT(*) value FROM users WHERE created_at >= DATE_FORMAT(CURDATE(),'%Y-%m-01')");
+            $fields = (int) $data->value("SELECT COUNT(*) value FROM lapangan WHERE LOWER(Status)='aktif' AND deleted_at IS NULL");
+
+            return array(
+                array('label' => 'Total Pendapatan', 'value' => $this->adminRupiah($income), 'trend' => '0%', 'note' => 'seluruh periode', 'icon' => 'fa-wallet', 'accent' => 'green'),
+                array('label' => 'Total Booking', 'value' => (string) $bookings, 'trend' => '0%', 'note' => 'seluruh periode', 'icon' => 'fa-calendar-check', 'accent' => 'purple'),
+                array('label' => 'Total Pengguna Baru', 'value' => (string) $users, 'trend' => '0%', 'note' => 'bulan ini', 'icon' => 'fa-user-plus', 'accent' => 'blue'),
+                array('label' => 'Total Lapangan Aktif', 'value' => (string) $fields, 'trend' => '0%', 'note' => 'saat ini', 'icon' => 'fa-table-cells-large', 'accent' => 'gold'),
+            );
+        }
+
+        $paymentWhere = $this->adminReportPaymentWhere($filters, 'p', 'l');
+        $bookingWhere = $this->adminReportBookingWhere($filters, 'b', 'l');
+        $fieldWhere = $this->adminReportFieldWhere($filters, 'l');
+        $income = (int) $data->value(
+            'SELECT COALESCE(SUM(p.Jumlah),0) value FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $paymentWhere['sql'],
+            $paymentWhere['types'],
+            $paymentWhere['params']
+        );
+        $bookings = (int) $data->value(
+            'SELECT COUNT(*) value FROM booking b INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $bookingWhere['sql'],
+            $bookingWhere['types'],
+            $bookingWhere['params']
+        );
+        $users = (int) $data->value(
+            'SELECT COUNT(*) value FROM users WHERE DATE(created_at) BETWEEN ? AND ?',
+            'ss',
+            array($filters['start'], $filters['end'])
+        );
+        $fields = (int) $data->value(
+            "SELECT COUNT(*) value FROM lapangan l " . $fieldWhere['sql'] . " AND LOWER(l.Status)='aktif'",
+            $fieldWhere['types'],
+            $fieldWhere['params']
+        );
+
+        return array(
+            array('label' => 'Total Pendapatan', 'value' => $this->adminRupiah($income), 'trend' => '0%', 'note' => 'periode terpilih', 'icon' => 'fa-wallet', 'accent' => 'green'),
+            array('label' => 'Total Booking', 'value' => (string) $bookings, 'trend' => '0%', 'note' => 'periode terpilih', 'icon' => 'fa-calendar-check', 'accent' => 'purple'),
+            array('label' => 'Total Pengguna Baru', 'value' => (string) $users, 'trend' => '0%', 'note' => 'periode terpilih', 'icon' => 'fa-user-plus', 'accent' => 'blue'),
+            array('label' => 'Total Lapangan Aktif', 'value' => (string) $fields, 'trend' => '0%', 'note' => $filters['field'] === '' ? 'saat ini' : 'filter lapangan', 'icon' => 'fa-table-cells-large', 'accent' => 'gold'),
+        );
     }
 
-    protected function adminRevenueReportFromDatabase()
+    protected function adminRevenueReportFromDatabase($filters = null)
     {
-        $rows=$this->adminData()->rows("SELECT DATE(COALESCE(Waktu_pembayaran,created_at)) report_date,SUM(Jumlah) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') AND COALESCE(Waktu_pembayaran,created_at)>=DATE_SUB(CURDATE(),INTERVAL 30 DAY) GROUP BY DATE(COALESCE(Waktu_pembayaran,created_at)) ORDER BY report_date");if(empty($rows)){return array(array('label'=>$this->adminDate(date('Y-m-d')),'amount'=>'Rp0','x'=>50,'y'=>92,'highlight'=>true));}$max=1;foreach($rows as $r){$max=max($max,(int)$r['amount']);}$count=count($rows);$result=array();$highlight=0;$best=-1;foreach($rows as $i=>$row){if((int)$row['amount']>$best){$best=(int)$row['amount'];$highlight=$i;}$result[]=array('label'=>$this->adminDate($row['report_date']),'amount'=>$this->adminRupiah($row['amount']),'x'=>$count>1?round(($i/($count-1))*100,2):50,'y'=>round(92-(((int)$row['amount']/$max)*82),2));}$result[$highlight]['highlight']=true;return $result;
+        if ($filters === null) {
+            $filters = $this->adminReportFilters(array('start' => date('Y-m-d', strtotime('-30 days')), 'end' => date('Y-m-d')));
+        }
+
+        $where = $this->adminReportPaymentWhere($filters, 'p', 'l');
+        $rows = $this->adminData()->rows(
+            'SELECT DATE(COALESCE(p.Waktu_pembayaran,p.created_at)) report_date,SUM(p.Jumlah) amount FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $where['sql'] . ' GROUP BY DATE(COALESCE(p.Waktu_pembayaran,p.created_at)) ORDER BY report_date',
+            $where['types'],
+            $where['params']
+        );
+
+        if (empty($rows)) {
+            return array(array('label' => $this->adminReportShortDate($filters['end']), 'amount' => 'Rp0', 'rawAmount' => 0, 'x' => 50, 'y' => 92, 'highlight' => true));
+        }
+
+        $max = 0;
+        foreach ($rows as $row) {
+            $max = max($max, (int) $row['amount']);
+        }
+
+        $top = $this->adminNiceMoneyTop($max);
+        $start = strtotime($filters['start']);
+        $end = strtotime($filters['end']);
+        $totalSeconds = max(1, $end - $start);
+        $result = array();
+        $highlight = 0;
+        $best = -1;
+
+        foreach ($rows as $index => $row) {
+            $amount = (int) $row['amount'];
+            if ($amount > $best) {
+                $best = $amount;
+                $highlight = $index;
+            }
+
+            $pointTime = strtotime($row['report_date']);
+            $x = $start === $end ? 50 : round((max(0, min($totalSeconds, $pointTime - $start)) / $totalSeconds) * 100, 2);
+            $result[] = array(
+                'label' => $this->adminReportShortDate($row['report_date']),
+                'amount' => $this->adminRupiah($amount),
+                'rawAmount' => $amount,
+                'x' => $x,
+                'y' => round(92 - (($amount / $top) * 82), 2),
+            );
+        }
+
+        $result[$highlight]['highlight'] = true;
+        return $result;
     }
 
-    protected function adminPaymentReportFromDatabase()
+    protected function adminPaymentReportFromDatabase($filters = null)
     {
-        $rows=$this->adminData()->rows("SELECT Metode method,SUM(Jumlah) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') GROUP BY Metode ORDER BY amount DESC");$total=0;foreach($rows as $r){$total+=(int)$r['amount'];}$colors=array('blue','purple','teal','orange','light');$result=array();foreach($rows as $i=>$r){$result[]=array('method'=>$r['method'],'amount'=>$this->adminRupiah($r['amount']),'percent'=>$total?round(((int)$r['amount']/$total)*100):0,'color'=>$colors[$i%count($colors)]);}return $result;
+        if ($filters === null) {
+            $rows = $this->adminData()->rows("SELECT Metode method,SUM(Jumlah) amount FROM pembayaran WHERE LOWER(Status) IN ('berhasil','dibayar','lunas','success','paid') GROUP BY Metode ORDER BY amount DESC");
+        } else {
+            $where = $this->adminReportPaymentWhere($filters, 'p', 'l');
+            $rows = $this->adminData()->rows(
+                'SELECT p.Metode method,SUM(p.Jumlah) amount FROM pembayaran p INNER JOIN booking b ON b.ID_Booking=p.ID_Booking INNER JOIN jadwal j ON j.ID_Jadwal=b.ID_Jadwal INNER JOIN lapangan l ON l.ID_Lapangan=j.ID_Lapangan ' . $where['sql'] . ' GROUP BY p.Metode ORDER BY amount DESC',
+                $where['types'],
+                $where['params']
+            );
+        }
+
+        if (empty($rows)) {
+            return array(array('method' => 'Belum ada pembayaran', 'amount' => 'Rp0', 'percent' => 100, 'color' => 'light'));
+        }
+
+        $total = 0;
+        foreach ($rows as $row) {
+            $total += (int) $row['amount'];
+        }
+
+        $colors = array('blue', 'purple', 'teal', 'orange', 'light');
+        $result = array();
+        foreach ($rows as $index => $row) {
+            $result[] = array(
+                'method' => $row['method'],
+                'amount' => $this->adminRupiah($row['amount']),
+                'percent' => $total ? round(((int) $row['amount'] / $total) * 100) : 0,
+                'color' => $colors[$index % count($colors)],
+            );
+        }
+
+        return $result;
     }
 
-    protected function adminFieldBookingReportFromDatabase()
+    protected function adminFieldBookingReportFromDatabase($filters = null)
     {
-        $rows=$this->adminData()->rows("SELECT l.Nama_lapangan field,COUNT(b.ID_Booking) value FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY value DESC LIMIT 6");$max=1;foreach($rows as $r){$max=max($max,(int)$r['value']);}$result=array();foreach($rows as $r){$result[]=array('field'=>$r['field'],'short'=>htmlspecialchars($r['field'],ENT_QUOTES,'UTF-8'),'value'=>(int)$r['value'],'height'=>round(((int)$r['value']/$max)*100));}return $result;
+        if ($filters === null) {
+            $rows = $this->adminData()->rows("SELECT l.Nama_lapangan field,COUNT(b.ID_Booking) value FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal WHERE l.deleted_at IS NULL GROUP BY l.ID_Lapangan ORDER BY value DESC LIMIT 6");
+        } else {
+            $conditions = array('l.deleted_at IS NULL');
+            $types = 'ss';
+            $params = array($filters['start'], $filters['end']);
+
+            if ($filters['field'] !== '') {
+                $conditions[] = 'l.ID_Lapangan=?';
+                $types .= 's';
+                $params[] = $filters['field'];
+            }
+
+            $rows = $this->adminData()->rows(
+                'SELECT l.Nama_lapangan field,COUNT(CASE WHEN DATE(b.Waktu_transaksi) BETWEEN ? AND ? THEN b.ID_Booking END) value FROM lapangan l LEFT JOIN jadwal j ON j.ID_Lapangan=l.ID_Lapangan LEFT JOIN booking b ON b.ID_Jadwal=j.ID_Jadwal WHERE ' . implode(' AND ', $conditions) . ' GROUP BY l.ID_Lapangan ORDER BY value DESC LIMIT 6',
+                $types,
+                $params
+            );
+        }
+
+        $max = 0;
+        foreach ($rows as $row) {
+            $max = max($max, (int) $row['value']);
+        }
+
+        $top = $this->adminNiceCountTop($max);
+        $result = array();
+        foreach ($rows as $row) {
+            $value = (int) $row['value'];
+            $result[] = array(
+                'field' => $row['field'],
+                'short' => htmlspecialchars($row['field'], ENT_QUOTES, 'UTF-8'),
+                'value' => $value,
+                'height' => min(100, round(($value / $top) * 100)),
+            );
+        }
+
+        return $result;
     }
 
     protected function adminPaymentMethodsFromDatabase()
@@ -1544,41 +1998,35 @@ class AdminController extends Controller
 
     public function laporan()
     {
-        if (session_status() === PHP_SESSION_NONE) {
-            session_start();
-        }
-
-        if (empty($_SESSION['id_user'])) {
-            header('Location: ' . app_url('public/login.php'));
-            exit;
-        }
-
-        $role = isset($_SESSION['role_user']) ? $_SESSION['role_user'] : (isset($_SESSION['role']) ? $_SESSION['role'] : '');
-
-        if (!$this->isAdminRole($role)) {
-            header('Location: ' . app_url('dashboard'));
-            exit;
-        }
-
-        $userName = isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena');
+        $admin = $this->requireAdmin();
+        $reportFields = $this->adminReportFieldOptions();
+        $reportFilters = $this->adminNormalizeReportField($this->adminReportFilters($_GET), $reportFields);
+        $revenueReportPoints = $this->revenueReportPoints($reportFilters);
+        $fieldBookingReport = $this->fieldBookingReport($reportFilters);
 
         return $this->view('Admin/laporan', array(
             'title' => 'Laporan | Arena Sport',
             'activeMenu' => 'laporan',
-            'userName' => $userName,
-            'userRole' => $role,
+            'userName' => $admin['name'],
+            'userRole' => $admin['role'],
             'searchPlaceholder' => 'Cari laporan...',
-            'reportStats' => $this->reportStats(),
-            'revenueReportPoints' => $this->revenueReportPoints(),
-            'paymentReport' => $this->paymentReport(),
-            'fieldBookingReport' => $this->fieldBookingReport(),
+            'reportFilters' => $reportFilters,
+            'reportFields' => $reportFields,
+            'reportExportQuery' => $this->adminReportQuery($reportFilters),
+            'reportStats' => $this->reportStats($reportFilters),
+            'revenueReportPoints' => $revenueReportPoints,
+            'revenueAxisLabels' => $this->adminRevenueAxisLabels($revenueReportPoints),
+            'revenueDateTicks' => $this->adminReportDateTicks($reportFilters),
+            'paymentReport' => $this->paymentReport($reportFilters),
+            'fieldBookingReport' => $fieldBookingReport,
+            'fieldBookingAxisLabels' => $this->adminBookingAxisLabels($fieldBookingReport),
             'reportDownloads' => $this->reportDownloads(),
         ), 'layouts/admin');
     }
 
-    protected function reportStats()
+    protected function reportStats($filters = null)
     {
-        return $this->adminReportStatsFromDatabase();
+        return $this->adminReportStatsFromDatabase($filters);
 
         return array(
             array('label' => 'Total Pendapatan', 'value' => 'Rp32.450.000', 'trend' => '15%', 'note' => 'dari periode sebelumnya', 'icon' => 'fa-wallet', 'accent' => 'green'),
@@ -1588,9 +2036,9 @@ class AdminController extends Controller
         );
     }
 
-    protected function revenueReportPoints()
+    protected function revenueReportPoints($filters = null)
     {
-        return $this->adminRevenueReportFromDatabase();
+        return $this->adminRevenueReportFromDatabase($filters);
 
         return array(
             array('label' => '1 Mei', 'amount' => 'Rp300.000', 'x' => 0, 'y' => 92),
@@ -1612,9 +2060,9 @@ class AdminController extends Controller
         );
     }
 
-    protected function paymentReport()
+    protected function paymentReport($filters = null)
     {
-        return $this->adminPaymentReportFromDatabase();
+        return $this->adminPaymentReportFromDatabase($filters);
 
         return array(
             array('method' => 'VA BCA', 'amount' => 'Rp14.602.500', 'percent' => 45, 'color' => 'blue'),
@@ -1625,9 +2073,9 @@ class AdminController extends Controller
         );
     }
 
-    protected function fieldBookingReport()
+    protected function fieldBookingReport($filters = null)
     {
-        return $this->adminFieldBookingReportFromDatabase();
+        return $this->adminFieldBookingReportFromDatabase($filters);
 
         return array(
             array('field' => 'Arena Futsal Parepare', 'short' => 'Arena Futsal<br>Parepare', 'value' => 120, 'height' => 100),
@@ -1808,7 +2256,6 @@ class AdminController extends Controller
     {
         $preferences = $this->adminPreferences();
         return array(
-            array('key' => 'two_factor', 'label' => 'Two-Factor Authentication (2FA)', 'description' => 'Simpan preferensi keamanan dua faktor.', 'icon' => 'fa-shield-halved', 'accent' => 'green', 'status' => $preferences['two_factor'] === '1' ? 'Aktif' : 'Nonaktif', 'type' => 'toggle', 'enabled' => $preferences['two_factor'] === '1'),
             array('label' => 'Sesi Aktif', 'description' => 'Lihat perangkat yang saat ini sedang login ke akun Anda.', 'icon' => 'fa-lock', 'accent' => 'blue', 'type' => 'button', 'button' => 'Lihat Sesi', 'url' => '#active-sessions'),
             array('label' => 'Ubah Password', 'description' => 'Ubah password akun administrator secara berkala.', 'icon' => 'fa-key', 'accent' => 'purple', 'type' => 'button', 'button' => 'Ubah Password', 'url' => app_url('admin/pengaturan?tab=akun')),
             array('label' => 'Verifikasi Email', 'description' => 'Email Anda telah terverifikasi.', 'icon' => 'fa-envelope-circle-check', 'accent' => 'gold', 'status' => 'Aktif', 'type' => 'verified', 'email' => 'admin@arenasport.com'),
@@ -1862,7 +2309,6 @@ class AdminController extends Controller
         $preferences = $this->adminPreferences();
         return array(
             array('key' => 'login_notification', 'label' => 'Notifikasi Login Baru', 'description' => 'Kirim notifikasi ketika ada login di perangkat baru', 'enabled' => $preferences['login_notification'] === '1'),
-            array('key' => 'two_factor', 'label' => 'Autentikasi Dua Faktor (2FA)', 'description' => 'Tambahkan lapisan keamanan ekstra untuk akun', 'enabled' => $preferences['two_factor'] === '1'),
             array('key' => 'automatic_logout', 'label' => 'Logout Otomatis', 'description' => 'Logout otomatis jika tidak aktif selama 30 menit', 'enabled' => $preferences['automatic_logout'] === '1'),
             array('key' => 'login_history', 'label' => 'Simpan Riwayat Login', 'description' => 'Simpan riwayat perangkat yang pernah login', 'enabled' => $preferences['login_history'] === '1'),
         );

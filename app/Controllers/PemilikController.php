@@ -50,9 +50,11 @@ class PemilikController extends Controller
         $fieldOwnerId = $this->ownerLapanganPemilikId($owner, true, $data['location']);
 
         if ($fieldOwnerId !== '') {
-            $saved = (new Lapangan())->createForOwner($fieldOwnerId, $data);
+            $fieldId = (new Lapangan())->createForOwner($fieldOwnerId, $data);
 
-            if (!$saved) {
+            if ($fieldId) {
+                (new Jadwal())->ensureForField($fieldId, date('Y-m-d'));
+            } else {
                 $this->deleteLapanganPhotoFiles($data['photos']);
             }
         } else {
@@ -83,6 +85,7 @@ class PemilikController extends Controller
 
             if ($model->updateForOwner($fieldId, $fieldOwnerId, $data)) {
                 $this->saveLapanganOperationalHours($fieldId);
+                (new Jadwal())->ensureForField($fieldId, date('Y-m-d'));
                 $this->deleteLapanganPhotoFiles($deletedPhotos);
             } else {
                 $this->deleteLapanganPhotoFiles($newPhotos);
@@ -133,7 +136,9 @@ class PemilikController extends Controller
         $fieldOwnerId = $this->ownerLapanganPemilikId($owner);
 
         if ($fieldOwnerId !== '') {
-            (new Jadwal())->ensureForOwnerDate($fieldOwnerId, $selectedDateValue);
+            $jadwal = new Jadwal();
+            $jadwal->ensureForOwner($fieldOwnerId, date('Y-m-d'));
+            $jadwal->ensureForOwnerDate($fieldOwnerId, $selectedDateValue);
         }
 
         $scheduleResult = $this->getFilteredSchedule($selectedStatus, $selectedDateValue, $currentPage);
@@ -1018,7 +1023,7 @@ class PemilikController extends Controller
         }
 
         $jadwal = new Jadwal();
-        $jadwal->ensureForFieldDate($fieldId, date('Y-m-d'));
+        $jadwal->ensureForField($fieldId, date('Y-m-d'));
         $snapshot['todaySlots'] = $jadwal->slotMapForFieldDate($fieldId, date('Y-m-d'));
 
         return $snapshot;

@@ -337,7 +337,7 @@ foreach ($lapangan as $field) {
                                     <span><i class="unavailable"></i>Tidak Tersedia</span>
                                 </div>
                                 <div class="owner-field-slot-grid" aria-label="Ketersediaan jam hari ini" data-owner-slot-grid></div>
-                                <small>Jam tersedia akan menyesuaikan dengan jadwal pemesanan yang sudah ada.</small>
+                                <small>Slot otomatis tersedia setiap hari, kecuali sudah dipesan atau dinonaktifkan owner/admin.</small>
                             </div>
                         </section>
 
@@ -549,7 +549,6 @@ foreach ($lapangan as $field) {
             var openHour = parseInt(String(field.openTime || '06:00').split(':')[0], 10);
             var closeHour = parseInt(String(field.closeTime || '23:00').split(':')[0], 10);
             var slots = field.todaySlots && typeof field.todaySlots === 'object' ? field.todaySlots : {};
-            var currentHour = new Date().getHours();
 
             openHour = Number.isNaN(openHour) ? 6 : Math.max(0, Math.min(23, openHour));
             closeHour = Number.isNaN(closeHour) ? 23 : Math.max(openHour, Math.min(23, closeHour));
@@ -559,11 +558,6 @@ foreach ($lapangan as $field) {
                 var label = String(hour).padStart(2, '0') + ':00';
                 var item = document.createElement('button');
                 var status = slots[label] || 'available';
-                var isPast = hour <= currentHour;
-
-                if (isPast && status === 'available') {
-                    status = 'unavailable';
-                }
 
                 item.type = 'button';
                 item.className = status;
@@ -572,9 +566,9 @@ foreach ($lapangan as $field) {
                 item.dataset.slotStatus = status;
                 item.setAttribute('aria-label', 'Jam ' + label + ' ' + status);
 
-                if (status === 'booked' || isPast) {
+                if (status === 'booked') {
                     item.disabled = true;
-                    item.title = status === 'booked' ? 'Sudah dipesan customer' : 'Waktu sudah lewat';
+                    item.title = 'Sudah dipesan customer';
                 } else {
                     item.title = status === 'available' ? 'Klik untuk jadikan tidak tersedia' : 'Klik untuk jadikan tersedia';
                     item.addEventListener('click', function () {

@@ -54,7 +54,7 @@ class Lapangan extends Model
 
         while ($row = mysqli_fetch_assoc($result)) {
             if (!empty($row['ID_Lapangan'])) {
-                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'), 30);
+                $jadwal->ensureForField($row['ID_Lapangan'], date('Y-m-d'));
             }
         }
     }
@@ -145,7 +145,7 @@ class Lapangan extends Model
         $saved = mysqli_stmt_execute($statement);
         mysqli_stmt_close($statement);
 
-        return $saved;
+        return $saved ? $id : false;
     }
 
     public function updateForOwner($id, $ownerId, array $data)

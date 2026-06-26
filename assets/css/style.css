@@ -13628,15 +13628,99 @@ body.admin-mode {
 
 .admin-report-toolbar {
     display: grid;
-    grid-template-columns: minmax(210px, 260px) minmax(180px, 230px) minmax(190px, 230px);
+    grid-template-columns: minmax(170px, 220px) minmax(170px, 220px) minmax(220px, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
-    gap: 14px;
+    gap: 12px;
     margin-bottom: 16px;
 }
 
 .admin-report-toolbar .admin-report-period {
     justify-self: end;
+}
+
+.admin-report-filter-control {
+    width: 100%;
+    min-width: 0;
+    cursor: default;
+}
+
+.admin-report-filter-control span {
+    color: rgba(247, 251, 255, 0.62);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.admin-report-filter-control input {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #ffffff;
+    font: inherit;
+}
+
+.admin-report-filter-control input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.72;
+}
+
+.admin-report-field-filter {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 14px;
+    border: 1px solid var(--admin-border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.045);
+    color: rgba(247, 251, 255, 0.68);
+}
+
+.admin-report-field-filter select {
+    min-width: 0;
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+.admin-report-field-filter option {
+    background: #101827;
+    color: #f7fbff;
+}
+
+.admin-report-toolbar-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.admin-report-toolbar-actions .admin-secondary-btn {
+    min-height: 46px;
+}
+
+.admin-report-reset {
+    min-height: 46px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(247, 251, 255, 0.62);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.admin-report-reset:hover {
+    color: #b7ff4d;
+}
+
+.admin-report-active-filter {
+    margin: -8px 0 16px;
+    color: rgba(247, 251, 255, 0.58);
+    font-size: 13px;
 }
 
 .admin-report-stat-grid {
@@ -14014,7 +14098,8 @@ body.admin-mode {
     gap: 10px;
 }
 
-.admin-report-download-actions button {
+.admin-report-download-actions button,
+.admin-report-download-actions a {
     min-width: 82px;
     min-height: 38px;
     display: inline-flex;
@@ -14029,6 +14114,7 @@ body.admin-mode {
     cursor: pointer;
     font-size: 13px;
     font-weight: 700;
+    text-decoration: none;
 }
 
 .admin-settings-hero {
@@ -16150,6 +16236,14 @@ body.admin-mode {
         justify-self: stretch;
     }
 
+    .admin-report-field-filter {
+        grid-column: 1 / -1;
+    }
+
+    .admin-report-toolbar-actions {
+        justify-content: flex-end;
+    }
+
     .admin-owner-toolbar .admin-filter-search {
         grid-column: 1 / -1;
     }
@@ -16256,9 +16350,20 @@ body.admin-mode {
     .admin-transaction-toolbar .admin-filter-search,
     .admin-transaction-toolbar .admin-secondary-btn,
     .admin-date-filter,
+    .admin-report-field-filter,
+    .admin-report-toolbar-actions,
     .admin-report-toolbar .admin-report-period {
         grid-column: auto;
         width: 100%;
+    }
+
+    .admin-report-toolbar-actions {
+        justify-content: stretch;
+    }
+
+    .admin-report-toolbar-actions .admin-secondary-btn,
+    .admin-report-reset {
+        flex: 1 1 0;
     }
 
     .admin-report-line-chart,
@@ -22302,6 +22407,20 @@ body.owner-field-modal-open {
     box-shadow: none;
 }
 
+.owner-field-inline-input input[type="number"],
+.owner-field-price-edit input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.owner-field-inline-input input[type="number"]::-webkit-inner-spin-button,
+.owner-field-inline-input input[type="number"]::-webkit-outer-spin-button,
+.owner-field-price-edit input[type="number"]::-webkit-inner-spin-button,
+.owner-field-price-edit input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
 .owner-field-inline-input:focus-within,
 .owner-field-price-edit:focus-within {
     border-color: rgba(143, 227, 50, 0.52);
@@ -22311,6 +22430,17 @@ body.owner-field-modal-open {
 .owner-field-status-section {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
+    column-gap: 24px;
+}
+
+.owner-field-status-section > div {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.owner-field-status-section > div > p {
+    margin: 0;
 }
 
 .owner-field-status-toggle {
@@ -24077,5 +24207,9 @@ body.owner-field-modal-open {
 
     .owner-field-editor-form .owner-field-status-section {
         grid-template-columns: 1fr;
+    }
+
+    .owner-field-status-toggle {
+        justify-self: start;
     }
 }

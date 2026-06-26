@@ -88,6 +88,49 @@ class DashboardController extends Controller
         ), 'layouts/dashboard');
     }
 
+    public function fieldSchedules($id)
+    {
+        if (session_status() === PHP_SESSION_NONE) { session_start(); }
+
+        if (!headers_sent()) {
+            header('Content-Type: application/json');
+            header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+        }
+
+        if (empty($_SESSION['id_user'])) {
+            http_response_code(401);
+            echo json_encode(array('ok' => false, 'message' => 'Silakan login terlebih dahulu.'));
+            return;
+        }
+
+        $fieldId = rawurldecode(trim((string) $id));
+        $date = isset($_GET['date']) ? trim((string) $_GET['date']) : date('Y-m-d');
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date < date('Y-m-d')) {
+            http_response_code(422);
+            echo json_encode(array('ok' => false, 'message' => 'Tanggal jadwal tidak valid.'));
+            return;
+        }
+
+        $field = $this->dashboardData()->row(
+            "SELECT ID_Lapangan FROM lapangan WHERE ID_Lapangan=? AND LOWER(TRIM(Status))='aktif' AND deleted_at IS NULL LIMIT 1",
+            's',
+            array($fieldId)
+        );
+
+        if (!$field) {
+            http_response_code(404);
+            echo json_encode(array('ok' => false, 'message' => 'Lapangan tidak ditemukan atau sedang tidak aktif.'));
+            return;
+        }
+
+        echo json_encode(array(
+            'ok' => true,
+            'date' => $date,
+            'schedules' => $this->availableSchedulesForFieldDate($fieldId, $date),
+        ));
+    }
+
     public function ulasan()
     {
         if (session_status() === PHP_SESSION_NONE) {
@@ -865,7 +908,7 @@ class DashboardController extends Controller
             $availableSchedules = array();
 
             if ($scheduleStatement && $fieldId !== '') {
-                $scheduleModel->ensureForField($fieldId, date('Y-m-d'), 30);
+                $scheduleModel->ensureForField($fieldId, date('Y-m-d'));
                 mysqli_stmt_bind_param($scheduleStatement, 's', $fieldId);
                 mysqli_stmt_execute($scheduleStatement);
                 $scheduleResult = mysqli_stmt_get_result($scheduleStatement);
@@ -943,6 +986,59 @@ class DashboardController extends Controller
         }
 
         return $venues;
+    }
+
+    protected function availableSchedulesForFieldDate($fieldId, $date)
+    {
+        $fieldId = trim((string) $fieldId);
+        $date = trim((string) $date);
+
+        if ($fieldId === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date < date('Y-m-d')) {
+            return array();
+        }
+
+        (new Jadwal())->ensureForFieldDate($fieldId, $date);
+
+        $rows = $this->dashboardData()->rows(
+            "SELECT j.ID_Jadwal, j.Tanggal, j.Jam_Mulai AS Jam_mulai, j.Jam_Selesai AS Jam_selesai,
+                    COALESCE(NULLIF(j.Harga, 0), l.Harga) AS Harga
+             FROM jadwal j
+             INNER JOIN lapangan l ON l.ID_Lapangan = j.ID_Lapangan
+             WHERE j.ID_Lapangan = ? AND j.Tanggal = ?
+               AND (j.Tanggal > CURDATE() OR j.Jam_Mulai > CURTIME())
+               AND LOWER(TRIM(j.Status)) IN ('available', 'tersedia', 'aktif')
+               AND LOWER(TRIM(l.Status)) = 'aktif'
+               AND l.deleted_at IS NULL
+               AND NOT EXISTS (
+                   SELECT 1 FROM booking b
+                   WHERE b.ID_Jadwal = j.ID_Jadwal
+                     AND LOWER(TRIM(b.Status)) NOT IN ('dibatalkan','cancelled','batal')
+               )
+             ORDER BY j.Jam_Mulai ASC",
+            'ss',
+            array($fieldId, $date)
+        );
+
+        $schedules = array();
+
+        foreach ($rows as $row) {
+            $start = isset($row['Jam_mulai']) ? substr((string) $row['Jam_mulai'], 0, 5) : '';
+            $end = isset($row['Jam_selesai']) ? substr((string) $row['Jam_selesai'], 0, 5) : '';
+
+            if ($start === '' || $end === '' || empty($row['ID_Jadwal'])) {
+                continue;
+            }
+
+            $schedules[] = array(
+                'id' => $row['ID_Jadwal'],
+                'date' => $date,
+                'dateLabel' => $this->dashboardFormatDate($date),
+                'time' => $start . ' - ' . $end,
+                'price' => $this->dashboardRupiah(isset($row['Harga']) ? $row['Harga'] : 0),
+            );
+        }
+
+        return $schedules;
     }
 
     protected function decodeDashboardList($value)
