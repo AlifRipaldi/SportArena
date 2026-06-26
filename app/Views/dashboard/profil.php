@@ -42,16 +42,16 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                 <p><?php echo e(isset($pageSubheading) ? $pageSubheading : 'Kelola informasi profil dan aktivitas Anda.'); ?></p>
             </div>
             <div class="profile-head-actions">
-                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
-                    <span>&#128276;</span>
-                    <sup><?php echo e($profileMetrics['notifications']); ?></sup>
-                </a>
+                <?php require __DIR__ . '/partials/customer_notifications.php'; ?>
                 <a href="<?php echo e(app_url('settings')); ?>" class="profile-account-menu" aria-label="Buka pengaturan akun">
                     <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
                 </a>
             </div>
         </section>
+
+        <?php if (!empty($profileMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($profileMessage); ?></section><?php endif; ?>
+        <?php if (!empty($profileError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($profileError); ?></section><?php endif; ?>
 
         <section class="profile-overview">
             <div class="profile-photo-wrap">
@@ -72,7 +72,7 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
                     <li><span>&#128197;</span>Bergabung sejak <?php echo e($userJoined); ?></li>
                 </ul>
                 <div class="profile-action-row">
-                    <a href="<?php echo e(app_url('settings')); ?>" class="profile-btn primary"><span>&#9998;</span>Edit Profil</a>
+                    <a href="#informasi" class="profile-btn primary"><span>&#9998;</span>Edit Profil</a>
                 </div>
             </div>
 
@@ -108,50 +108,31 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
         </nav>
 
         <section class="profile-content-grid">
-            <article class="profile-panel profile-info-panel" id="informasi">
+            <form class="profile-panel profile-info-panel" id="informasi" method="POST" action="<?php echo e(app_url('dashboard/profil')); ?>">
+                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
                 <div class="profile-panel-header">
                     <h2><span>&#9786;</span>Informasi Pribadi</h2>
                 </div>
                 <dl class="profile-details-list">
                     <div>
                         <dt>Nama Lengkap</dt>
-                        <dd><?php echo e($userName); ?></dd>
+                        <dd><input class="profile-detail-field" name="nama" type="text" value="<?php echo e($userName); ?>" autocomplete="name" required></dd>
                     </div>
                     <div>
                         <dt>Email</dt>
-                        <dd><?php echo e($userEmail); ?> <span class="profile-label-success"><?php echo !empty($userVerified) ? 'Terverifikasi' : 'Belum diverifikasi'; ?></span></dd>
+                        <dd><input class="profile-detail-field" name="email" type="email" value="<?php echo e($userEmail); ?>" autocomplete="email" required></dd>
                     </div>
                     <div>
-                        <dt>Nomor Handphone</dt>
-                        <dd><?php echo e($userPhone); ?> <span class="profile-label-success">Terverifikasi</span></dd>
-                    </div>
-                    <div>
-                        <dt>Tanggal Lahir</dt>
-                        <dd>Belum diisi</dd>
-                    </div>
-                    <div>
-                        <dt>Jenis Kelamin</dt>
-                        <dd>Belum diisi</dd>
+                        <dt>No. HP</dt>
+                        <dd><input class="profile-detail-field" name="telepon" type="tel" value="<?php echo e($userPhone); ?>" autocomplete="tel"></dd>
                     </div>
                     <div>
                         <dt>Kota</dt>
-                        <dd><?php echo e($userCity); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Alamat</dt>
-                        <dd><?php echo e($userAddress); ?></dd>
-                    </div>
-                    <div>
-                        <dt>Pekerjaan</dt>
-                        <dd>Belum diisi</dd>
-                    </div>
-                    <div>
-                        <dt>Bio</dt>
-                        <dd>Belum diisi</dd>
+                        <dd><input class="profile-detail-field" name="kota" type="text" value="<?php echo e($userCity); ?>" autocomplete="address-level2"></dd>
                     </div>
                 </dl>
-                <a href="<?php echo e(app_url('settings')); ?>" class="profile-panel-action"><span>&#9998;</span>Edit Informasi</a>
-            </article>
+                <button type="submit" class="profile-panel-action"><span>&#10003;</span>Simpan Perubahan</button>
+            </form>
 
             <div class="profile-side-stack">
                 <article class="profile-panel">

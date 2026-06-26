@@ -7404,6 +7404,268 @@ body.booking-modal-open {
     line-height: 1;
 }
 
+.profile-notification sup[hidden] {
+    display: none;
+}
+
+.customer-notification-wrap {
+    position: relative;
+    flex: 0 0 auto;
+}
+
+.customer-notification-panel {
+    position: absolute;
+    z-index: 1200;
+    top: calc(100% + 14px);
+    right: 0;
+    width: min(380px, calc(100vw - 32px));
+    overflow: hidden;
+    border: 1px solid rgba(190, 215, 238, 0.12);
+    border-radius: 8px;
+    background: #07111d;
+    color: #ffffff;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+.customer-notification-panel::before {
+    content: "";
+    position: absolute;
+    top: -7px;
+    right: 14px;
+    width: 12px;
+    height: 12px;
+    border-top: 1px solid rgba(190, 215, 238, 0.12);
+    border-left: 1px solid rgba(190, 215, 238, 0.12);
+    background: #07111d;
+    transform: rotate(45deg);
+}
+
+.customer-notification-head {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(190, 215, 238, 0.09);
+}
+
+.customer-notification-head div {
+    display: grid;
+    gap: 3px;
+}
+
+.customer-notification-head strong {
+    font-size: 16px;
+}
+
+.customer-notification-head small {
+    color: #9fb0c3;
+    font-size: 12px;
+}
+
+.customer-notification-head button,
+.customer-notification-read-all,
+.customer-notification-delete-form button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.customer-notification-head > button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    color: #cbd6e4;
+    font-size: 22px;
+    line-height: 1;
+}
+
+.customer-notification-head > button:hover,
+.customer-notification-head > button:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+.customer-notification-read-all {
+    width: fit-content;
+    margin-top: 6px;
+    padding: 7px 10px;
+    border: 1px solid rgba(145, 225, 60, 0.28);
+    border-radius: 8px;
+    background: rgba(145, 225, 60, 0.1);
+    color: #91e13c;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.customer-notification-read-all:hover,
+.customer-notification-read-all:focus-visible {
+    border-color: rgba(145, 225, 60, 0.5);
+    background: rgba(145, 225, 60, 0.16);
+    outline: none;
+}
+
+.customer-notification-read-all:disabled {
+    border-color: rgba(159, 176, 195, 0.14);
+    background: rgba(159, 176, 195, 0.07);
+    color: #748397;
+    cursor: default;
+}
+
+.customer-notification-list {
+    max-height: 390px;
+    overflow: auto;
+}
+
+.customer-notification-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    align-items: stretch;
+    border-bottom: 1px solid rgba(190, 215, 238, 0.08);
+}
+
+.customer-notification-item:last-child {
+    border-bottom: 0;
+}
+
+.customer-notification-item.unread {
+    background: rgba(145, 225, 60, 0.07);
+}
+
+.customer-notification-link {
+    min-width: 0;
+    width: 100%;
+    display: flex;
+    gap: 12px;
+    padding: 14px 0 14px 18px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    text-decoration: none;
+    text-align: left;
+}
+
+.customer-notification-link:hover .customer-notification-copy strong,
+.customer-notification-link:focus-visible .customer-notification-copy strong {
+    color: #91e13c;
+}
+
+.customer-notification-link:focus-visible {
+    outline: 2px solid rgba(145, 225, 60, 0.45);
+    outline-offset: -2px;
+}
+
+.customer-notification-icon {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: rgba(145, 225, 60, 0.13);
+    color: #91e13c;
+    font-size: 16px;
+}
+
+.customer-notification-copy {
+    min-width: 0;
+    display: grid;
+    gap: 5px;
+}
+
+.customer-notification-copy strong,
+.customer-notification-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.customer-notification-copy strong {
+    color: #ffffff;
+    font-size: 14px;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
+.customer-notification-copy small {
+    display: -webkit-box;
+    color: #bfcbda;
+    font-size: 12px;
+    line-height: 1.45;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.customer-notification-item.expanded .customer-notification-copy small {
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    -webkit-line-clamp: unset;
+}
+
+.customer-notification-copy time {
+    color: #7f8da0;
+    font-size: 11px;
+}
+
+.customer-notification-delete-form {
+    display: grid;
+    place-items: start center;
+    padding-top: 12px;
+}
+
+.customer-notification-delete-form button {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    color: #93a2b5;
+    font-size: 20px;
+    line-height: 1;
+}
+
+.customer-notification-delete-form button:hover,
+.customer-notification-delete-form button:focus-visible {
+    background: rgba(255, 91, 91, 0.14);
+    color: #ff8a8a;
+    outline: none;
+}
+
+.customer-notification-empty {
+    display: grid;
+    justify-items: center;
+    gap: 9px;
+    padding: 34px 18px;
+    color: #9fb0c3;
+    text-align: center;
+}
+
+.customer-notification-empty span {
+    font-size: 24px;
+}
+
+.customer-notification-empty p {
+    margin: 0;
+    font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .customer-notification-panel {
+        position: fixed;
+        top: 72px;
+        right: 14px;
+        left: 14px;
+        width: auto;
+    }
+
+    .customer-notification-panel::before {
+        right: 82px;
+    }
+}
+
 .profile-account-menu {
     display: flex;
     align-items: center;
@@ -7756,16 +8018,18 @@ body.booking-modal-open {
 
 .profile-details-list {
     display: grid;
+    gap: 16px;
     margin: 0;
 }
 
 .profile-details-list div {
     display: grid;
-    grid-template-columns: minmax(140px, 162px) minmax(0, 1fr);
+    grid-template-columns: minmax(150px, 180px) minmax(0, 1fr);
+    align-items: start;
     gap: 28px;
-    min-height: 42px;
-    padding: 9px 0;
-    border-bottom: 1px solid rgba(190, 215, 238, 0.06);
+    min-height: 24px;
+    padding: 0;
+    border-bottom: 0;
 }
 
 .profile-details-list div:last-child {
@@ -7776,21 +8040,47 @@ body.booking-modal-open {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 16px;
-    color: #bdc7d1;
-    font-size: 13px;
+    color: #f4f8fb;
+    font-size: 16px;
+    line-height: 1.45;
 }
 
 .profile-details-list dt::after {
     content: ":";
-    color: #bdc7d1;
+    color: inherit;
 }
 
 .profile-details-list dd {
     min-width: 0;
     margin: 0;
-    color: #f4f8fb;
-    font-size: 13px;
+    color: #ffffff;
+    font-size: 16px;
+    font-weight: 600;
     line-height: 1.45;
+    overflow-wrap: anywhere;
+}
+
+.profile-detail-field {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid rgba(190, 215, 238, 0.16);
+    border-radius: 6px;
+    background: rgba(7, 17, 29, 0.62);
+    color: inherit;
+    box-sizing: border-box;
+    font: inherit;
+    text-decoration: none;
+    transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.profile-detail-field:hover,
+.profile-detail-field:focus-visible {
+    border-color: rgba(145, 225, 60, 0.5);
+    background: rgba(12, 29, 47, 0.82);
+    box-shadow: 0 0 0 3px rgba(145, 225, 60, 0.12);
+    outline: none;
 }
 
 .profile-label-success {
@@ -8137,21 +8427,27 @@ body.booking-modal-open {
     }
 
     .profile-details-list div {
-        grid-template-columns: 1fr;
-        gap: 5px;
+        grid-template-columns: minmax(104px, 42%) minmax(0, 1fr);
+        gap: 14px;
     }
 
     .profile-details-list dt {
-        display: block;
+        display: grid;
+        gap: 10px;
+        font-size: 14px;
     }
 
     .profile-details-list dt::after {
-        content: "";
+        content: ":";
     }
 
-    .profile-label-success {
-        margin-top: 7px;
-        margin-left: 0;
+    .profile-details-list dd {
+        font-size: 14px;
+    }
+
+    .profile-detail-field {
+        min-height: 40px;
+        padding: 9px 11px;
     }
 
     .profile-social-list a,
@@ -8301,7 +8597,8 @@ body.booking-modal-open {
     font-style: normal;
 }
 
-.settings-line-field input {
+.settings-line-field input,
+.settings-line-field output {
     width: 100%;
     min-width: 0;
     border: 0;
@@ -8309,6 +8606,10 @@ body.booking-modal-open {
     background: transparent;
     color: #ffffff;
     font: inherit;
+}
+
+.settings-line-field output {
+    overflow-wrap: anywhere;
 }
 
 .settings-line-field strong {
@@ -8812,6 +9113,7 @@ body.dashboard-body.light .dashboard-menu a.active {
 }
 
 body.dashboard-body.light .settings-line-field input,
+body.dashboard-body.light .settings-line-field output,
 body.dashboard-body.light .settings-select-field select,
 body.dashboard-body.light .settings-preference-list select {
     color: #111827;
@@ -10733,6 +11035,19 @@ body.dashboard-body.light .profile-preference-list div,
 body.dashboard-body.light .profile-social-list a,
 body.dashboard-body.light .profile-activity-list a {
     border-color: rgba(37, 60, 86, 0.1);
+}
+
+body.dashboard-body.light .profile-detail-field {
+    border-color: rgba(37, 60, 86, 0.14);
+    background: #ffffff;
+    color: #111827;
+}
+
+body.dashboard-body.light .profile-detail-field:hover,
+body.dashboard-body.light .profile-detail-field:focus-visible {
+    border-color: rgba(47, 185, 58, 0.42);
+    background: #f8fbf6;
+    box-shadow: 0 0 0 3px rgba(47, 185, 58, 0.12);
 }
 
 body.dashboard-body.light .profile-notification,

@@ -37,10 +37,7 @@
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions">
-                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
-                    <span>&#128276;</span>
-                    <sup>1</sup>
-                </a>
+                <?php require __DIR__ . '/partials/customer_notifications.php'; ?>
                 <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>

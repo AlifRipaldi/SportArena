@@ -67,16 +67,7 @@ foreach ($bookings as $bookingItem) {
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions booking-head-actions">
-                <div class="booking-head-menu">
-                    <button type="button" class="profile-notification" id="bookingNotificationToggle" aria-label="Notifikasi" aria-expanded="false" aria-controls="bookingNotificationMenu">
-                        <span>&#128276;</span>
-                        <sup>1</sup>
-                    </button>
-                    <div class="booking-head-popover notification" id="bookingNotificationMenu" hidden>
-                        <strong>Pengingat Booking</strong>
-                        <p>Datang 15 menit lebih awal dan tunjukkan kode booking di lokasi.</p>
-                    </div>
-                </div>
+                <?php require __DIR__ . '/partials/customer_notifications.php'; ?>
                 <div class="booking-head-menu">
                     <button type="button" class="profile-account-menu" id="bookingAccountToggle" aria-label="Buka menu akun" aria-expanded="false" aria-controls="bookingAccountMenu">
                         <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
@@ -714,31 +705,7 @@ foreach ($bookings as $bookingItem) {
             });
         });
 
-        setupHeadMenu('bookingNotificationToggle', 'bookingNotificationMenu');
         setupHeadMenu('bookingAccountToggle', 'bookingAccountMenu');
-
-        var notificationToggle = document.getElementById('bookingNotificationToggle');
-        var notificationBadge = notificationToggle ? notificationToggle.querySelector('sup') : null;
-
-        try {
-            if (notificationBadge && window.localStorage.getItem('arenaSportBookingNotificationRead') === '1') {
-                notificationBadge.hidden = true;
-            }
-        } catch (error) {
-            // Tampilan notifikasi tetap dapat digunakan tanpa penyimpanan browser.
-        }
-
-        if (notificationToggle && notificationBadge) {
-            notificationToggle.addEventListener('click', function () {
-                notificationBadge.hidden = true;
-
-                try {
-                    window.localStorage.setItem('arenaSportBookingNotificationRead', '1');
-                } catch (error) {
-                    // Tidak perlu menghentikan menu jika penyimpanan browser dibatasi.
-                }
-            });
-        }
 
         document.addEventListener('click', function () {
             document.querySelectorAll('.booking-head-popover').forEach(function (popover) {

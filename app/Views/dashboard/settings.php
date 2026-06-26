@@ -37,10 +37,7 @@
                 <p>Kelola preferensi akun dan aplikasi Anda.</p>
             </div>
             <div class="profile-head-actions">
-                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
-                    <span>&#128276;</span>
-                    <sup>1</sup>
-                </a>
+                <?php require __DIR__ . '/partials/customer_notifications.php'; ?>
                 <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
                     <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
                     <span>&#8964;</span>
@@ -67,35 +64,31 @@
                 <div class="settings-profile-body">
                     <div class="settings-avatar-wrap">
                         <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
-                        <label class="settings-avatar-edit" title="Ubah foto profil" aria-label="Ubah foto profil">
-                            <span aria-hidden="true">&#128247;</span>
-                            <input type="file" name="avatar" accept="image/png,image/jpeg" data-settings-avatar-input>
-                        </label>
                     </div>
 
                     <div class="settings-profile-fields">
-                        <label class="settings-line-field">
+                        <div class="settings-line-field">
                             <span>Nama Lengkap</span>
                             <i>:</i>
-                            <input name="nama" type="text" value="<?php echo e($userName); ?>" required>
+                            <output><?php echo e($userName); ?></output>
                             <strong>Akun Terverifikasi <em>&#10003;</em></strong>
-                        </label>
-                        <label class="settings-line-field">
+                        </div>
+                        <div class="settings-line-field">
                             <span>Email</span>
                             <i>:</i>
-                            <input name="email" type="email" value="<?php echo e($userEmail); ?>" required>
-                        </label>
-                        <label class="settings-line-field">
+                            <output><?php echo e($userEmail); ?></output>
+                        </div>
+                        <div class="settings-line-field">
                             <span>No. HP</span>
                             <i>:</i>
-                            <input name="telepon" type="tel" value="<?php echo e($userPhone); ?>" placeholder="0812xxxxxxxx">
-                        </label>
-                        <label class="settings-line-field">
+                            <output><?php echo e($userPhone); ?></output>
+                        </div>
+                        <div class="settings-line-field">
                             <span>Kota</span>
                             <i>:</i>
-                            <input name="kota" type="text" value="<?php echo e($userCity); ?>">
-                        </label>
-                        <button type="submit" class="settings-outline-button">Simpan Profil</button>
+                            <output><?php echo e($userCity); ?></output>
+                        </div>
+                        <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="settings-outline-button">Ubah Profil</a>
                     </div>
                 </div>
             </section>
@@ -129,18 +122,13 @@
                 <article class="settings-panel settings-mini-panel">
                     <div class="settings-panel-title">
                         <span>&#128187;</span>
-                        <h2>Tampilan Aplikasi</h2>
+                        <h2>Tampilan</h2>
                     </div>
 
                     <div class="settings-choice-list">
                         <p>Tema</p>
                         <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="light" <?php echo $themeMode === 'light' ? 'checked' : ''; ?> data-theme-choice>
-                            <span></span>
-                            Light Mode
-                        </label>
-                        <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="dark" <?php echo $themeMode !== 'light' ? 'checked' : ''; ?> data-theme-choice>
+                            <input type="radio" name="theme_mode" value="dark" checked data-theme-choice>
                             <span></span>
                             Dark Mode
                         </label>

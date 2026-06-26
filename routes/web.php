@@ -18,6 +18,9 @@ $router->post('/dashboard/booking/tambah', [DashboardController::class, 'storeBo
 $router->get('/dashboard/booking', [DashboardController::class, 'booking']);
 $router->post('/dashboard/booking/update', [DashboardController::class, 'updateBooking']);
 $router->post('/dashboard/booking/bayar', [DashboardController::class, 'payBooking']);
+$router->post('/dashboard/notifikasi/baca', [DashboardController::class, 'readNotification']);
+$router->post('/dashboard/notifikasi/baca-semua', [DashboardController::class, 'readAllNotifications']);
+$router->post('/dashboard/notifikasi/hapus', [DashboardController::class, 'deleteNotification']);
 $router->get('/dashboard/riwayat', [DashboardController::class, 'riwayat']);
 $router->get('/dashboard/favorit', [DashboardController::class, 'favorit']);
 $router->post('/dashboard/favorit/toggle', [DashboardController::class, 'toggleFavorite']);
@@ -25,6 +28,7 @@ $router->post('/dashboard/favorit/hapus-semua', [DashboardController::class, 'cl
 $router->get('/dashboard/ulasan', [DashboardController::class, 'ulasan']);
 $router->post('/dashboard/ulasan/tambah', [DashboardController::class, 'storeReview']);
 $router->get('/dashboard/profil', [DashboardController::class, 'profil']);
+$router->post('/dashboard/profil', [DashboardController::class, 'updateProfil']);
 $router->get('/settings', [DashboardController::class, 'settings']);
 $router->post('/settings', [DashboardController::class, 'updateSettings']);
 $router->post('/settings/theme', [DashboardController::class, 'updateTheme']);
