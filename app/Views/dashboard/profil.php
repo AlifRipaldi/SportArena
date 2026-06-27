@@ -103,8 +103,6 @@ $userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?na
         <nav class="profile-tabs" aria-label="Bagian profil">
             <a href="#informasi" class="active">Informasi Pribadi</a>
             <a href="#aktivitas">Aktivitas</a>
-            <a href="<?php echo e(app_url('dashboard/ulasan')); ?>">Ulasan</a>
-            <a href="<?php echo e(app_url('dashboard/booking')); ?>">Pembayaran</a>
         </nav>
 
         <section class="profile-content-grid">

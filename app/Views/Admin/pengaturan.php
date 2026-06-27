@@ -44,7 +44,7 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
 
             <div class="admin-account-profile-content">
                 <div class="admin-account-avatar-editor">
-                    <div class="admin-account-avatar">
+                    <div class="admin-avatar admin-account-avatar">
                         <span><?php echo e($adminAccountProfile['initials']); ?></span>
                     </div>
                     <strong>Avatar Administrator</strong>

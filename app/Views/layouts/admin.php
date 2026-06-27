@@ -32,8 +32,43 @@ $adminMenus = array(
 
 $currentMenu = isset($activeMenu) ? $activeMenu : 'dashboard';
 $displayName = isset($userName) ? $userName : 'Admin Arena';
-$displayRole = isset($userRole) ? $userRole : 'administrator';
 $topbarSearchPlaceholder = isset($searchPlaceholder) ? $searchPlaceholder : 'Cari apa saja...';
+$adminRoleLabel = function ($role) {
+    $normalized = strtolower(trim((string) $role));
+    if ($normalized === 'admin' || $normalized === 'administrator') {
+        return 'Administrator';
+    }
+    if ($normalized === 'superadmin') {
+        return 'Super Admin';
+    }
+
+    return $normalized !== '' ? ucwords(str_replace(array('_', '-'), ' ', $normalized)) : 'Administrator';
+};
+$adminInitialsForName = function ($name) {
+    $name = trim((string) $name);
+    if ($name === '') {
+        return 'AD';
+    }
+
+    $parts = preg_split('/\s+/', $name);
+    $initials = '';
+
+    if (count($parts) === 1) {
+        $letters = preg_replace('/[^A-Za-z0-9]/', '', $parts[0]);
+        $initials = strtoupper(substr($letters, 0, 2));
+    } else {
+        foreach (array_slice($parts, 0, 2) as $part) {
+            $letters = preg_replace('/[^A-Za-z0-9]/', '', $part);
+            if ($letters !== '') {
+                $initials .= strtoupper(substr($letters, 0, 1));
+            }
+        }
+    }
+
+    return $initials !== '' ? $initials : 'AD';
+};
+$displayRole = $adminRoleLabel(isset($userRole) ? $userRole : 'administrator');
+$displayInitials = $adminInitialsForName($displayName);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -101,10 +136,10 @@ $topbarSearchPlaceholder = isset($searchPlaceholder) ? $searchPlaceholder : 'Car
                     </div>
 
                     <a class="admin-user-button" href="<?php echo e(app_url('admin/pengaturan?tab=akun')); ?>">
-                        <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($displayName); ?>&background=121a28&color=ffffff" alt="Foto profil">
-                        <span>
+                        <span class="admin-avatar admin-user-avatar" aria-hidden="true"><?php echo e($displayInitials); ?></span>
+                        <span class="admin-user-meta">
                             <strong><?php echo e($displayName); ?></strong>
-                            <small><?php echo e(ucfirst($displayRole)); ?></small>
+                            <small><?php echo e($displayRole); ?></small>
                         </span>
                         <i class="fa-solid fa-chevron-down"></i>
                     </a>

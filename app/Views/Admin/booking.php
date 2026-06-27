@@ -36,7 +36,6 @@ $currentAdminMonth = $adminMonthNames[(int) date('n')] . ' ' . date('Y');
             <table class="admin-table">
                 <thead>
                     <tr>
-                        <th><input type="checkbox" class="admin-checkbox-all"></th>
                         <th>Kode Booking</th>
                         <th>Customer</th>
                         <th>Lapangan</th>
@@ -50,7 +49,6 @@ $currentAdminMonth = $adminMonthNames[(int) date('n')] . ' ' . date('Y');
                 <tbody id="adminBookingRows">
                     <?php foreach ($recentBookings as $booking): ?>
                         <tr data-filter-text="<?php echo e(implode(' ', array($booking['code'], $booking['user'], $booking['field'], $booking['date'], $booking['status']))); ?>">
-                            <td><input type="checkbox"></td>
                             <td><strong><?php echo e($booking['code']); ?></strong></td>
                             <td>
                                 <div class="admin-customer">
@@ -121,12 +119,6 @@ $currentAdminMonth = $adminMonthNames[(int) date('n')] . ' ' . date('Y');
     background: rgba(255, 255, 255, 0.05);
     color: #f7fbff;
     font-size: 14px;
-}
-
-.admin-checkbox-all {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
 }
 
 .admin-actions {

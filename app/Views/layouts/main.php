@@ -51,7 +51,10 @@
             }
 
             var navLinks = Array.prototype.slice.call(document.querySelectorAll('header nav a[data-home-nav]'));
+            var homeUrl = <?php echo json_encode(app_url('/'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
             var navLocked = false;
+            var navUnlockTimer = null;
+            var navClickToken = 0;
             var sections = navLinks
                 .map(function (link) {
                     return document.getElementById(link.getAttribute('data-home-nav'));
@@ -70,34 +73,71 @@
 
                     link.classList.remove('active');
                     link.classList.toggle('is-active', isCurrent);
+
+                    if (isCurrent) {
+                        link.setAttribute('aria-current', 'page');
+                    } else {
+                        link.removeAttribute('aria-current');
+                    }
                 });
 
                 document.body.setAttribute('data-current-nav', sectionId);
             };
 
-            var scrollToSection = function (sectionId, updateHash) {
+            var sectionUrl = function (sectionId) {
+                return homeUrl + (sectionId === 'beranda' ? '' : '#' + encodeURIComponent(sectionId));
+            };
+
+            var getHashSection = function () {
+                var hash = window.location.hash.replace(/^#/, '');
+
+                try {
+                    hash = decodeURIComponent(hash);
+                } catch (error) {
+                    hash = window.location.hash.replace(/^#/, '');
+                }
+
+                return hash || 'beranda';
+            };
+
+            var prefersReducedMotion = function () {
+                return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            };
+
+            var scrollToSection = function (sectionId, updateHash, behavior) {
                 var target = document.getElementById(sectionId);
 
                 if (!target) {
-                    return;
+                    return false;
                 }
 
                 setActiveNav(sectionId);
 
                 var targetTop = target.getBoundingClientRect().top + window.pageYOffset - getHeaderOffset();
-                var scrollTop = Math.max(targetTop, 0);
+                var maxScroll = Math.max(document.documentElement.scrollHeight - window.innerHeight, 0);
+                var scrollTop = Math.min(Math.max(targetTop, 0), maxScroll);
+                var scrollBehavior = prefersReducedMotion() ? 'auto' : (behavior || 'auto');
 
-                window.scrollTo({
-                    top: scrollTop,
-                    behavior: 'auto'
-                });
+                try {
+                    window.scrollTo({
+                        top: scrollTop,
+                        behavior: scrollBehavior
+                    });
+                } catch (error) {
+                    window.scrollTo(0, scrollTop);
+                }
 
                 if (updateHash) {
-                    var nextHash = sectionId === 'beranda' ? '' : '#' + sectionId;
-                    var nextUrl = window.location.pathname + window.location.search + nextHash;
+                    var nextUrl = sectionUrl(sectionId);
 
-                    window.history.pushState(null, '', nextUrl);
+                    if (window.history && window.history.pushState) {
+                        window.history.pushState(null, '', nextUrl);
+                    } else if (sectionId !== 'beranda') {
+                        window.location.hash = sectionId;
+                    }
                 }
+
+                return scrollTop;
             };
 
             navLinks.forEach(function (link) {
@@ -109,13 +149,43 @@
                     }
 
                     event.preventDefault();
-                    navLocked = true;
-                    scrollToSection(sectionId, true);
+                    navClickToken += 1;
+                    var currentToken = navClickToken;
 
-                    window.setTimeout(function () {
+                    if (navUnlockTimer) {
+                        window.clearTimeout(navUnlockTimer);
+                    }
+
+                    navLocked = true;
+
+                    var targetScrollTop = scrollToSection(sectionId, true, 'smooth');
+
+                    if (targetScrollTop === false) {
                         navLocked = false;
-                        setActiveNav(sectionId);
-                    }, 120);
+                        navUnlockTimer = null;
+                        return;
+                    }
+
+                    var startedAt = Date.now();
+                    var finishWhenSettled = function () {
+                        if (currentToken !== navClickToken) {
+                            return;
+                        }
+
+                        var isAtTarget = Math.abs(window.pageYOffset - targetScrollTop) <= 2;
+                        var timedOut = Date.now() - startedAt > 1200;
+
+                        if (isAtTarget || timedOut || prefersReducedMotion()) {
+                            navLocked = false;
+                            setActiveNav(sectionId);
+                            navUnlockTimer = null;
+                            return;
+                        }
+
+                        navUnlockTimer = window.setTimeout(finishWhenSettled, 50);
+                    };
+
+                    navUnlockTimer = window.setTimeout(finishWhenSettled, 80);
                 });
             });
 
@@ -145,14 +215,13 @@
 
             window.addEventListener('scroll', updateActiveFromScroll, { passive: true });
             window.addEventListener('hashchange', function () {
-                var sectionId = window.location.hash.replace('#', '') || 'beranda';
-                scrollToSection(sectionId, false);
+                scrollToSection(getHashSection(), false, 'smooth');
             });
 
             if (window.location.hash) {
-                var sectionId = window.location.hash.replace('#', '');
+                var sectionId = getHashSection();
                 window.setTimeout(function () {
-                    scrollToSection(sectionId, false);
+                    scrollToSection(sectionId, false, 'auto');
                     window.setTimeout(updateActiveFromScroll, 250);
                 }, 120);
             } else {

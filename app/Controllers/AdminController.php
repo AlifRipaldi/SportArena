@@ -63,7 +63,7 @@ class AdminController extends Controller
         return array(
             'id' => (string) $_SESSION['id_user'],
             'name' => isset($_SESSION['nama_user']) ? $_SESSION['nama_user'] : (isset($_SESSION['nama']) ? $_SESSION['nama'] : 'Admin Arena'),
-            'role' => $role,
+            'role' => $this->adminRoleLabel($role),
         );
     }
 
@@ -2282,10 +2282,7 @@ class AdminController extends Controller
         $row = $this->adminData()->row('SELECT Nama, Email, Nomor_telepon, Role FROM users WHERE ID_User = ? LIMIT 1', 's', array(isset($_SESSION['id_user']) ? $_SESSION['id_user'] : ''));
 
         if ($row) {
-            $parts = preg_split('/\s+/', trim($row['Nama']));
-            $initials = '';
-            foreach (array_slice($parts, 0, 2) as $part) { $initials .= strtoupper(substr($part, 0, 1)); }
-            return array('name' => $row['Nama'], 'initials' => $initials, 'email' => $row['Email'], 'phone' => $row['Nomor_telepon'], 'username' => strtolower(strstr($row['Email'], '@', true)), 'role' => ucfirst($row['Role']));
+            return array('name' => $row['Nama'], 'initials' => $this->adminInitials($row['Nama']), 'email' => $row['Email'], 'phone' => $row['Nomor_telepon'], 'username' => strtolower(strstr($row['Email'], '@', true)), 'role' => $this->adminRoleLabel($row['Role']));
         }
 
         $displayName = trim((string) $name);
@@ -2296,12 +2293,50 @@ class AdminController extends Controller
 
         return array(
             'name' => $displayName,
-            'initials' => 'RI',
+            'initials' => $this->adminInitials($displayName),
             'email' => 'admin@arenasport.com',
             'phone' => '0812-3456-7890',
             'username' => 'ripal_admin',
             'role' => 'Administrator',
         );
+    }
+
+    protected function adminInitials($name)
+    {
+        $name = trim((string) $name);
+        if ($name === '') {
+            return 'AD';
+        }
+
+        $parts = preg_split('/\s+/', $name);
+        $initials = '';
+
+        if (count($parts) === 1) {
+            $letters = preg_replace('/[^A-Za-z0-9]/', '', $parts[0]);
+            $initials = strtoupper(substr($letters, 0, 2));
+        } else {
+            foreach (array_slice($parts, 0, 2) as $part) {
+                $letters = preg_replace('/[^A-Za-z0-9]/', '', $part);
+                if ($letters !== '') {
+                    $initials .= strtoupper(substr($letters, 0, 1));
+                }
+            }
+        }
+
+        return $initials !== '' ? $initials : 'AD';
+    }
+
+    protected function adminRoleLabel($role)
+    {
+        $normalized = strtolower(trim((string) $role));
+        if ($normalized === 'admin' || $normalized === 'administrator') {
+            return 'Administrator';
+        }
+        if ($normalized === 'superadmin') {
+            return 'Super Admin';
+        }
+
+        return $normalized !== '' ? ucwords(str_replace(array('_', '-'), ' ', $normalized)) : 'Administrator';
     }
 
     protected function adminLoginSettings()

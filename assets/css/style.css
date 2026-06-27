@@ -13005,15 +13005,28 @@ body.admin-mode {
     text-align: left;
 }
 
-.admin-user-button img {
-    width: 48px;
-    height: 48px;
+.admin-avatar {
+    display: grid;
+    place-items: center;
     border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    background:
+        radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 58%),
+        linear-gradient(135deg, rgba(27, 39, 55, 0.96), rgba(8, 14, 24, 0.98));
+    color: #ffffff;
+    font-weight: 700;
+    line-height: 1;
+    text-transform: uppercase;
 }
 
-.admin-user-button span {
+.admin-user-avatar {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    font-size: 18px;
+}
+
+.admin-user-meta {
     display: grid;
     gap: 2px;
 }
@@ -14588,17 +14601,9 @@ body.admin-mode {
     position: relative;
     width: 104px;
     height: 104px;
-    display: grid;
-    place-items: center;
     margin-bottom: 8px;
     border: 1px solid rgba(143, 227, 50, 0.7);
-    border-radius: 50%;
-    background:
-        radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 58%),
-        linear-gradient(135deg, rgba(27, 39, 55, 0.96), rgba(8, 14, 24, 0.98));
-    color: #ffffff;
     font-size: 34px;
-    line-height: 1;
 }
 
 .admin-account-avatar button {
@@ -21243,18 +21248,42 @@ body.owner-transaction-modal-open {
 
 .owner-jadwal-tabs {
     min-width: 0;
+    max-width: 100%;
     display: inline-flex;
     align-items: center;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-color: rgba(143, 227, 50, 0.42) rgba(8, 18, 31, 0.9);
+    scrollbar-width: thin;
     border: 1px solid rgba(180, 206, 236, 0.12);
     border-radius: 8px;
     background: rgba(8, 18, 31, 0.76);
 }
 
+.owner-jadwal-tabs::-webkit-scrollbar {
+    height: 7px;
+}
+
+.owner-jadwal-tabs::-webkit-scrollbar-track {
+    background: rgba(8, 18, 31, 0.9);
+}
+
+.owner-jadwal-tabs::-webkit-scrollbar-thumb {
+    border: 2px solid rgba(8, 18, 31, 0.9);
+    border-radius: 999px;
+    background: rgba(143, 227, 50, 0.42);
+}
+
+.owner-jadwal-tabs::-webkit-scrollbar-thumb:hover {
+    background: rgba(183, 255, 77, 0.62);
+}
+
 .owner-jadwal-tabs button,
 .owner-jadwal-tabs a {
-    flex: 0 0 112px;
+    flex: 0 0 auto;
+    min-width: 112px;
     min-height: 52px;
+    padding: 0 22px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -21265,6 +21294,7 @@ body.owner-transaction-modal-open {
     cursor: pointer;
     font-size: 15px;
     line-height: 1;
+    white-space: nowrap;
     text-decoration: none;
     transition: background 0.2s ease, color 0.2s ease;
 }
@@ -21916,6 +21946,8 @@ body.owner-schedule-modal-open {
     .owner-jadwal-tabs button,
     .owner-jadwal-tabs a {
         flex-basis: 108px;
+        min-width: 108px;
+        padding: 0 18px;
     }
 
     .owner-jadwal-filter-actions,
@@ -23882,6 +23914,77 @@ body.owner-field-modal-open {
     }
 }
 .admin-flash{display:flex;align-items:center;gap:10px;margin:0 0 18px;padding:13px 16px;border:1px solid;border-radius:12px;color:#f7fbff}.admin-flash.success{background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.4)}.admin-flash.error{background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.4)}.admin-flash span{flex:1}.admin-flash button{border:0;background:transparent;color:inherit;font-size:22px;cursor:pointer}.admin-notification,.admin-user-button{text-decoration:none}.admin-dialog{width:min(620px,calc(100% - 28px));max-height:90vh;overflow:auto;padding:0;border:1px solid rgba(255,255,255,.14);border-radius:18px;background:#121c2b;color:#f7fbff;box-shadow:0 24px 80px rgba(0,0,0,.55)}.admin-dialog::backdrop{background:rgba(2,8,18,.78)}.admin-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid rgba(255,255,255,.09)}.admin-dialog-head h2{margin:0;font-size:20px}.admin-dialog-close{border:0;background:transparent;color:#fff;font-size:25px;cursor:pointer}.admin-dialog-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;padding:22px}.admin-dialog-form label{display:flex;flex-direction:column;gap:7px;font-size:13px;color:#b9c5d6}.admin-dialog-form label.full{grid-column:1/-1}.admin-dialog-form input,.admin-dialog-form select,.admin-dialog-form textarea{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:#0d1623;color:#fff}.admin-dialog-form textarea{min-height:92px;resize:vertical}.admin-dialog-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:5px}.admin-inline-form{display:inline}.admin-inline-form button{font:inherit}.admin-empty-filter{display:none;text-align:center;padding:18px;color:#9aa8ba}[hidden]{display:none!important}@media(max-width:640px){.admin-dialog-form{grid-template-columns:1fr}.admin-dialog-form label.full{grid-column:auto}}
+.admin-dialog {
+    position: fixed;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    width: min(620px, calc(100vw - 28px));
+    max-width: calc(100vw - 28px);
+    max-height: calc(100dvh - 40px);
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    transform: translate(-50%, -50%);
+    color-scheme: dark;
+    scrollbar-color: rgba(180, 206, 236, 0.42) rgba(5, 13, 24, 0.72);
+    scrollbar-width: thin;
+}
+
+@supports not (height: 100dvh) {
+    .admin-dialog {
+        max-height: calc(100vh - 40px);
+    }
+}
+
+.admin-dialog::-webkit-scrollbar {
+    width: 10px;
+}
+
+.admin-dialog::-webkit-scrollbar-track {
+    background: rgba(5, 13, 24, 0.82);
+    border-radius: 999px;
+}
+
+.admin-dialog::-webkit-scrollbar-thumb {
+    border: 2px solid rgba(5, 13, 24, 0.82);
+    border-radius: 999px;
+    background: rgba(180, 206, 236, 0.42);
+}
+
+.admin-dialog-form input,
+.admin-dialog-form select,
+.admin-dialog-form textarea {
+    color-scheme: dark;
+    caret-color: #ffffff;
+}
+
+.admin-dialog-form input[type="number"] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.admin-dialog-form input[type="number"]::-webkit-inner-spin-button,
+.admin-dialog-form input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+.admin-dialog-form input:-webkit-autofill,
+.admin-dialog-form input:-webkit-autofill:hover,
+.admin-dialog-form input:-webkit-autofill:focus,
+.admin-dialog-form textarea:-webkit-autofill,
+.admin-dialog-form textarea:-webkit-autofill:hover,
+.admin-dialog-form textarea:-webkit-autofill:focus,
+.admin-dialog-form select:-webkit-autofill,
+.admin-dialog-form select:-webkit-autofill:hover,
+.admin-dialog-form select:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    caret-color: #ffffff;
+    box-shadow: 0 0 0 1000px #0d1623 inset;
+    transition: background-color 9999s ease-out;
+}
 .admin-notification-wrapper{position:relative}.admin-notification-popup{position:absolute;z-index:1000;top:calc(100% + 14px);right:0;width:min(390px,calc(100vw - 28px));overflow:hidden;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:#101a28;color:#f7fbff;box-shadow:0 22px 60px rgba(0,0,0,.5)}.admin-notification-popup header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid rgba(255,255,255,.09)}.admin-notification-popup header div{display:flex;flex-direction:column;gap:3px}.admin-notification-popup header strong{font-size:16px}.admin-notification-popup header small{color:#91a0b4}.admin-notification-popup header button{border:0;background:transparent;color:#fff;font-size:24px;cursor:pointer}.admin-notification-popup-list{max-height:390px;overflow:auto}.admin-notification-popup-item{display:flex;gap:12px;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.07)}.admin-notification-popup-item.unread{background:rgba(123,229,125,.06)}.admin-notification-popup-icon{display:grid;place-items:center;flex:0 0 35px;height:35px;border-radius:10px;background:rgba(123,229,125,.13);color:#7be57d}.admin-notification-popup-item div{min-width:0}.admin-notification-popup-item strong{display:block;margin-bottom:4px;font-size:14px}.admin-notification-popup-item p{margin:0 0 7px;color:#b8c4d4;font-size:12px;line-height:1.45}.admin-notification-popup-item time{color:#78879b;font-size:11px}.admin-notification-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:34px 18px;color:#91a0b4}.admin-notification-empty i{font-size:25px}@media(max-width:640px){.admin-notification-popup{position:fixed;top:72px;right:14px;left:14px;width:auto}}
 
 /* Full-page owner arena editor */
