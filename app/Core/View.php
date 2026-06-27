@@ -14,6 +14,16 @@ class View
             throw new RuntimeException('View tidak ditemukan: ' . $view);
         }
 
+        if ($layout === 'layouts/admin') {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+            if (empty($_SESSION['admin_csrf'])) {
+                $_SESSION['admin_csrf'] = bin2hex(random_bytes(24));
+            }
+            $data['adminToken'] = $_SESSION['admin_csrf'];
+        }
+
         extract($data, EXTR_SKIP);
 
         ob_start();

@@ -7,6 +7,7 @@ $oldEmail = '';
 $alreadyLoggedIn = false;
 $userName = '';
 $dashboardUrl = '../dashboard';
+$styleVersion = is_file(__DIR__ . '/../assets/css/style.css') ? filemtime(__DIR__ . '/../assets/css/style.css') : time();
 
 function table_exists($conn, $table)
 {
@@ -75,6 +76,29 @@ function password_is_valid($password, $storedPassword)
     return password_verify($password, $storedPassword) || hash_equals($storedPassword, $password);
 }
 
+function upgrade_account_password($conn, $account, $plainPassword)
+{
+    $storedPassword = isset($account['Password']) ? (string) $account['Password'] : '';
+
+    $passwordInfo = password_get_info($storedPassword);
+
+    if ($storedPassword === '' || !empty($passwordInfo['algo'])) {
+        return;
+    }
+
+    $hash = password_hash($plainPassword, PASSWORD_DEFAULT);
+    $sql = 'UPDATE `' . $account['auth_table'] . '` SET `Password` = ?, `Must_Reset_Password` = 0 WHERE `ID_User` = ?';
+    $statement = mysqli_prepare($conn, $sql);
+
+    if (!$statement) {
+        return;
+    }
+
+    mysqli_stmt_bind_param($statement, 'ss', $hash, $account['account_id']);
+    mysqli_stmt_execute($statement);
+    mysqli_stmt_close($statement);
+}
+
 function dashboard_url_for_role($role)
 {
     $normalizedRole = normalized_role($role);
@@ -130,6 +154,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
         if (trim((string) $account['account_id']) === '') {
             $error = 'Akun ditemukan, tetapi ID_User masih kosong. Lengkapi ID_User pada tabel users.';
         } else {
+            upgrade_account_password($conn, $account, $password);
             set_login_session($account);
 
             header('Location: ' . dashboard_url_for_role($account['Role']));
@@ -146,7 +171,7 @@ if (!$alreadyLoggedIn && isset($_POST['login'])) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masuk | Arena Sport</title>
-    <link rel="stylesheet" href="../assets/css/style.css?v=45">
+    <link rel="stylesheet" href="../assets/css/style.css?v=<?php echo htmlspecialchars((string) $styleVersion, ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body class="login-auth-page">
     <div class="login-page">

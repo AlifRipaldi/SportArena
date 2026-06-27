@@ -31,38 +31,38 @@
     </aside>
 
     <main class="dashboard-main profile-main favorite-main">
+        <?php if (!empty($bookingMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($bookingMessage); ?></section><?php endif; ?>
+        <?php if (!empty($bookingError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($bookingError); ?></section><?php endif; ?>
         <section class="profile-page-head favorite-page-head">
             <div>
                 <h1><?php echo e($pageHeading); ?></h1>
                 <p><?php echo e($pageSubheading); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
         <section class="favorite-toolbar" aria-label="Filter favorit">
             <nav class="favorite-filter-tabs" aria-label="Kategori favorit">
-                <a href="#" class="active">Semua</a>
-                <a href="#">Futsal</a>
-                <a href="#">Badminton</a>
-                <a href="#">Mini Soccer</a>
-                <a href="#">Basketball</a>
+                <button type="button" class="active" data-favorite-filter="all">Semua</button>
+                <?php foreach (array_values(array_unique(array_column($favorites, 'type'))) as $favoriteType): ?>
+                    <button type="button" data-favorite-filter="<?php echo e(strtolower($favoriteType)); ?>"><?php echo e($favoriteType); ?></button>
+                <?php endforeach; ?>
             </nav>
             <label class="favorite-sort-control">
                 <span>Urutkan:</span>
-                <select aria-label="Urutkan favorit">
-                    <option>Terbaru Ditambahkan</option>
-                    <option>Rating Tertinggi</option>
-                    <option>Harga Terendah</option>
-                    <option>Jarak Terdekat</option>
+                <select id="favoriteSortControl" aria-label="Urutkan favorit">
+                    <option value="newest">Terbaru Ditambahkan</option>
+                    <option value="rating">Rating Tertinggi</option>
+                    <option value="price">Harga Terendah</option>
                 </select>
             </label>
         </section>
@@ -73,12 +73,15 @@
                 <h2><?php echo e(count($favorites)); ?> Lapangan Favorit</h2>
                 <p>Temukan dan booking lapangan favoritmu kapan saja dengan mudah.</p>
             </div>
-            <button type="button" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
+            <form method="post" action="<?php echo e(app_url('dashboard/favorit/hapus-semua')); ?>" onsubmit="return window.confirm('Hapus semua lapangan favorit?');">
+                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
+                <button type="submit" class="favorite-clear-button"><span>&#128465;</span>Hapus Semua</button>
+            </form>
         </section>
 
         <section id="favorite-list" class="favorite-match-list" aria-label="Daftar lapangan favorit">
             <?php foreach ($favorites as $favorite): ?>
-                <article class="favorite-match-card">
+                <article class="favorite-match-card" data-favorite-type="<?php echo e(strtolower($favorite['type'])); ?>" data-favorite-rating="<?php echo e($favorite['rating']); ?>" data-favorite-price="<?php echo e((int) preg_replace('/[^0-9]/', '', $favorite['price'])); ?>">
                     <div class="favorite-match-media">
                         <img src="<?php echo e($favorite['image']); ?>" alt="<?php echo e($favorite['venue']); ?>">
                         <span><?php echo e($favorite['type']); ?></span>
@@ -106,17 +109,22 @@
                             <strong><?php echo e($favorite['price']); ?> <span>/jam</span></strong>
                         </div>
                         <div class="favorite-match-buttons">
-                            <a href="<?php echo e(app_url('dashboard/lapangan')); ?>" class="favorite-detail-button">Lihat Detail</a>
-                            <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="favorite-book-button">Booking Lagi</a>
+                            <a href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode($favorite['id']))); ?>" class="favorite-detail-button">Lihat Lapangan</a>
+                            <a href="<?php echo e(app_url('dashboard/lapangan/' . rawurlencode($favorite['id']) . '#customerFieldBooking')); ?>" class="favorite-book-button">Pilih Jadwal</a>
                         </div>
                     </div>
 
                     <div class="favorite-card-actions">
-                        <button type="button" class="favorite-heart-button" aria-label="Hapus favorit <?php echo e($favorite['venue']); ?>">&#10084;</button>
-                        <button type="button" class="favorite-menu-button" aria-label="Menu <?php echo e($favorite['venue']); ?>">&#8942;</button>
+                        <form method="post" action="<?php echo e(app_url('dashboard/favorit/toggle')); ?>">
+                            <input type="hidden" name="id_lapangan" value="<?php echo e($favorite['id']); ?>">
+                            <input type="hidden" name="return_to" value="favorit">
+                            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
+                            <button type="submit" class="favorite-heart-button" aria-label="Hapus favorit <?php echo e($favorite['venue']); ?>">&#10084;</button>
+                        </form>
                     </div>
                 </article>
             <?php endforeach; ?>
+            <p id="favoriteEmptyState" hidden>Tidak ada lapangan favorit pada kategori ini.</p>
         </section>
 
         <section class="favorite-footnote">
@@ -124,3 +132,41 @@
         </section>
     </main>
 </div>
+
+<script>
+    (function () {
+        var list = document.getElementById('favorite-list');
+        var cards = list ? Array.prototype.slice.call(list.querySelectorAll('.favorite-match-card')) : [];
+        var filters = Array.prototype.slice.call(document.querySelectorAll('[data-favorite-filter]'));
+        var sort = document.getElementById('favoriteSortControl');
+        var empty = document.getElementById('favoriteEmptyState');
+        var activeFilter = 'all';
+
+        if (!list || !sort) { return; }
+
+        function applyFavoriteView() {
+            cards.sort(function (a, b) {
+                if (sort.value === 'rating') { return Number(b.dataset.favoriteRating) - Number(a.dataset.favoriteRating); }
+                if (sort.value === 'price') { return Number(a.dataset.favoritePrice) - Number(b.dataset.favoritePrice); }
+                return 0;
+            });
+            var visible = 0;
+            cards.forEach(function (card) {
+                list.insertBefore(card, empty);
+                card.hidden = activeFilter !== 'all' && card.dataset.favoriteType !== activeFilter;
+                if (!card.hidden) { visible++; }
+            });
+            empty.hidden = visible !== 0;
+        }
+
+        filters.forEach(function (button) {
+            button.addEventListener('click', function () {
+                activeFilter = button.dataset.favoriteFilter;
+                filters.forEach(function (item) { item.classList.toggle('active', item === button); });
+                applyFavoriteView();
+            });
+        });
+        sort.addEventListener('change', applyFavoriteView);
+        applyFavoriteView();
+    }());
+</script>

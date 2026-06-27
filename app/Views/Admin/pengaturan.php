@@ -19,10 +19,10 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
         <h1><?php echo e($currentSetting['title']); ?></h1>
         <p><?php echo e($currentSetting['description']); ?></p>
     </div>
-    <button class="admin-settings-help" type="button">
+    <a class="admin-settings-help" href="<?php echo e(app_url('admin/dashboard')); ?>" title="Kembali ke dashboard">
         <i class="fa-regular fa-circle-question"></i>
         <span>Bantuan</span>
-    </button>
+    </a>
 </section>
 
 <nav class="admin-settings-tabs" aria-label="Kategori pengaturan">
@@ -46,41 +46,35 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <div class="admin-account-avatar-editor">
                     <div class="admin-account-avatar">
                         <span><?php echo e($adminAccountProfile['initials']); ?></span>
-                        <button type="button" aria-label="Upload foto baru">
-                            <i class="fa-regular fa-camera"></i>
-                        </button>
                     </div>
-                    <strong>Upload foto baru</strong>
-                    <small>PNG, JPG maks. 2MB</small>
-                    <button class="admin-account-delete-photo" type="button">
-                        <i class="fa-regular fa-trash-can"></i>
-                        <span>Hapus Foto</span>
-                    </button>
+                    <strong>Avatar Administrator</strong>
+                    <small>Dibuat otomatis dari inisial nama</small>
                 </div>
 
-                <form class="admin-account-profile-form" action="#" method="post">
+                <form class="admin-account-profile-form" action="<?php echo e(app_url('admin/pengaturan/profil')); ?>" method="post">
+                    <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>">
                     <label>
                         <span>Nama Lengkap</span>
-                        <input type="text" value="<?php echo e($adminAccountProfile['name']); ?>">
+                        <input type="text" name="nama" value="<?php echo e($adminAccountProfile['name']); ?>" required>
                     </label>
                     <label>
                         <span>Email</span>
-                        <input type="email" value="<?php echo e($adminAccountProfile['email']); ?>">
+                        <input type="email" name="email" value="<?php echo e($adminAccountProfile['email']); ?>" required>
                     </label>
                     <label>
                         <span>Nomor Telepon</span>
-                        <input type="text" value="<?php echo e($adminAccountProfile['phone']); ?>">
+                        <input type="text" name="telepon" value="<?php echo e($adminAccountProfile['phone']); ?>" required>
                     </label>
                     <label>
                         <span>Username</span>
-                        <input type="text" value="<?php echo e($adminAccountProfile['username']); ?>">
+                        <input type="text" value="<?php echo e($adminAccountProfile['username']); ?>" readonly>
                     </label>
                     <label>
                         <span>Role</span>
                         <input type="text" value="<?php echo e($adminAccountProfile['role']); ?>" readonly>
                     </label>
                     <div class="admin-account-form-action">
-                        <button type="button">
+                        <button type="submit">
                             <i class="fa-regular fa-floppy-disk"></i>
                             <span>Simpan Perubahan</span>
                         </button>
@@ -95,31 +89,32 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <h2>Keamanan Akun</h2>
             </div>
 
-            <form class="admin-account-password-form" action="#" method="post">
+            <form class="admin-account-password-form" action="<?php echo e(app_url('admin/pengaturan/password')); ?>" method="post">
+                <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>">
                 <label>
                     <span>Password Saat Ini</span>
                     <span class="admin-account-password-input">
-                        <input type="password" value="passwordlama">
-                        <button type="button" aria-label="Tampilkan password saat ini"><i class="fa-regular fa-eye"></i></button>
+                        <input type="password" name="password_saat_ini" autocomplete="current-password" required>
+                        <button type="button" data-password-toggle aria-label="Tampilkan password saat ini"><i class="fa-regular fa-eye"></i></button>
                     </span>
                 </label>
                 <label>
                     <span>Password Baru</span>
                     <span class="admin-account-password-input">
-                        <input type="password" value="passwordbaru">
-                        <button type="button" aria-label="Tampilkan password baru"><i class="fa-regular fa-eye"></i></button>
+                        <input type="password" name="password_baru" autocomplete="new-password" minlength="8" required>
+                        <button type="button" data-password-toggle aria-label="Tampilkan password baru"><i class="fa-regular fa-eye"></i></button>
                     </span>
                 </label>
                 <label>
                     <span>Konfirmasi Password Baru</span>
                     <span class="admin-account-password-input">
-                        <input type="password" value="passwordbaru">
-                        <button type="button" aria-label="Tampilkan konfirmasi password"><i class="fa-regular fa-eye"></i></button>
+                        <input type="password" name="konfirmasi_password" autocomplete="new-password" minlength="8" required>
+                        <button type="button" data-password-toggle aria-label="Tampilkan konfirmasi password"><i class="fa-regular fa-eye"></i></button>
                     </span>
                 </label>
 
                 <div class="admin-account-centered-action">
-                    <button type="button">
+                    <button type="submit">
                         <i class="fa-solid fa-lock"></i>
                         <span>Ganti Password</span>
                     </button>
@@ -133,7 +128,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <h2>Pengaturan Login</h2>
             </div>
 
-            <div class="admin-account-login-settings">
+            <form class="admin-account-login-settings" action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+                <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="akun">
                 <?php foreach ($adminLoginSettings as $setting): ?>
                     <div class="admin-account-login-setting">
                         <div>
@@ -141,12 +137,13 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <small><?php echo e($setting['description']); ?></small>
                         </div>
                         <label class="admin-account-switch" aria-label="<?php echo e($setting['label']); ?>">
-                            <input type="checkbox" <?php echo $setting['enabled'] ? 'checked' : ''; ?>>
+                            <input type="hidden" name="settings[<?php echo e($setting['key']); ?>]" value="0"><input type="checkbox" name="settings[<?php echo e($setting['key']); ?>]" value="1" <?php echo $setting['enabled'] ? 'checked' : ''; ?>>
                             <span data-on="ON" data-off="OFF"></span>
                         </label>
                     </div>
                 <?php endforeach; ?>
-            </div>
+                <div class="admin-settings-save"><button class="btn-primary" type="submit">Simpan Pengaturan Login</button></div>
+            </form>
         </article>
 
         <article class="admin-panel admin-account-card">
@@ -164,12 +161,6 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <?php endforeach; ?>
             </div>
 
-            <div class="admin-account-centered-action">
-                <button type="button">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span>Lihat Riwayat Login</span>
-                </button>
-            </div>
         </article>
 
         <article class="admin-panel admin-account-card">
@@ -184,12 +175,6 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <?php endforeach; ?>
             </div>
 
-            <div class="admin-account-centered-action">
-                <button type="button">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    <span>Lihat Detail Hak Akses</span>
-                </button>
-            </div>
         </article>
 
         <article class="admin-panel admin-account-card">
@@ -214,17 +199,10 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <small><?php echo e($device['ip']); ?><br><?php echo e($device['location']); ?></small>
                         </div>
                         <time><?php echo $device['time']; ?></time>
-                        <button type="button" aria-label="Menu perangkat"><i class="fa-solid fa-ellipsis-vertical"></i></button>
                     </article>
                 <?php endforeach; ?>
             </div>
 
-            <div class="admin-account-logout-devices">
-                <button type="button">
-                    <i class="fa-solid fa-arrow-right-from-bracket"></i>
-                    <span>Logout Semua Perangkat</span>
-                </button>
-            </div>
         </article>
     </section>
 <?php elseif ($activeSettingTab === 'notifikasi'): ?>
@@ -234,6 +212,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <h2>Pengaturan Notifikasi</h2>
                 <p>Kelola preferensi notifikasi yang ingin Anda terima.</p>
             </div>
+            <form action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+                <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="notifikasi">
 
             <div class="admin-notification-section-title">
                 <h3>Saluran Notifikasi</h3>
@@ -251,7 +231,7 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <small><?php echo e($channel['description']); ?></small>
                         </div>
                         <label class="admin-switch" aria-label="<?php echo e($channel['label']); ?>">
-                            <input type="checkbox" <?php echo $channel['enabled'] ? 'checked' : ''; ?>>
+                            <input type="hidden" name="settings[<?php echo e($channel['key']); ?>]" value="0"><input type="checkbox" name="settings[<?php echo e($channel['key']); ?>]" value="1" <?php echo $channel['enabled'] ? 'checked' : ''; ?>>
                             <span></span>
                         </label>
                     </div>
@@ -270,15 +250,16 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <strong><?php echo e($type['label']); ?></strong>
                             <small><?php echo e($type['description']); ?></small>
                         </span>
-                        <input type="checkbox" <?php echo $type['enabled'] ? 'checked' : ''; ?>>
+                        <input type="hidden" name="settings[<?php echo e($type['key']); ?>]" value="0"><input type="checkbox" name="settings[<?php echo e($type['key']); ?>]" value="1" <?php echo $type['enabled'] ? 'checked' : ''; ?>>
                         <i class="fa-solid fa-check"></i>
                     </label>
                 <?php endforeach; ?>
             </div>
 
             <div class="admin-settings-save">
-                <button class="btn-primary" type="button">Simpan Preferensi</button>
+                <button class="btn-primary" type="submit">Simpan Preferensi</button>
             </div>
+            </form>
         </article>
 
         <article class="admin-panel admin-settings-card">
@@ -310,7 +291,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <h2>Metode Pembayaran</h2>
                 <p>Kelola metode pembayaran yang tersedia untuk user.</p>
             </div>
-
+            <form action="<?php echo e(app_url('admin/pengaturan/metode')); ?>" method="post">
+                <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>">
             <div class="admin-admin-payment-list">
                 <?php foreach ($adminPaymentMethods as $method): ?>
                     <div class="admin-admin-payment-method">
@@ -320,18 +302,22 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <small><?php echo e($method['description']); ?></small>
                         </div>
                         <label class="admin-switch" aria-label="<?php echo e($method['name']); ?>">
-                            <input type="checkbox" <?php echo $method['enabled'] ? 'checked' : ''; ?>>
+                            <input type="checkbox" name="methods[]" value="<?php echo e($method['id']); ?>" <?php echo $method['enabled'] ? 'checked' : ''; ?>>
                             <span></span>
                         </label>
                     </div>
                 <?php endforeach; ?>
             </div>
+            <div class="admin-settings-save"><button class="btn-primary" type="submit">Simpan Metode</button></div>
+            </form>
 
             <div class="admin-settings-card-head admin-payment-config-head">
                 <h2>Pengaturan Pembayaran</h2>
                 <p>Atur konfigurasi umum terkait pembayaran.</p>
             </div>
 
+            <form action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+            <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="pembayaran">
             <div class="admin-payment-config-list">
                 <?php foreach ($adminPaymentSettings as $setting): ?>
                     <div class="admin-payment-config-item">
@@ -341,21 +327,22 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                         </div>
 
                         <?php if ($setting['type'] === 'select'): ?>
-                            <select aria-label="<?php echo e($setting['label']); ?>">
+                            <select name="settings[<?php echo e($setting['key']); ?>]" aria-label="<?php echo e($setting['label']); ?>">
                                 <?php foreach ($setting['options'] as $option): ?>
                                     <option <?php echo $option === $setting['value'] ? 'selected' : ''; ?>><?php echo e($option); ?></option>
                                 <?php endforeach; ?>
                             </select>
                         <?php else: ?>
-                            <input type="text" value="<?php echo e($setting['value']); ?>" aria-label="<?php echo e($setting['label']); ?>">
+                            <input type="text" name="settings[<?php echo e($setting['key']); ?>]" value="<?php echo e($setting['value']); ?>" aria-label="<?php echo e($setting['label']); ?>">
                         <?php endif; ?>
                     </div>
                 <?php endforeach; ?>
             </div>
 
             <div class="admin-settings-save">
-                <button class="btn-primary" type="button">Simpan Perubahan</button>
+                <button class="btn-primary" type="submit">Simpan Perubahan</button>
             </div>
+            </form>
         </article>
 
         <article class="admin-panel admin-settings-card admin-bank-panel">
@@ -364,7 +351,7 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                     <h2>Daftar Rekening Bank</h2>
                     <p>Kelola daftar rekening bank untuk metode pembayaran transfer.</p>
                 </div>
-                <button class="btn-primary" type="button"><i class="fa-solid fa-plus"></i> Tambah Rekening</button>
+                <button class="btn-primary" type="button" data-dialog-open="bankCreateDialog"><i class="fa-solid fa-plus"></i> Tambah Rekening</button>
             </div>
 
             <div class="admin-table-responsive">
@@ -392,12 +379,10 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                                 <td><span class="admin-badge <?php echo e($account['statusClass']); ?>"><?php echo e($account['status']); ?></span></td>
                                 <td>
                                     <div class="admin-actions">
-                                        <button class="btn-icon" type="button" title="Edit rekening <?php echo e($account['bank']); ?>" aria-label="Edit rekening <?php echo e($account['bank']); ?>">
+                                        <button class="btn-icon" type="button" title="Edit rekening <?php echo e($account['bank']); ?>" aria-label="Edit rekening <?php echo e($account['bank']); ?>" data-dialog-open="bankEditDialog" data-payload="<?php echo e(json_encode(array('id_rekening' => $account['id'], 'bank' => $account['bank'], 'nomor' => $account['account'], 'pemilik' => $account['owner'], 'status' => $account['status']))); ?>">
                                             <i class="fa-regular fa-pen-to-square"></i>
                                         </button>
-                                        <button class="btn-icon danger" type="button" title="Hapus rekening <?php echo e($account['bank']); ?>" aria-label="Hapus rekening <?php echo e($account['bank']); ?>">
-                                            <i class="fa-regular fa-trash-can"></i>
-                                        </button>
+                                        <form class="admin-inline-form" action="<?php echo e(app_url('admin/pengaturan/rekening/hapus')); ?>" method="post" data-confirm="Hapus rekening <?php echo e($account['bank']); ?>?"><input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="id_rekening" value="<?php echo e($account['id']); ?>"><button class="btn-icon danger" type="submit" title="Hapus rekening"><i class="fa-regular fa-trash-can"></i></button></form>
                                     </div>
                                 </td>
                             </tr>
@@ -408,22 +393,16 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
 
             <div class="admin-bank-footer">
                 <div class="admin-bank-length">
-                    <span>Tampilkan</span>
-                    <select aria-label="Jumlah data rekening">
-                        <option>10</option>
-                        <option>25</option>
-                        <option>50</option>
-                    </select>
-                    <span>data</span>
+                    <span>Daftar rekening pemilik lapangan</span>
                 </div>
                 <div class="admin-pagination-pages">
-                    <button class="admin-pagination-btn" type="button" aria-label="Halaman sebelumnya"><i class="fa-solid fa-chevron-left"></i></button>
-                    <button class="admin-page-number active" type="button">1</button>
-                    <button class="admin-pagination-btn" type="button" aria-label="Halaman berikutnya"><i class="fa-solid fa-chevron-right"></i></button>
+                    <span><?php echo e(count($adminBankAccounts)); ?> rekening</span>
                 </div>
             </div>
         </article>
     </section>
+    <dialog class="admin-dialog" id="bankCreateDialog"><div class="admin-dialog-head"><h2>Tambah Rekening</h2><button class="admin-dialog-close" type="button" data-dialog-close>&times;</button></div><form class="admin-dialog-form" action="<?php echo e(app_url('admin/pengaturan/rekening/tambah')); ?>" method="post"><input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><label class="full"><span>Pemilik lapangan</span><select name="id_pemilik" required><option value="">Pilih pemilik</option><?php foreach ($bankOwners as $owner): ?><option value="<?php echo e($owner['id']); ?>"><?php echo e($owner['name']); ?></option><?php endforeach; ?></select></label><label><span>Bank</span><input name="bank" required></label><label><span>Nomor rekening</span><input name="nomor" required></label><label class="full"><span>Atas nama</span><input name="pemilik" required></label><div class="admin-dialog-actions"><button type="button" class="admin-secondary-btn" data-dialog-close>Batal</button><button type="submit" class="btn-primary">Tambah</button></div></form></dialog>
+    <dialog class="admin-dialog" id="bankEditDialog"><div class="admin-dialog-head"><h2>Edit Rekening</h2><button class="admin-dialog-close" type="button" data-dialog-close>&times;</button></div><form class="admin-dialog-form" action="<?php echo e(app_url('admin/pengaturan/rekening/update')); ?>" method="post"><input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="id_rekening"><label><span>Bank</span><input name="bank" required></label><label><span>Nomor rekening</span><input name="nomor" required></label><label><span>Atas nama</span><input name="pemilik" required></label><label><span>Status</span><select name="status"><option>Aktif</option><option>Nonaktif</option></select></label><div class="admin-dialog-actions"><button type="button" class="admin-secondary-btn" data-dialog-close>Batal</button><button type="submit" class="btn-primary">Simpan</button></div></form></dialog>
 <?php elseif ($activeSettingTab === 'keamanan'): ?>
     <section class="admin-settings-grid admin-security-settings-grid">
         <article class="admin-panel admin-settings-card">
@@ -432,6 +411,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <p>Kelola keamanan akun dan sistem Anda.</p>
             </div>
 
+            <form action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+            <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="keamanan">
             <div class="admin-security-setting-list">
                 <?php foreach ($securitySettings as $setting): ?>
                     <div class="admin-security-setting-item">
@@ -450,11 +431,11 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
 
                         <?php if ($setting['type'] === 'toggle'): ?>
                             <label class="admin-switch" aria-label="<?php echo e($setting['label']); ?>">
-                                <input type="checkbox" <?php echo !empty($setting['enabled']) ? 'checked' : ''; ?>>
+                                <input type="hidden" name="settings[<?php echo e($setting['key']); ?>]" value="0"><input type="checkbox" name="settings[<?php echo e($setting['key']); ?>]" value="1" <?php echo !empty($setting['enabled']) ? 'checked' : ''; ?>>
                                 <span></span>
                             </label>
                         <?php elseif ($setting['type'] === 'button'): ?>
-                            <button class="admin-security-action" type="button"><?php echo e($setting['button']); ?></button>
+                            <a class="admin-security-action" href="<?php echo e($setting['url']); ?>"><?php echo e($setting['button']); ?></a>
                         <?php else: ?>
                             <div class="admin-security-verified">
                                 <span><?php echo e($setting['email']); ?></span>
@@ -464,6 +445,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                     </div>
                 <?php endforeach; ?>
             </div>
+            <div class="admin-settings-save"><button class="btn-primary" type="submit">Simpan Keamanan</button></div>
+            </form>
         </article>
 
         <article class="admin-panel admin-settings-card">
@@ -491,12 +474,12 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
             </div>
 
             <div class="admin-security-view-all">
-                <button type="button">Lihat Semua Aktivitas</button>
+                <span>Menampilkan aktivitas keamanan terbaru</span>
             </div>
         </article>
     </section>
 
-    <section class="admin-panel admin-active-session-panel">
+    <section class="admin-panel admin-active-session-panel" id="active-sessions">
         <div class="admin-settings-card-head">
             <h2>Pengaturan Sesi Aktif</h2>
             <p>Perangkat yang saat ini sedang login ke akun Anda.</p>
@@ -542,8 +525,6 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <td>
                                 <?php if ($session['current']): ?>
                                     <span class="admin-session-empty-action">-</span>
-                                <?php else: ?>
-                                    <button class="admin-session-delete" type="button">Hapus</button>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -560,34 +541,35 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <p>Informasi dasar mengenai sistem dan kontak admin.</p>
             </div>
 
-            <form class="admin-settings-form" action="#" method="post">
+            <form class="admin-settings-form" action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+                <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="umum">
                 <label>
                     <span>Nama Aplikasi</span>
-                    <input type="text" value="Arena Sport" aria-label="Nama aplikasi">
+                    <input type="text" name="settings[app_name]" value="<?php echo e($adminPreferences['app_name']); ?>" aria-label="Nama aplikasi">
                 </label>
 
                 <label>
                     <span>Deskripsi</span>
-                    <input type="text" value="Platform booking lapangan olahraga online." aria-label="Deskripsi aplikasi">
+                    <input type="text" name="settings[app_description]" value="<?php echo e($adminPreferences['app_description']); ?>" aria-label="Deskripsi aplikasi">
                 </label>
 
                 <label>
                     <span>Email Admin</span>
-                    <input type="email" value="admin@arenasport.com" aria-label="Email admin">
+                    <input type="email" name="settings[admin_email]" value="<?php echo e($adminPreferences['admin_email']); ?>" aria-label="Email admin">
                 </label>
 
                 <label>
                     <span>Nomor Kontak Admin</span>
-                    <input type="text" value="0812-3456-7890" aria-label="Nomor kontak admin">
+                    <input type="text" name="settings[admin_phone]" value="<?php echo e($adminPreferences['admin_phone']); ?>" aria-label="Nomor kontak admin">
                 </label>
 
                 <label>
                     <span>Alamat</span>
-                    <input type="text" value="Jl. Olahraga No. 123, Parepare, Sulawesi Selatan" aria-label="Alamat admin">
+                    <input type="text" name="settings[admin_address]" value="<?php echo e($adminPreferences['admin_address']); ?>" aria-label="Alamat admin">
                 </label>
 
                 <div class="admin-settings-save">
-                    <button class="btn-primary" type="button">Simpan Perubahan</button>
+                    <button class="btn-primary" type="submit">Simpan Perubahan</button>
                 </div>
             </form>
         </article>
@@ -598,6 +580,8 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                 <p>Kelola berbagai pengaturan sistem.</p>
             </div>
 
+            <form action="<?php echo e(app_url('admin/pengaturan/preferensi')); ?>" method="post">
+            <input type="hidden" name="admin_token" value="<?php echo e($adminToken); ?>"><input type="hidden" name="section" value="umum">
             <div class="admin-settings-toggle-list">
                 <?php foreach ($generalSettings as $setting): ?>
                     <div class="admin-settings-toggle-item">
@@ -606,12 +590,14 @@ $currentSetting = isset($settingMeta[$activeSettingTab]) ? $settingMeta[$activeS
                             <span><?php echo e($setting['description']); ?></span>
                         </div>
                         <label class="admin-switch" aria-label="<?php echo e($setting['label']); ?>">
-                            <input type="checkbox" <?php echo $setting['enabled'] ? 'checked' : ''; ?>>
+                            <input type="hidden" name="settings[<?php echo e($setting['key']); ?>]" value="0"><input type="checkbox" name="settings[<?php echo e($setting['key']); ?>]" value="1" <?php echo $setting['enabled'] ? 'checked' : ''; ?>>
                             <span></span>
                         </label>
                     </div>
                 <?php endforeach; ?>
             </div>
+            <div class="admin-settings-save"><button class="btn-primary" type="submit">Simpan Pengaturan Umum</button></div>
+            </form>
         </article>
     </section>
 <?php endif; ?>

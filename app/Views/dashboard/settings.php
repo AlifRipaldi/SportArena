@@ -37,14 +37,14 @@
                 <p>Kelola preferensi akun dan aplikasi Anda.</p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
@@ -56,7 +56,8 @@
             <section class="settings-alert error-message"><?php echo e($errorMessage); ?></section>
         <?php endif; ?>
 
-        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>">
+        <form class="settings-match-form" method="POST" action="<?php echo e(app_url('settings')); ?>" enctype="multipart/form-data" data-theme-url="<?php echo e(app_url('settings/theme')); ?>">
+            <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
             <section class="settings-panel settings-profile-panel">
                 <div class="settings-panel-title">
                     <span>&#9786;</span>
@@ -65,8 +66,11 @@
 
                 <div class="settings-profile-body">
                     <div class="settings-avatar-wrap">
-                        <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
-                        <button type="button" aria-label="Ubah foto profil">&#128247;</button>
+                        <img src="<?php echo e($userAvatar); ?>" alt="Foto profil" data-settings-avatar-preview>
+                        <label class="settings-avatar-edit" title="Ubah foto profil" aria-label="Ubah foto profil">
+                            <span aria-hidden="true">&#128247;</span>
+                            <input type="file" name="avatar" accept="image/png,image/jpeg" data-settings-avatar-input>
+                        </label>
                     </div>
 
                     <div class="settings-profile-fields">
@@ -91,7 +95,7 @@
                             <i>:</i>
                             <input name="kota" type="text" value="<?php echo e($userCity); ?>">
                         </label>
-                        <button type="button" class="settings-outline-button">Ubah Profil</button>
+                        <button type="submit" class="settings-outline-button">Simpan Profil</button>
                     </div>
                 </div>
             </section>
@@ -107,7 +111,6 @@
                         <div class="settings-security-row">
                             <span>Password</span>
                             <strong>************</strong>
-                            <button type="button">Ubah</button>
                         </div>
                         <div class="settings-security-row">
                             <span>Verifikasi Email</span>
@@ -118,7 +121,7 @@
                             <strong class="active"><i>&#10003;</i>Aktif</strong>
                         </div>
                     </div>
-                    <button type="button" class="settings-password-button"><span>&#128274;</span>Ganti Password</button>
+                    <a href="<?php echo e(app_url('settings/password')); ?>" class="settings-password-button"><span>&#128274;</span>Ganti Password</a>
                 </div>
             </section>
 
@@ -132,12 +135,12 @@
                     <div class="settings-choice-list">
                         <p>Tema</p>
                         <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="light" <?php echo $themeMode === 'light' ? 'checked' : ''; ?>>
+                            <input type="radio" name="theme_mode" value="light" <?php echo $themeMode === 'light' ? 'checked' : ''; ?> data-theme-choice>
                             <span></span>
                             Light Mode
                         </label>
                         <label class="settings-radio-row">
-                            <input type="radio" name="theme_mode" value="dark" <?php echo $themeMode !== 'light' ? 'checked' : ''; ?>>
+                            <input type="radio" name="theme_mode" value="dark" <?php echo $themeMode !== 'light' ? 'checked' : ''; ?> data-theme-choice>
                             <span></span>
                             Dark Mode
                         </label>
@@ -189,12 +192,10 @@
                     </div>
 
                     <div class="settings-payment-list">
-                        <a href="#"><span class="bca">BCA</span>BCA Virtual Account<i>&#8250;</i></a>
-                        <a href="#"><span class="dana">&#9679;</span>Dana<i>&#8250;</i></a>
-                        <a href="#"><span class="ovo">&#9679;</span>OVO<i>&#8250;</i></a>
-                        <a href="#"><span class="gopay">&#9679;</span>GoPay<i>&#8250;</i></a>
+                        <?php foreach (isset($paymentMethods) ? $paymentMethods : array() as $method): ?>
+                            <a href="<?php echo e(app_url('dashboard/booking')); ?>"><span class="bca">&#128179;</span><?php echo e($method['Nama']); ?><i>&#8250;</i></a>
+                        <?php endforeach; ?>
                     </div>
-                    <button type="button" class="settings-add-payment"><span>+</span>Tambah Metode</button>
                 </article>
 
                 <article class="settings-panel settings-mini-panel">
@@ -237,30 +238,65 @@
                 </article>
             </section>
 
-            <section class="settings-panel settings-danger-panel">
-                <div class="settings-panel-title danger">
-                    <span>&#9888;</span>
-                    <h2>Zona Bahaya</h2>
-                </div>
-                <div class="settings-danger-row">
-                    <div>
-                        <h3>Hapus seluruh riwayat booking</h3>
-                        <p>Tindakan ini akan menghapus semua riwayat booking Anda secara permanen.</p>
-                    </div>
-                    <button type="button"><span>&#128465;</span>Hapus Riwayat</button>
-                </div>
-                <div class="settings-danger-row">
-                    <div>
-                        <h3>Hapus Akun Permanen</h3>
-                        <p>Tindakan ini akan menghapus akun Anda secara permanen dan tidak dapat dikembalikan.</p>
-                    </div>
-                    <button type="button"><span>&#128465;</span>Hapus Akun Permanen</button>
-                </div>
-            </section>
-
             <div class="settings-save-row">
                 <button type="submit" class="settings-save-button"><span>&#10003;</span>Simpan Perubahan</button>
             </div>
         </form>
     </main>
 </div>
+
+<script>
+    (function () {
+        var form = document.querySelector('.settings-match-form');
+        var choices = document.querySelectorAll('[data-theme-choice]');
+
+        if (!form) {
+            return;
+        }
+
+        var avatarInput = form.querySelector('[data-settings-avatar-input]');
+        var avatarPreviews = document.querySelectorAll('[data-settings-avatar-preview]');
+
+        if (avatarInput) {
+            avatarInput.addEventListener('change', function () {
+                var file = avatarInput.files && avatarInput.files[0];
+
+                if (!file || !file.type.match(/^image\/(jpeg|png)$/)) {
+                    return;
+                }
+
+                var previewUrl = URL.createObjectURL(file);
+                avatarPreviews.forEach(function (preview) {
+                    preview.src = previewUrl;
+                });
+            });
+        }
+
+        if (!choices.length) {
+            return;
+        }
+
+        choices.forEach(function (choice) {
+            choice.addEventListener('change', function () {
+                if (!choice.checked) {
+                    return;
+                }
+
+                document.body.classList.toggle('light', choice.value === 'light');
+                document.body.classList.toggle('dark', choice.value !== 'light');
+
+                var request = new FormData();
+                request.append('theme_mode', choice.value);
+                request.append('booking_token', form.querySelector('[name="booking_token"]').value);
+
+                fetch(form.getAttribute('data-theme-url'), {
+                    method: 'POST',
+                    body: request,
+                    credentials: 'same-origin'
+                }).catch(function () {
+                    form.submit();
+                });
+            });
+        });
+    })();
+</script>

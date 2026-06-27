@@ -6,6 +6,12 @@
         </div>
     </div>
 
+    <?php if (!empty($profileFlash)): ?>
+        <div class="owner-profil-alert <?php echo e($profileFlash['type']); ?>" data-owner-profile-alert>
+            <?php echo e($profileFlash['message']); ?>
+        </div>
+    <?php endif; ?>
+
     <section class="owner-profil-layout">
         <aside class="owner-profil-side">
             <article class="admin-panel owner-profil-card">
@@ -57,10 +63,36 @@
             <article class="admin-panel owner-profil-security-card">
                 <h2><i class="fa-solid fa-lock"></i> Keamanan Akun</h2>
                 <p>Terakhir login<br><strong><?php echo e($profile['lastLogin']); ?></strong></p>
-                <button type="button">
-                    <i class="fa-solid fa-key"></i>
-                    <span>Ubah Password</span>
-                </button>
+                <details class="owner-profil-password-box">
+                    <summary>
+                        <i class="fa-solid fa-key"></i>
+                        <span>Ubah Password</span>
+                    </summary>
+
+                    <form action="<?php echo e(app_url('pemilik/profil')); ?>" method="post" class="owner-profil-password-form">
+                        <input type="hidden" name="profile_action" value="change_password">
+
+                        <label>
+                            <span>Password Lama</span>
+                            <input type="password" name="current_password" autocomplete="current-password" required>
+                        </label>
+
+                        <label>
+                            <span>Password Baru</span>
+                            <input type="password" name="new_password" autocomplete="new-password" minlength="6" required>
+                        </label>
+
+                        <label>
+                            <span>Konfirmasi Password</span>
+                            <input type="password" name="confirm_password" autocomplete="new-password" minlength="6" required>
+                        </label>
+
+                        <button type="submit">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Simpan Password</span>
+                        </button>
+                    </form>
+                </details>
             </article>
         </aside>
 
@@ -70,48 +102,46 @@
                     <h2>Edit Profil</h2>
                 </div>
 
-                <form class="owner-profil-form" action="#" method="post">
+                <form class="owner-profil-form" action="<?php echo e(app_url('pemilik/profil')); ?>" method="post" enctype="multipart/form-data">
+                    <input type="hidden" name="profile_action" value="update_profile">
+
                     <label>
                         <span>Nama Lengkap</span>
-                        <input type="text" value="<?php echo e($profile['name']); ?>">
+                        <input type="text" name="name" value="<?php echo e($profile['name']); ?>" autocomplete="name" required>
                     </label>
 
                     <label>
                         <span>Email</span>
-                        <input type="email" value="<?php echo e($profile['email']); ?>">
+                        <input type="email" name="email" value="<?php echo e($profile['email']); ?>" autocomplete="email" required>
                     </label>
 
                     <label>
                         <span>No. Telepon</span>
-                        <input type="text" value="<?php echo e($profile['phone']); ?>">
+                        <input type="text" name="phone" value="<?php echo e($profile['phone']); ?>" autocomplete="tel">
                     </label>
 
                     <label>
                         <span>Lokasi</span>
-                        <input type="text" value="<?php echo e($profile['location']); ?>">
-                    </label>
-
-                    <label class="owner-profil-full">
-                        <span>Tentang Saya</span>
-                        <textarea rows="4"><?php echo e($profile['bio']); ?></textarea>
+                        <input type="text" name="location" value="<?php echo e($profile['location']); ?>">
                     </label>
 
                     <div class="owner-profil-upload owner-profil-full">
                         <span>Foto Profil</span>
                         <div class="owner-profil-upload-row">
-                            <img src="<?php echo e($profile['avatar']); ?>" alt="Preview foto profil">
-                            <button type="button">
+                            <img src="<?php echo e($profile['avatar']); ?>" alt="Preview foto profil" data-owner-profile-preview>
+                            <label class="owner-profil-upload-trigger">
                                 <i class="fa-regular fa-camera"></i>
                                 <span>
                                     <strong>Klik untuk upload foto</strong>
                                     <small>PNG, JPG maks. 2MB</small>
                                 </span>
-                            </button>
+                                <input type="file" name="avatar" accept="image/png,image/jpeg" data-owner-profile-file>
+                            </label>
                         </div>
                     </div>
 
                     <div class="owner-profil-form-actions owner-profil-full">
-                        <button type="button">
+                        <button type="submit">
                             <i class="fa-regular fa-floppy-disk"></i>
                             <span>Simpan Perubahan</span>
                         </button>
@@ -158,3 +188,37 @@
         </section>
     </section>
 </section>
+
+<script>
+(function () {
+    var fileInput = document.querySelector('[data-owner-profile-file]');
+    var preview = document.querySelector('[data-owner-profile-preview]');
+    var alert = document.querySelector('[data-owner-profile-alert]');
+
+    if (alert) {
+        alert.style.setProperty('--owner-alert-height', alert.scrollHeight + 'px');
+
+        window.setTimeout(function () {
+            alert.classList.add('is-hiding');
+
+            window.setTimeout(function () {
+                alert.setAttribute('hidden', 'hidden');
+            }, 620);
+        }, 4000);
+    }
+
+    if (!fileInput || !preview) {
+        return;
+    }
+
+    fileInput.addEventListener('change', function () {
+        var file = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
+
+        if (!file) {
+            return;
+        }
+
+        preview.src = URL.createObjectURL(file);
+    });
+}());
+</script>

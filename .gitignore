@@ -4,3 +4,6 @@
 !/storage/logs/.gitkeep
 /storage/uploads/*
 !/storage/uploads/.gitkeep
+/storage/sessions/*
+!/storage/sessions/.gitkeep
+/storage/admin-settings.json

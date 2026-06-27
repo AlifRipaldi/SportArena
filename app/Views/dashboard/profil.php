@@ -1,3 +1,8 @@
+<?php
+$profileMetrics = isset($profileMetrics) ? $profileMetrics : array('bookings' => 0, 'completed' => 0, 'paid' => 'Rp0', 'favorites' => 0, 'reviews' => 0, 'rating' => '0.0', 'notifications' => 0);
+$profileRecentBookings = isset($profileRecentBookings) && is_array($profileRecentBookings) ? $profileRecentBookings : array();
+$userAvatar = isset($userAvatar) ? $userAvatar : 'https://ui-avatars.com/api/?name=User&background=20314a&color=ffffff';
+?>
 <div class="dashboard-shell profile-dashboard">
     <aside class="dashboard-sidebar">
         <div class="dashboard-brand">
@@ -37,61 +42,59 @@
                 <p><?php echo e(isset($pageSubheading) ? $pageSubheading : 'Kelola informasi profil dan aktivitas Anda.'); ?></p>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
-                    <sup>2</sup>
-                </button>
-                <div class="profile-account-menu">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                    <sup><?php echo e($profileMetrics['notifications']); ?></sup>
+                </a>
+                <a href="<?php echo e(app_url('settings')); ?>" class="profile-account-menu" aria-label="Buka pengaturan akun">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
         <section class="profile-overview">
             <div class="profile-photo-wrap">
                 <div class="profile-photo-ring">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=260&auto=format&fit=crop" alt="Foto profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                 </div>
-                <button type="button" class="profile-camera-button" aria-label="Ubah foto">&#128247;</button>
             </div>
 
             <div class="profile-summary-copy">
                 <div class="profile-name-row">
                     <h2><?php echo e($userName); ?></h2>
-                    <span class="profile-verified">Akun Terverifikasi <span>&#10003;</span></span>
+                    <span class="profile-verified"><?php echo !empty($userVerified) ? 'Akun Terverifikasi' : 'Belum Terverifikasi'; ?> <span>&#10003;</span></span>
                 </div>
                 <ul class="profile-contact-list">
                     <li><span>&#9993;</span><?php echo e($userEmail); ?></li>
                     <li><span>&#9742;</span><?php echo e($userPhone); ?></li>
                     <li><span>&#9906;</span><?php echo e($userCity); ?>, Sulawesi Selatan</li>
-                    <li><span>&#128197;</span>Bergabung sejak Mei 2024</li>
+                    <li><span>&#128197;</span>Bergabung sejak <?php echo e($userJoined); ?></li>
                 </ul>
                 <div class="profile-action-row">
                     <a href="<?php echo e(app_url('settings')); ?>" class="profile-btn primary"><span>&#9998;</span>Edit Profil</a>
-                    <button type="button" class="profile-btn"><span>&#128247;</span>Ubah Foto</button>
                 </div>
             </div>
 
             <div class="profile-quick-stats" aria-label="Ringkasan profil">
                 <div class="profile-quick-stat green">
                     <span class="profile-stat-icon">&#128197;</span>
-                    <strong>28</strong>
+                    <strong><?php echo e($profileMetrics['bookings']); ?></strong>
                     <small>Booking</small>
                 </div>
                 <div class="profile-quick-stat purple">
                     <span class="profile-stat-icon">&#9825;</span>
-                    <strong>12</strong>
+                    <strong><?php echo e($profileMetrics['favorites']); ?></strong>
                     <small>Favorit</small>
                 </div>
                 <div class="profile-quick-stat gold">
                     <span class="profile-stat-icon">&#9734;</span>
-                    <strong>4.8</strong>
+                    <strong><?php echo e($profileMetrics['rating']); ?></strong>
                     <small>Rating</small>
                 </div>
                 <div class="profile-quick-stat blue">
                     <span class="profile-stat-icon">&#128197;</span>
-                    <strong>16</strong>
+                    <strong><?php echo e($profileMetrics['reviews']); ?></strong>
                     <small>Ulasan</small>
                 </div>
             </div>
@@ -100,9 +103,8 @@
         <nav class="profile-tabs" aria-label="Bagian profil">
             <a href="#informasi" class="active">Informasi Pribadi</a>
             <a href="#aktivitas">Aktivitas</a>
-            <a href="#ulasan">Ulasan</a>
-            <a href="#pembayaran">Metode Pembayaran</a>
-            <a href="#voucher">Voucher Saya</a>
+            <a href="<?php echo e(app_url('dashboard/ulasan')); ?>">Ulasan</a>
+            <a href="<?php echo e(app_url('dashboard/booking')); ?>">Pembayaran</a>
         </nav>
 
         <section class="profile-content-grid">
@@ -117,7 +119,7 @@
                     </div>
                     <div>
                         <dt>Email</dt>
-                        <dd><?php echo e($userEmail); ?> <span class="profile-label-success">Terverifikasi</span></dd>
+                        <dd><?php echo e($userEmail); ?> <span class="profile-label-success"><?php echo !empty($userVerified) ? 'Terverifikasi' : 'Belum diverifikasi'; ?></span></dd>
                     </div>
                     <div>
                         <dt>Nomor Handphone</dt>
@@ -125,11 +127,11 @@
                     </div>
                     <div>
                         <dt>Tanggal Lahir</dt>
-                        <dd>15 Maret 1998</dd>
+                        <dd>Belum diisi</dd>
                     </div>
                     <div>
                         <dt>Jenis Kelamin</dt>
-                        <dd>Laki-laki</dd>
+                        <dd>Belum diisi</dd>
                     </div>
                     <div>
                         <dt>Kota</dt>
@@ -137,15 +139,15 @@
                     </div>
                     <div>
                         <dt>Alamat</dt>
-                        <dd>Jl. Mattirotasi No. 12, <?php echo e($userCity); ?>, Sulawesi Selatan</dd>
+                        <dd><?php echo e($userAddress); ?></dd>
                     </div>
                     <div>
                         <dt>Pekerjaan</dt>
-                        <dd>Mahasiswa</dd>
+                        <dd>Belum diisi</dd>
                     </div>
                     <div>
                         <dt>Bio</dt>
-                        <dd>Pecinta olahraga dan futsal. Selalu semangat bermain!</dd>
+                        <dd>Belum diisi</dd>
                     </div>
                 </dl>
                 <a href="<?php echo e(app_url('settings')); ?>" class="profile-panel-action"><span>&#9998;</span>Edit Informasi</a>
@@ -159,19 +161,19 @@
                     <div class="profile-stat-list">
                         <div>
                             <span>Total Booking</span>
-                            <strong>28 Kali</strong>
+                            <strong><?php echo e($profileMetrics['bookings']); ?> Kali</strong>
                         </div>
                         <div>
                             <span>Booking Selesai</span>
-                            <strong>24 Kali</strong>
+                            <strong><?php echo e($profileMetrics['completed']); ?> Kali</strong>
                         </div>
                         <div>
                             <span>Total Pembayaran</span>
-                            <strong>Rp2.140.000</strong>
+                            <strong><?php echo e($profileMetrics['paid']); ?></strong>
                         </div>
                         <div>
                             <span>Member Sejak</span>
-                            <strong>Mei 2024</strong>
+                            <strong><?php echo e($userJoined); ?></strong>
                         </div>
                     </div>
                 </article>
@@ -183,7 +185,7 @@
                     <div class="profile-preference-list">
                         <div>
                             <span><i>&#9673;</i>Olahraga Favorit</span>
-                            <strong>Futsal</strong>
+                            <strong><?php echo e($favoriteSport); ?></strong>
                         </div>
                         <div>
                             <span><i>&#9201;</i>Waktu Favorit</span>
@@ -191,26 +193,15 @@
                         </div>
                         <div>
                             <span><i>&#9906;</i>Kota Favorit</span>
-                            <strong><?php echo e($userCity); ?></strong>
+                            <strong><?php echo e($favoriteCity); ?></strong>
                         </div>
                         <div>
                             <span><i>&#9678;</i>Radius Pencarian</span>
-                            <strong>10 KM</strong>
+                            <strong><?php echo e($searchRadius); ?> KM</strong>
                         </div>
                     </div>
                 </article>
             </div>
-
-            <article class="profile-panel profile-social-panel">
-                <div class="profile-panel-header">
-                    <h2><span>&#8984;</span>Media Sosial</h2>
-                </div>
-                <div class="profile-social-list">
-                    <a href="#"><span><i>IG</i>Instagram</span><strong>@ahmadfauzi_98</strong><em>&#8599;</em></a>
-                    <a href="#"><span><i>f</i>Facebook</span><strong>Ahmad Fauzi</strong><em>&#8599;</em></a>
-                    <a href="#"><span><i>X</i>Twitter</span><strong>@ahmadfauzi_98</strong><em>&#8599;</em></a>
-                </div>
-            </article>
 
             <article class="profile-panel profile-achievements-panel">
                 <div class="profile-panel-header">
@@ -244,33 +235,18 @@
                     <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">Lihat Semua &#8594;</a>
                 </div>
                 <div class="profile-activity-list">
-                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
-                        <span class="profile-activity-icon">&#128197;</span>
-                        <span>
-                            <strong>Booking Arena Futsal Parepare</strong>
-                            <small>22 Mei 2024 &bull; 10:00 - 11:00</small>
-                        </span>
-                        <em>Selesai</em>
-                        <i>&#8250;</i>
-                    </a>
-                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
-                        <span class="profile-activity-icon">&#128197;</span>
-                        <span>
-                            <strong>Booking Lapangan Badminton Center</strong>
-                            <small>18 Mei 2024 &bull; 08:00 - 09:00</small>
-                        </span>
-                        <em>Selesai</em>
-                        <i>&#8250;</i>
-                    </a>
-                    <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
-                        <span class="profile-activity-icon">&#128197;</span>
-                        <span>
-                            <strong>Booking Mini Soccer Victory</strong>
-                            <small>10 Mei 2024 &bull; 17:00 - 18:00</small>
-                        </span>
-                        <em>Selesai</em>
-                        <i>&#8250;</i>
-                    </a>
+                    <?php foreach ($profileRecentBookings as $booking): ?>
+                        <a href="<?php echo e(app_url('dashboard/riwayat')); ?>">
+                            <span class="profile-activity-icon">&#128197;</span>
+                            <span>
+                                <strong>Booking <?php echo e($booking['venue']); ?></strong>
+                                <small><?php echo e($booking['date']); ?> &bull; <?php echo e($booking['time']); ?></small>
+                            </span>
+                            <em><?php echo e($booking['status']); ?></em>
+                            <i>&#8250;</i>
+                        </a>
+                    <?php endforeach; ?>
+                    <?php if (empty($profileRecentBookings)): ?><p>Belum ada aktivitas booking.</p><?php endif; ?>
                 </div>
             </article>
         </section>

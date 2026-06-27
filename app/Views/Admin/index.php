@@ -1,8 +1,13 @@
 <?php
 $linePoints = array();
+$adminBookingTotal = 0;
 
 foreach ($monthlyRevenue as $point) {
     $linePoints[] = $point['x'] . ',' . $point['y'];
+}
+
+foreach ($bookingStatus as $status) {
+    $adminBookingTotal += isset($status['count']) ? (int) $status['count'] : 0;
 }
 
 $linePoints = implode(' ', $linePoints);
@@ -34,7 +39,7 @@ $linePoints = implode(' ', $linePoints);
     <article class="admin-panel admin-revenue-panel">
         <div class="admin-panel-header">
             <h2>Pendapatan Bulanan</h2>
-            <button type="button">Tahun Ini <i class="fa-solid fa-chevron-down"></i></button>
+            <span class="admin-badge active">Tahun <?php echo e(date('Y')); ?></span>
         </div>
 
         <div class="admin-line-chart">
@@ -72,7 +77,7 @@ $linePoints = implode(' ', $linePoints);
         <div class="admin-booking-status">
             <div class="admin-donut">
                 <span>Total</span>
-                <strong>520</strong>
+                <strong><?php echo e($adminBookingTotal); ?></strong>
                 <small>Booking</small>
             </div>
 
@@ -101,7 +106,7 @@ $linePoints = implode(' ', $linePoints);
                 <thead>
                     <tr>
                         <th>Kode Booking</th>
-                        <th>User</th>
+                        <th>Customer</th>
                         <th>Lapangan</th>
                         <th>Tanggal</th>
                         <th>Waktu</th>

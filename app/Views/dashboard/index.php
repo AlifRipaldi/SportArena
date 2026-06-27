@@ -31,38 +31,46 @@
     </aside>
 
     <main class="dashboard-main profile-main home-main">
+        <?php if (!empty($bookingMessage)): ?><section class="settings-alert success-message" role="status"><?php echo e($bookingMessage); ?></section><?php endif; ?>
+        <?php if (!empty($bookingError)): ?><section class="settings-alert error-message" role="alert"><?php echo e($bookingError); ?></section><?php endif; ?>
         <section class="home-topbar">
             <div>
                 <p>Selamat datang kembali,</p>
                 <h1><?php echo e($userName); ?> <span>&#128075;</span></h1>
             </div>
             <div class="profile-head-actions">
-                <button type="button" class="profile-notification" aria-label="Notifikasi">
+                <a href="<?php echo e(app_url('dashboard/booking')); ?>" class="profile-notification" aria-label="Lihat notifikasi booking">
                     <span>&#128276;</span>
                     <sup>1</sup>
-                </button>
-                <div class="profile-account-menu">
-                    <img src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop" alt="Foto profil">
+                </a>
+                <a href="<?php echo e(app_url('dashboard/profil')); ?>" class="profile-account-menu" aria-label="Buka profil">
+                    <img src="<?php echo e($userAvatar); ?>" alt="Foto profil">
                     <span>&#8964;</span>
-                </div>
+                </a>
             </div>
         </section>
 
-        <section class="home-search-row" aria-label="Pencarian lapangan">
+        <form class="home-search-row" method="get" action="<?php echo e(app_url('dashboard/lapangan')); ?>" aria-label="Pencarian lapangan">
             <label class="home-search-box">
                 <span aria-hidden="true">&#128269;</span>
-                <input type="text" placeholder="Cari lapangan, lokasi, atau jenis olahraga..." aria-label="Cari lapangan, lokasi, atau jenis olahraga">
+                <input type="search" name="q" placeholder="Cari lapangan, lokasi, atau jenis olahraga..." aria-label="Cari lapangan, lokasi, atau jenis olahraga">
             </label>
-            <button type="button" class="home-filter-button"><span aria-hidden="true">&#9776;</span>Filter</button>
-        </section>
+            <button type="submit" class="home-filter-button"><span aria-hidden="true">&#128269;</span>Cari</button>
+        </form>
 
         <section class="home-stat-grid" aria-label="Ringkasan dashboard">
             <?php foreach ($stats as $stat): ?>
+                <?php
+                    $statUrl = app_url('dashboard/booking');
+                    if ($stat['label'] === 'Selesai') { $statUrl = app_url('dashboard/riwayat'); }
+                    if ($stat['label'] === 'Favorit') { $statUrl = app_url('dashboard/favorit'); }
+                    if ($stat['label'] === 'Rating Anda') { $statUrl = app_url('dashboard/ulasan'); }
+                ?>
                 <article class="home-stat-card <?php echo e($stat['accent']); ?>">
                     <span class="home-stat-icon"><?php echo $stat['icon']; ?></span>
                     <strong><?php echo e($stat['value']); ?></strong>
                     <p><?php echo e($stat['label']); ?></p>
-                    <a href="#">Lihat detail &#8594;</a>
+                    <a href="<?php echo e($statUrl); ?>">Lihat detail &#8594;</a>
                 </article>
             <?php endforeach; ?>
         </section>
@@ -75,11 +83,23 @@
 
             <div class="home-venue-grid">
                 <?php foreach ($venues as $venue): ?>
-                    <article class="home-venue-card">
+                    <?php $venueDetailUrl = app_url('dashboard/lapangan/' . rawurlencode(isset($venue['id']) ? $venue['id'] : '')); ?>
+                    <article
+                        class="home-venue-card"
+                        role="link"
+                        tabindex="0"
+                        data-venue-detail-url="<?php echo e($venueDetailUrl); ?>"
+                        aria-label="Lihat detail <?php echo e($venue['name']); ?>"
+                    >
                         <div class="home-venue-media">
                             <img src="<?php echo e($venue['image']); ?>" alt="<?php echo e($venue['name']); ?>">
                             <span>Populer</span>
-                            <button type="button" aria-label="Tambah favorit">&#9825;</button>
+                            <form method="post" action="<?php echo e(app_url('dashboard/favorit/toggle')); ?>">
+                                <input type="hidden" name="id_lapangan" value="<?php echo e(isset($venue['id']) ? $venue['id'] : ''); ?>">
+                                <input type="hidden" name="return_to" value="dashboard">
+                                <input type="hidden" name="booking_token" value="<?php echo e(isset($bookingCsrfToken) ? $bookingCsrfToken : ''); ?>">
+                                <button type="submit" aria-label="Tambah favorit">&#9825;</button>
+                            </form>
                         </div>
                         <div class="home-venue-body">
                             <h3><?php echo e($venue['name']); ?></h3>
@@ -88,7 +108,13 @@
                                 <span>&#9733;</span>
                                 <?php echo e($venue['rating']); ?> (<?php echo e($venue['reviews']); ?>)
                             </div>
-                            <strong><?php echo e($venue['price']); ?> <small>/jam</small></strong>
+                            <div class="home-venue-footer">
+                                <strong><?php echo e($venue['price']); ?> <small>/jam</small></strong>
+                                <a class="home-venue-schedule" href="<?php echo e($venueDetailUrl); ?>">
+                                    <i class="fa-regular fa-calendar"></i>
+                                    <span>Lihat Jadwal</span>
+                                </a>
+                            </div>
                         </div>
                     </article>
                 <?php endforeach; ?>
@@ -112,10 +138,34 @@
                     </div>
                     <div class="home-next-actions">
                         <span><?php echo e($nextBooking['status']); ?></span>
-                        <a href="<?php echo e(app_url('dashboard/booking')); ?>">Lihat Detail</a>
+                        <a href="<?php echo e(app_url('dashboard/booking?booking=' . rawurlencode($nextBooking['code']))); ?>">Lihat Detail</a>
                     </div>
                 </article>
             </section>
         <?php endif; ?>
     </main>
 </div>
+
+<script>
+    (function () {
+        document.querySelectorAll('[data-venue-detail-url]').forEach(function (card) {
+            function openDetail() {
+                if (card.dataset.venueDetailUrl) {
+                    window.location.href = card.dataset.venueDetailUrl;
+                }
+            }
+
+            card.addEventListener('click', function (event) {
+                if (event.target.closest('a, button, form, input')) { return; }
+                openDetail();
+            });
+
+            card.addEventListener('keydown', function (event) {
+                if ((event.key === 'Enter' || event.key === ' ') && event.target === card) {
+                    event.preventDefault();
+                    openDetail();
+                }
+            });
+        });
+    }());
+</script>

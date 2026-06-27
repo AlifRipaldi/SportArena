@@ -29,6 +29,14 @@ body.site-home .container {
     overflow: visible;
 }
 
+body.site-home #beranda,
+body.site-home #lapangan,
+body.site-home #cara-kerja,
+body.site-home #tentang-kami,
+body.site-home #kontak {
+    scroll-margin-top: 88px;
+}
+
 body.site-home header {
     height: 72px;
     display: flex;
@@ -68,6 +76,7 @@ body.site-home header nav ul li a {
     font-size: 14px;
     font-weight: 800;
     letter-spacing: 0;
+    transition: none;
 }
 
 body.site-home header nav ul li a::after {
@@ -78,17 +87,29 @@ body.site-home header nav ul li a::after {
     left: 0;
     height: 2px;
     border-radius: 999px;
-    background: transparent;
+    background: #86d638;
+    opacity: 0;
+    transition: none;
 }
 
 body.site-home header nav ul li a:hover,
-body.site-home header nav ul li a.active {
+body.site-home header nav ul li a.is-active {
     background: transparent;
     color: #86d638;
 }
 
-body.site-home header nav ul li a.active::after {
-    background: #86d638;
+body.site-home header nav ul li a.active {
+    color: #f4f8ff;
+}
+
+body.site-home header nav ul li a.active::after,
+body.site-home header nav ul li a:hover::after {
+    opacity: 0;
+}
+
+body.site-home header nav ul li a.is-active::after,
+body.site-home header nav ul li a.is-active:hover::after {
+    opacity: 1;
 }
 
 body.site-home .nav-actions {
@@ -690,6 +711,11 @@ body.site-home .contact {
     padding: 46px 0 0;
 }
 
+body.site-home .contact {
+    min-height: calc(100vh - 88px);
+    padding-bottom: 96px;
+}
+
 body.site-home .section-header.compact {
     margin-bottom: 20px;
 }
@@ -860,6 +886,14 @@ body.site-home footer {
 }
 
 @media (max-width: 1120px) {
+    body.site-home #beranda,
+    body.site-home #lapangan,
+    body.site-home #cara-kerja,
+    body.site-home #tentang-kami,
+    body.site-home #kontak {
+        scroll-margin-top: 142px;
+    }
+
     body.site-home header {
         height: auto;
         padding: 14px 0;
