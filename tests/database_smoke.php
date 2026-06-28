@@ -59,24 +59,41 @@ assertArrayResult('Customer lapangan tersedia', $availableVenues, 1);
 if (empty($availableVenues[0]['availableSchedules'])) {
     throw new RuntimeException('Customer belum memiliki slot jadwal yang dapat dipesan.');
 }
+if (count($availableVenues[0]['availableSchedules']) < 3) {
+    throw new RuntimeException('Customer belum memiliki minimal 3 slot jadwal untuk uji multi-booking.');
+}
 
 $connection = Database::connection();
 mysqli_begin_transaction($connection);
 try {
-    $scheduleId = $availableVenues[0]['availableSchedules'][0]['id'];
-    $testBooking = invokeProtected($dashboard, 'reserveBooking', array($connection, $scheduleId, $customerId));
-    invokeProtected($dashboard, 'createBookingNotifications', array($connection, $testBooking));
-    $bookingStatement = mysqli_prepare($connection, 'SELECT COUNT(*) AS total FROM booking WHERE ID_Booking=? AND ID_User=?');
-    mysqli_stmt_bind_param($bookingStatement, 'ss', $testBooking['id'], $customerId);
-    mysqli_stmt_execute($bookingStatement);
-    $bookingResult = mysqli_stmt_get_result($bookingStatement);
-    $bookingCount = $bookingResult ? (int) mysqli_fetch_assoc($bookingResult)['total'] : 0;
-    mysqli_stmt_close($bookingStatement);
-    if ($bookingCount !== 1) {
-        throw new RuntimeException('Transaksi pembuatan booking customer gagal.');
+    $scheduleIds = array_column(array_slice($availableVenues[0]['availableSchedules'], 0, 3), 'id');
+    $_POST = array('id_jadwal' => $scheduleIds);
+    $requestedScheduleIds = invokeProtected($dashboard, 'requestedBookingScheduleIds');
+    if ($requestedScheduleIds !== $scheduleIds) {
+        throw new RuntimeException('Input multi-slot booking customer gagal dibaca.');
     }
-    echo '[OK] Customer membuat booking dalam transaksi' . PHP_EOL;
+
+    $testBookings = array();
+    foreach ($scheduleIds as $scheduleId) {
+        $testBooking = invokeProtected($dashboard, 'reserveBooking', array($connection, $scheduleId, $customerId));
+        invokeProtected($dashboard, 'createBookingNotifications', array($connection, $testBooking));
+        $testBookings[] = $testBooking;
+    }
+
+    foreach ($testBookings as $testBooking) {
+        $bookingStatement = mysqli_prepare($connection, 'SELECT COUNT(*) AS total FROM booking WHERE ID_Booking=? AND ID_User=?');
+        mysqli_stmt_bind_param($bookingStatement, 'ss', $testBooking['id'], $customerId);
+        mysqli_stmt_execute($bookingStatement);
+        $bookingResult = mysqli_stmt_get_result($bookingStatement);
+        $bookingCount = $bookingResult ? (int) mysqli_fetch_assoc($bookingResult)['total'] : 0;
+        mysqli_stmt_close($bookingStatement);
+        if ($bookingCount !== 1) {
+            throw new RuntimeException('Transaksi pembuatan booking customer gagal.');
+        }
+    }
+    echo '[OK] Customer membuat multi-booking dalam transaksi: ' . count($testBookings) . PHP_EOL;
 } finally {
+    $_POST = array();
     mysqli_rollback($connection);
 }
 
@@ -107,6 +124,7 @@ $fieldDetailPage = ob_get_clean();
 if (
     strpos($fieldDetailPage, 'class="customer-field-page"') === false
     || strpos($fieldDetailPage, 'id="customerFieldBooking"') === false
+    || strpos($fieldDetailPage, 'name = \'id_jadwal[]\'') === false
     || strpos($fieldDetailPage, app_url('dashboard/booking/tambah')) === false
 ) {
     throw new RuntimeException('Halaman detail dan booking lapangan customer belum aktif.');

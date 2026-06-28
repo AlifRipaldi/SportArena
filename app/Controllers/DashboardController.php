@@ -447,9 +447,15 @@ class DashboardController extends Controller
         if (session_status() === PHP_SESSION_NONE) { session_start(); }
         if (empty($_SESSION['id_user'])) { header('Location: ' . app_url('public/login.php')); exit; }
 
-        $scheduleId = isset($_POST['id_jadwal']) ? trim((string) $_POST['id_jadwal']) : '';
         if (!$this->hasValidBookingToken()) {
             $_SESSION['booking_error'] = 'Permintaan booking tidak valid. Silakan pilih jadwal kembali.';
+            header('Location: ' . app_url('dashboard/lapangan'));
+            exit;
+        }
+
+        $scheduleIds = $this->requestedBookingScheduleIds();
+        if (empty($scheduleIds)) {
+            $_SESSION['booking_error'] = 'Pilih minimal satu jadwal booking.';
             header('Location: ' . app_url('dashboard/lapangan'));
             exit;
         }
@@ -458,10 +464,21 @@ class DashboardController extends Controller
         mysqli_begin_transaction($connection);
 
         try {
-            $booking = $this->reserveBooking($connection, $scheduleId, $this->dashboardUserId());
-            $this->createBookingNotifications($connection, $booking);
+            $bookings = array();
+            $userId = $this->dashboardUserId();
+
+            foreach ($scheduleIds as $scheduleId) {
+                $bookings[] = $this->reserveBooking($connection, $scheduleId, $userId);
+            }
+
+            foreach ($bookings as $booking) {
+                $this->createBookingNotifications($connection, $booking);
+            }
+
             mysqli_commit($connection);
-            $_SESSION['booking_success'] = 'Booking ' . $booking['venue'] . ' berhasil dibuat. Silakan selesaikan pembayaran.';
+            $_SESSION['booking_success'] = count($bookings) === 1
+                ? 'Booking ' . $bookings[0]['venue'] . ' berhasil dibuat. Silakan selesaikan pembayaran.'
+                : count($bookings) . ' slot booking berhasil dibuat. Silakan selesaikan pembayaran.';
             header('Location: ' . app_url('dashboard/booking'));
             exit;
         } catch (\Throwable $exception) {
@@ -470,6 +487,27 @@ class DashboardController extends Controller
             header('Location: ' . app_url('dashboard/lapangan'));
             exit;
         }
+    }
+
+    protected function requestedBookingScheduleIds()
+    {
+        $posted = isset($_POST['id_jadwal']) ? $_POST['id_jadwal'] : array();
+        $posted = is_array($posted) ? $posted : array($posted);
+        $scheduleIds = array();
+
+        foreach ($posted as $scheduleId) {
+            if (is_array($scheduleId)) {
+                continue;
+            }
+
+            $scheduleId = trim((string) $scheduleId);
+
+            if ($scheduleId !== '' && !in_array($scheduleId, $scheduleIds, true)) {
+                $scheduleIds[] = $scheduleId;
+            }
+        }
+
+        return $scheduleIds;
     }
 
     protected function reserveBooking($connection, $scheduleId, $userId)
@@ -506,7 +544,7 @@ class DashboardController extends Controller
         $startAt = strtotime($schedule['Tanggal'] . ' ' . $schedule['Jam_Mulai']);
         if ($startAt === false || $startAt <= time()) { throw new \RuntimeException('Jadwal sudah lewat.'); }
 
-        $bookingId = 'BKG' . date('ymdHis') . random_int(10, 99);
+        $bookingId = $this->dashboardBookingId($connection);
         $price = max(0, (int) $schedule['Harga']);
         $createdAt = date('Y-m-d H:i:s');
         $insert = mysqli_prepare($connection, "INSERT INTO booking (ID_Booking,ID_Jadwal,ID_User,Waktu_transaksi,Total_harga,Status) VALUES (?,?,?,?,?,'Menunggu Pembayaran')");
@@ -532,6 +570,30 @@ class DashboardController extends Controller
             'ownerUserId' => isset($schedule['ID_Pemilik_User']) ? $schedule['ID_Pemilik_User'] : '',
             'venue' => isset($schedule['Nama_lapangan']) ? $schedule['Nama_lapangan'] : 'lapangan',
         );
+    }
+
+    protected function dashboardBookingId($connection)
+    {
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            $bookingId = 'BKG' . date('ymdHis') . random_int(1000, 9999);
+            $statement = mysqli_prepare($connection, 'SELECT 1 FROM booking WHERE ID_Booking=? LIMIT 1');
+
+            if (!$statement) {
+                return $bookingId;
+            }
+
+            mysqli_stmt_bind_param($statement, 's', $bookingId);
+            mysqli_stmt_execute($statement);
+            $result = mysqli_stmt_get_result($statement);
+            $exists = $result ? mysqli_fetch_assoc($result) : null;
+            mysqli_stmt_close($statement);
+
+            if (!$exists) {
+                return $bookingId;
+            }
+        }
+
+        throw new \RuntimeException('Kode booking tidak dapat dibuat.');
     }
 
     protected function createBookingNotifications($connection, array $booking)

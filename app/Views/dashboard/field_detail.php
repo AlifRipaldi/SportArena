@@ -85,17 +85,17 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
         </article>
 
         <aside class="customer-field-booking-card" id="customerFieldBooking">
-            <p>Harga Mulai Dari</p>
-            <strong id="customerBookingPrice"><?php echo e($venue['price']); ?></strong><span>/jam</span>
+            <p id="customerBookingPriceLabel">Harga Mulai Dari</p>
+            <strong id="customerBookingPrice"><?php echo e($venue['price']); ?></strong><span id="customerBookingPriceUnit">/jam</span>
             <hr>
             <form method="post" action="<?php echo e(app_url('dashboard/booking/tambah')); ?>" id="customerFieldBookingForm">
                 <input type="hidden" name="booking_token" value="<?php echo e($bookingCsrfToken); ?>">
-                <input type="hidden" name="id_jadwal" id="customerScheduleId" value="">
+                <div id="customerScheduleFields"></div>
                 <label for="customerBookingDate">Pilih Tanggal</label>
                 <input type="date" id="customerBookingDate" min="<?php echo e(date('Y-m-d')); ?>" value="<?php echo e($defaultScheduleDate); ?>">
                 <span class="customer-booking-label">Pilih Jam</span>
                 <div class="customer-time-options" id="customerTimeOptions"></div>
-                <p class="customer-booking-hint" id="customerBookingHint">Pilih salah satu jam yang tersedia.</p>
+                <p class="customer-booking-hint" id="customerBookingHint">Belum ada jam dipilih.</p>
                 <button type="submit" class="customer-book-now" id="customerBookNow" disabled>Pesan Sekarang</button>
                 <button type="button" class="customer-view-schedule" id="customerViewSchedule">Lihat Jadwal</button>
             </form>
@@ -164,10 +164,16 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
 
         var dateInput = document.getElementById('customerBookingDate');
         var timeOptions = document.getElementById('customerTimeOptions');
-        var scheduleInput = document.getElementById('customerScheduleId');
+        var scheduleFields = document.getElementById('customerScheduleFields');
         var bookButton = document.getElementById('customerBookNow');
         var hint = document.getElementById('customerBookingHint');
+        var priceLabel = document.getElementById('customerBookingPriceLabel');
         var price = document.getElementById('customerBookingPrice');
+        var priceUnit = document.getElementById('customerBookingPriceUnit');
+        var defaultPriceLabel = priceLabel ? priceLabel.textContent : '';
+        var defaultPrice = price ? price.textContent : '';
+        var defaultPriceUnit = priceUnit ? priceUnit.textContent : '';
+        var selectedScheduleIds = [];
 
         schedules.forEach(function (schedule) {
             if (schedule && schedule.date) {
@@ -175,10 +181,81 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
             }
         });
 
+        function moneyAmount(label) {
+            var amount = String(label || '').replace(/[^\d]/g, '');
+            return amount === '' ? 0 : parseInt(amount, 10);
+        }
+
+        function rupiah(amount) {
+            return 'Rp' + new Intl.NumberFormat('id-ID').format(Math.max(0, amount || 0));
+        }
+
+        function currentSchedulesById() {
+            var byId = {};
+            schedules.forEach(function (schedule) {
+                if (schedule && schedule.id) {
+                    byId[schedule.id] = schedule;
+                }
+            });
+
+            return byId;
+        }
+
+        function syncBookingSelection() {
+            var byId = currentSchedulesById();
+            var selectedSchedules = selectedScheduleIds.map(function (scheduleId) {
+                return byId[scheduleId] || null;
+            }).filter(Boolean);
+
+            if (scheduleFields) {
+                scheduleFields.textContent = '';
+                selectedSchedules.forEach(function (schedule) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'id_jadwal[]';
+                    input.value = schedule.id;
+                    scheduleFields.appendChild(input);
+                });
+            }
+
+            bookButton.disabled = selectedSchedules.length === 0;
+
+            if (!selectedSchedules.length) {
+                if (priceLabel) { priceLabel.textContent = defaultPriceLabel; }
+                if (price) { price.textContent = defaultPrice; }
+                if (priceUnit) { priceUnit.textContent = defaultPriceUnit; }
+                hint.textContent = 'Belum ada jam dipilih.';
+                bookButton.textContent = 'Pesan Sekarang';
+                return;
+            }
+
+            if (selectedSchedules.length === 1) {
+                if (priceLabel) { priceLabel.textContent = 'Harga Slot'; }
+                if (price) { price.textContent = selectedSchedules[0].price || defaultPrice; }
+                if (priceUnit) { priceUnit.textContent = defaultPriceUnit; }
+                hint.textContent = selectedSchedules[0].dateLabel + ', ' + selectedSchedules[0].time;
+                bookButton.textContent = 'Pesan Sekarang';
+                return;
+            }
+
+            var total = selectedSchedules.reduce(function (sum, schedule) {
+                return sum + moneyAmount(schedule.price);
+            }, 0);
+            if (priceLabel) { priceLabel.textContent = 'Total Estimasi'; }
+            if (price) { price.textContent = rupiah(total); }
+            if (priceUnit) { priceUnit.textContent = ''; }
+            hint.textContent = selectedSchedules.length + ' slot dipilih, total ' + rupiah(total) + '.';
+            bookButton.textContent = 'Pesan ' + selectedSchedules.length + ' Slot';
+        }
+
+        function clearBookingSelection() {
+            selectedScheduleIds = [];
+            syncBookingSelection();
+        }
+
         function setBookingIdle(message) {
             timeOptions.textContent = '';
-            scheduleInput.value = '';
-            bookButton.disabled = true;
+            clearBookingSelection();
             hint.textContent = message;
         }
 
@@ -198,20 +275,27 @@ if ($latitude !== 0.0 && $longitude !== 0.0) {
 
             var matches = schedules.filter(function (schedule) { return schedule.date === dateInput.value; });
             timeOptions.textContent = '';
-            scheduleInput.value = '';
-            bookButton.disabled = true;
-            hint.textContent = matches.length ? 'Pilih salah satu jam yang tersedia.' : 'Tidak ada jadwal pada tanggal ini.';
+            clearBookingSelection();
+            hint.textContent = matches.length ? 'Pilih jam yang tersedia.' : 'Tidak ada jadwal pada tanggal ini.';
             matches.forEach(function (schedule) {
                 var button = document.createElement('button');
                 button.type = 'button';
                 button.textContent = String(schedule.time || '').split(' - ')[0];
                 button.setAttribute('aria-label', 'Pilih jam ' + schedule.time);
+                button.setAttribute('aria-pressed', 'false');
                 button.addEventListener('click', function () {
-                    timeOptions.querySelectorAll('button').forEach(function (item) { item.classList.toggle('active', item === button); });
-                    scheduleInput.value = schedule.id;
-                    price.textContent = schedule.price;
-                    hint.textContent = schedule.dateLabel + ', ' + schedule.time;
-                    bookButton.disabled = false;
+                    var index = selectedScheduleIds.indexOf(schedule.id);
+                    var selected = index === -1;
+
+                    if (selected) {
+                        selectedScheduleIds.push(schedule.id);
+                    } else {
+                        selectedScheduleIds.splice(index, 1);
+                    }
+
+                    button.classList.toggle('active', selected);
+                    button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+                    syncBookingSelection();
                 });
                 timeOptions.appendChild(button);
             });
