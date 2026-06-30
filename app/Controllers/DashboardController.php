@@ -166,18 +166,19 @@ class DashboardController extends Controller
 
     protected function renderDashboard($view, $activeMenu, $title, $heading, $subheading)
     {
-<<<<<<< HEAD
         $this->requireUser();
-=======
+
         if (!headers_sent()) {
             header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
         }
+        
+    
 
         $bookingMessage = isset($_SESSION['booking_success']) ? (string) $_SESSION['booking_success'] : '';
         $bookingError = isset($_SESSION['booking_error']) ? (string) $_SESSION['booking_error'] : '';
         unset($_SESSION['booking_success'], $_SESSION['booking_error']);
         $profile = $this->customerAccountSettings();
->>>>>>> origin/main
+        origin/main
 
         return $this->view($view, array(
             'title' => $title,
